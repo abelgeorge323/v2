@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.Python
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local development
+*.log
+.env
+
+# Test and debug files
+debug_*.py
+test_*.py
+compare_candidates.py
+
+# Excel files (if you don't want to track them)
+*.xlsx
+*.xls
+
+# Old/backup files
+api_server.py
+api_server_optimized.py
+*.bak
+*.old
+
