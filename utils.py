@@ -239,16 +239,45 @@ def extract_real_scores(row: pd.Series) -> Dict[str, Any]:
     """
     scores = {}
     
+    # Debug logging for score extraction
+    candidate_name = row.get('MIT Name', 'Unknown')
+    logger.info(f"=== SCORE EXTRACTION DEBUG FOR {candidate_name} ===")
+    
     for score_key, column_name in SCORE_COLUMNS.items():
         score_value = row.get(column_name, 0)
+        logger.info(f"  {score_key} -> Column '{column_name}': '{score_value}' (type: {type(score_value)})")
         
         if pd.notna(score_value) and str(score_value).strip():
             try:
-                scores[score_key] = float(score_value)
-            except (ValueError, TypeError):
-                scores[score_key] = 0.0
+                # Clean up invalid spreadsheet entries
+                val_str = str(score_value).strip().replace('#REF!', '').replace('#N/A', '')
+                val_str = val_str.replace('=', '').replace('"', '')
+                
+                # Special handling for skill_ranking (text field)
+                if score_key == 'skill_ranking':
+                    scores[score_key] = val_str if val_str else '—'
+                    logger.info(f"    -> SUCCESS: {scores[score_key]} (text field from '{score_value}')")
+                else:
+                    # Numeric fields
+                    scores[score_key] = float(val_str) if val_str else 0.0
+                    logger.info(f"    -> SUCCESS: {scores[score_key]} (cleaned from '{score_value}')")
+            except (ValueError, TypeError) as e:
+                if score_key == 'skill_ranking':
+                    scores[score_key] = '—'
+                    logger.info(f"    -> ERROR: {e}, defaulting to '—'")
+                else:
+                    scores[score_key] = 0.0
+                    logger.info(f"    -> ERROR: {e}, defaulting to 0.0")
         else:
-            scores[score_key] = 0.0
+            if score_key == 'skill_ranking':
+                scores[score_key] = '—'
+                logger.info(f"    -> EMPTY/NULL, defaulting to '—'")
+            else:
+                scores[score_key] = 0.0
+                logger.info(f"    -> EMPTY/NULL, defaulting to 0.0")
+    
+    logger.info(f"Final scores: {scores}")
+    logger.info("=" * 50)
     
     return scores
 
