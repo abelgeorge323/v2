@@ -17,7 +17,7 @@ Author: AI Assistant
 Date: October 2025
 """
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from datetime import datetime, timedelta
 import logging
@@ -129,6 +129,23 @@ def get_cached_data() -> pd.DataFrame:
 # =============================================================================
 # API ROUTES
 # =============================================================================
+
+@app.route('/')
+def serve_dashboard():
+    """
+    Serve the main dashboard HTML file
+    
+    This endpoint serves the index.html file for the MIT Dashboard.
+    This is essential for Heroku deployment where the frontend needs to be served by Flask.
+    
+    Returns:
+        HTML file: The main dashboard interface
+    """
+    try:
+        return send_file('index.html')
+    except Exception as e:
+        log_error("Error serving dashboard", e)
+        return jsonify({'error': 'Dashboard not available'}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -413,6 +430,7 @@ if __name__ == '__main__':
     print(f"Cache Duration: {CACHE_DURATION_MINUTES} minutes")
     print()
     print("API Endpoints:")
+    print("   - GET / - Main dashboard interface")
     print("   - GET /api/dashboard-data - Dashboard metrics")
     print("   - GET /api/candidates - Ready for placement candidates")
     print("   - GET /api/candidate/<name> - Individual candidate profile")
