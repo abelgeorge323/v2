@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>MIT Candidate Training Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #2d3748 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+            color: #ffffff;
+            background: linear-gradient(145deg, #1e2329, #2a2f37);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .header h1 {
+            font-size: 2.75rem;
+            margin-bottom: 12px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .header p {
+            font-size: 1.125rem;
+            color: #64748b;
+            font-weight: 400;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background: #ffffff;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-btn:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .nav-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            background: linear-gradient(145deg, #1e2329, #2a2f37);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .metric-card {
+            background: linear-gradient(145deg, #1e2329, #2a2f37);
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: #a0a0a0;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 4px;
+            letter-spacing: -0.025em;
+        }
+
+        .metric-change {
+            font-size: 0.75rem;
+            color: #a0a0a0;
+            font-weight: 400;
+        }
+
+        /* Performance Analytics */
+        .performance-section {
+            background: linear-gradient(145deg, #1e2329, #2a2f37);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .performance-section h2 {
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .performance-card {
+            background: linear-gradient(145deg, #1e2329, #2a2f37);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .performance-label {
+            font-size: 0.75rem;
+            color: #a0a0a0;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .performance-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        /* Candidates List */
+        .candidates-container {
+            background: linear-gradient(145deg, #1e2329, #2a2f37);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .candidates-container h2 {
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        .candidates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .candidate-card {
+            background: linear-gradient(145deg, #1e2329, #2a2f37);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .candidate-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .candidate-info h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .candidate-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: #a0a0a0;
+        }
+
+        .candidate-details strong {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .view-profile-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+            min-width: 100px;
+            transition: all 0.3s ease;
+        }
+
+        .view-profile-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Job Matches Display */
+        .match-score-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .match-score-badge.excellent {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .match-score-badge.good {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+
+        .match-score-badge.fair {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .match-score-badge.poor {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .match-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .score-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .score-item .label {
+            color: #a0a0a0;
+        }
+
+        .score-item .value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .match-candidate-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .match-candidate-name:hover {
+            color: #667eea;
+        }
+
+        /* Profile Page */
+        .profile-container {
+            background: linear-gradient(145deg, #1e2329, #2a2f37);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .profile-info h1 {
+            font-size: 2.2rem;
+            font-weight: 300;
+            margin-bottom: 8px;
+        }
+
+        .profile-info p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .profile-content {
+            display: grid;
+            grid-template-columns: 35% 65%;
+            gap: 30px;
+        }
+
+        .contact-info, .performance-metrics, .mentor-info, .onboarding-progress, .business-lessons, .operation-details {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+
+        .operation-mentor-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .mentor-info-small {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            height: fit-content;
+        }
+
+        .mentor-info-small h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+
+        .mentor-info-small .info-grid {
+            color: #e0e0e0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .mentor-info-small .info-grid > div {
+            margin-bottom: 12px;
+        }
+
+        .mentor-info-small .info-grid strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .mentor-info-small .mentor-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .contact-info h3, .performance-metrics h3, .mentor-info h3, .onboarding-progress h3, .business-lessons h3, .operation-details h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .status-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .progress-container {
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            color: #ffffff;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .info-grid {
+            color: #e0e0e0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .info-grid > div {
+            margin-bottom: 12px;
+        }
+
+        .info-grid strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .metrics-grid-profile {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .metric-item {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-item.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .metric-item .metric-label {
+            color: #667eea;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .metric-item .metric-value {
+            color: #ffffff;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .metric-item.full-width .metric-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .back-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .back-btn.secondary {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Error and Loading States */
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #fecaca;
+        }
+
+        .loading {
+            text-align: center;
+            color: #64748b;
+            font-size: 1rem;
+            padding: 40px;
+        }
+
+        .no-candidates {
+            text-align: center;
+            color: #64748b;
+            padding: 40px;
+        }
+
+        .no-candidates h3 {
+            font-size: 1.25rem;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .nav {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .candidates-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .candidate-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .view-profile-btn {
+                margin-top: 12px;
+                align-self: stretch;
+                text-align: center;
+            }
+
+            .profile-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .candidate-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .operation-mentor-container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🎓 MIT Candidate Training Dashboard</h1>
+            <p>Real-time candidate tracking and performance analytics</p>
+        </header>
+
+        <!-- Dashboard Page -->
+        <main class="page active" id="dashboard">
+            <div class="dashboard">
+                <div class="metrics-grid" id="metricsGrid">
+                    <div class="loading">Loading metrics...</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Candidate List Page -->
+        <div class="page" id="candidateList">
+            <div class="candidates-container">
+                <h2>🧩 Ready for Placement</h2>
+                <div id="candidatesList" class="candidates-grid">
+                    <div class="loading">Loading candidates...</div>
+                </div>
+                <div style="text-align: center;">
+                    <button onclick="showDashboard()" class="back-btn">← Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Page -->
+        <div class="page" id="profilePage">
+            <div class="profile-container">
+                <div id="profileContent">
+                    <div class="loading">Loading profile...</div>
+                </div>
+                <div style="text-align: center;">
+                    <button onclick="goBackToList()" class="back-btn">← Back to List</button>
+                    <button onclick="showDashboard()" class="back-btn secondary">← Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Job Matches Page -->
+        <div class="page" id="jobMatches">
+            <div class="candidates-container">
+                <h2 id="jobMatchesTitle">🔍 Top Matches</h2>
+                <div id="matchesList" class="candidates-grid">
+                    <div class="loading">Loading matches...</div>
+                </div>
+                <div style="text-align: center;">
+                    <button onclick="showOpenPositions()" class="back-btn">← Back to Open Positions</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL - automatically use current origin in production, localhost in development
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:5000' 
+            : window.location.origin;
+
+        // Global state
+        let currentPage = 'dashboard';
+        let previousPage = 'dashboard'; // Track the previous page for back navigation
+        let candidates = [];
+
+        // Load dashboard data from API
+        async function loadDashboardData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/dashboard-data`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                renderMetrics(data);
+                
+            } catch (error) {
+                document.getElementById('metricsGrid').innerHTML = 
+                    `<div class="error">Error loading data: ${error.message}</div>`;
+            }
+        }
+
+        // Render metrics with real data and clickable cards
+        function renderMetrics(data) {
+            const metricsGrid = document.getElementById('metricsGrid');
+            metricsGrid.innerHTML = `
+                <div class="metric-card" onclick="showAllCandidates()">
+                    <div class="metric-label">Total Candidates</div>
+                    <div class="metric-value">${data.total_candidates}</div>
+                    <div class="metric-change">All registered candidates</div>
+                </div>
+                <div class="metric-card" onclick="showOpenPositions()">
+                    <div class="metric-label">Open Positions</div>
+                    <div class="metric-value">${data.open_positions}</div>
+                    <div class="metric-change">Available roles</div>
+                </div>
+                <div class="metric-card" onclick="showCandidateList()">
+                    <div class="metric-label">Ready for Placement</div>
+                    <div class="metric-value">${data.ready_for_placement}</div>
+                    <div class="metric-change">Week > 6 & not placed</div>
+                </div>
+                <div class="metric-card" onclick="showInTraining()">
+                    <div class="metric-label">In Training (Weeks 1–5)</div>
+                    <div class="metric-value">${data.in_training}</div>
+                    <div class="metric-change">Early stage candidates</div>
+                </div>
+                <div class="metric-card" onclick="showOfferPending()">
+                    <div class="metric-label">Offer Pending</div>
+                    <div class="metric-value">${data.offer_pending}</div>
+                    <div class="metric-change">Awaiting placement</div>
+                </div>
+            `;
+        }
+
+        // Load all candidates data from API
+        async function loadAllCandidates() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/all-candidates`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                candidates = data;
+                renderAllCandidates();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading candidates: ${error.message}</div>`;
+            }
+        }
+
+        // Load in training candidates from API
+        async function loadInTrainingCandidates() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/in-training-candidates`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                candidates = data;
+                renderInTrainingCandidates();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading candidates: ${error.message}</div>`;
+            }
+        }
+
+        // Load offer pending candidates from API
+        async function loadOfferPendingCandidates() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/offer-pending-candidates`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                candidates = data;
+                renderOfferPendingCandidates();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading candidates: ${error.message}</div>`;
+            }
+        }
+
+        // Load open positions from API
+        async function loadOpenPositions() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/open-positions`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                positions = data;
+                renderOpenPositions();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading positions: ${error.message}</div>`;
+            }
+        }
+
+        // Load candidates data from API
+        async function loadCandidates() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/candidates`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                candidates = data;
+                renderCandidates();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading candidates: ${error.message}</div>`;
+            }
+        }
+
+        // Render candidates with real data
+        function renderCandidates() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (candidates.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No candidates currently ready for placement</h3>
+                        <p>All candidates are either in training or already placed.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            candidatesList.innerHTML = candidates.map(candidate => `
+                <div class="candidate-card" onclick="showProfile('${candidate.name}')">
+                    <div class="candidate-info">
+                        <h3>${candidate.name}</h3>
+                        <div class="candidate-details">
+                            <div><strong>Site:</strong> ${candidate.training_site}</div>
+                            <div><strong>Week:</strong> ${candidate.week}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn">View Profile →</div>
+                </div>
+            `).join('');
+        }
+
+        // Render all candidates
+        function renderAllCandidates() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (candidates.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No candidates found</h3>
+                    </div>
+                `;
+                return;
+            }
+            
+            candidatesList.innerHTML = candidates.map(candidate => `
+                <div class="candidate-card">
+                    <div class="candidate-info">
+                        <h3>${candidate.name}</h3>
+                        <div class="candidate-details">
+                            <div><strong>Site:</strong> ${candidate.training_site}</div>
+                            <div><strong>Week:</strong> ${candidate.week}</div>
+                            <div><strong>Status:</strong> ${candidate.status}</div>
+                            <div><strong>Level:</strong> ${candidate.level}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                </div>
+            `).join('');
+        }
+
+        // Render in training candidates
+        function renderInTrainingCandidates() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (candidates.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No candidates currently in training</h3>
+                    </div>
+                `;
+                return;
+            }
+            
+            candidatesList.innerHTML = candidates.map(candidate => `
+                <div class="candidate-card">
+                    <div class="candidate-info">
+                        <h3>${candidate.name}</h3>
+                        <div class="candidate-details">
+                            <div><strong>Site:</strong> ${candidate.training_site}</div>
+                            <div><strong>Week:</strong> ${candidate.week}</div>
+                            <div><strong>Level:</strong> ${candidate.level}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                </div>
+            `).join('');
+        }
+
+        // Render offer pending candidates
+        function renderOfferPendingCandidates() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (candidates.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No candidates with pending offers</h3>
+                    </div>
+                `;
+                return;
+            }
+            
+            candidatesList.innerHTML = candidates.map(candidate => `
+                <div class="candidate-card">
+                    <div class="candidate-info">
+                        <h3>${candidate.name}</h3>
+                        <div class="candidate-details">
+                            <div><strong>Site:</strong> ${candidate.training_site}</div>
+                            <div><strong>Week:</strong> ${candidate.week}</div>
+                            <div><strong>Level:</strong> ${candidate.level}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                </div>
+            `).join('');
+        }
+
+        // Render open positions
+        function renderOpenPositions() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (positions.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No open positions available</h3>
+                    </div>
+                `;
+                return;
+            }
+            
+            candidatesList.innerHTML = positions.map(position => `
+                <div class="candidate-card">
+                    <div class="candidate-info">
+                        <h3>${position.title}</h3>
+                        <div class="candidate-details">
+                            <div><strong>Account:</strong> ${position.account}</div>
+                            <div><strong>Location:</strong> ${position.city}, ${position.state}</div>
+                            <div><strong>Vertical:</strong> ${position.vertical}</div>
+                            <div><strong>Salary:</strong> ${position.salary}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn" onclick="showJobMatches(${position.id})">🔍 View Top Matches</div>
+                </div>
+            `).join('');
+        }
+
+        // Load candidate profile from API
+        async function loadCandidateProfile(name) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(name)}`);
+                const candidate = await response.json();
+                
+                if (candidate.error) {
+                    throw new Error(candidate.error);
+                }
+                
+                renderProfile(candidate);
+                
+            } catch (error) {
+                document.getElementById('profileContent').innerHTML = 
+                    `<div class="error">Error loading profile: ${error.message}</div>`;
+            }
+        }
+
+        // Render profile with real data
+        function renderProfile(candidate) {
+            const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
+            
+            document.getElementById('profileContent').innerHTML = `
+                <div class="profile-header">
+                    <div class="avatar">${initials}</div>
+                    <div class="profile-info">
+                        <h1>${candidate.name}</h1>
+                        <p>${candidate.training_site} • ${candidate.location}</p>
+                        <p class="status-badge">${candidate.status} • ${candidate.training_program}</p>
+                    </div>
+                </div>
+                
+                <div class="profile-content">
+                    <div class="contact-info">
+                        <h3>📋 Contact Information</h3>
+                        <div class="info-grid">
+                            <div><strong>Training Site:</strong> ${candidate.training_site}</div>
+                            <div><strong>Location:</strong> ${candidate.location}</div>
+                            <div><strong>Level:</strong> ${candidate.level}</div>
+                            <div><strong>Week:</strong> ${candidate.week}</div>
+                            <div><strong>Salary:</strong> ${candidate.salary > 0 ? '$' + candidate.salary.toLocaleString() : 'TBD'}</div>
+                            <div><strong>Status:</strong> ${candidate.status}</div>
+                            <div><strong>Program:</strong> ${candidate.training_program}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="performance-metrics">
+                        <h3>📊 Performance Analytics</h3>
+                        <div class="metrics-grid-profile">
+                            <div class="metric-item">
+                                <div class="metric-label">Mock QBR Score</div>
+                                <div class="metric-value">${candidate.scores.qbr_score}/100</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Assessment Score</div>
+                                <div class="metric-value">${candidate.scores.assessment_score}/100</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Performance Evaluation</div>
+                                <div class="metric-value">${candidate.scores.performance_score}/100</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Confidence Score</div>
+                                <div class="metric-value">${candidate.scores.confidence_score}/100</div>
+                            </div>
+                            <div class="metric-item full-width">
+                                <div class="metric-label">Skill Ranking</div>
+                                <div class="metric-value">${candidate.scores.skill_ranking}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${candidate.onboarding_progress ? `
+                    <div class="onboarding-progress">
+                        <h3>📋 Onboarding Progress</h3>
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${candidate.onboarding_progress.percentage}%"></div>
+                            </div>
+                            <div class="progress-text">${candidate.onboarding_progress.completed}/${candidate.onboarding_progress.total} Complete (${candidate.onboarding_progress.percentage}%)</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${candidate.business_lessons_progress ? `
+                    <div class="business-lessons">
+                        <h3>📚 Business Lessons Progress</h3>
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${candidate.business_lessons_progress.percentage}%"></div>
+                            </div>
+                            <div class="progress-text">${candidate.business_lessons_progress.completed}/${candidate.business_lessons_progress.total} Complete (${candidate.business_lessons_progress.percentage}%)</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="operation-mentor-container">
+                        ${candidate.operation_details && (candidate.operation_details.company_start_date !== '—' || candidate.operation_details.title !== '—') ? `
+                        <div class="operation-details">
+                            <h3>🏢 Operation Details</h3>
+                            <div class="info-grid">
+                                ${candidate.operation_details.company_start_date !== '—' ? `<div><strong>Company Start Date:</strong> ${candidate.operation_details.company_start_date}</div>` : ''}
+                                ${candidate.operation_details.title !== '—' ? `<div><strong>Title:</strong> ${candidate.operation_details.title}</div>` : ''}
+                                ${candidate.operation_details.operation_location !== '—' ? `<div><strong>Operation Location:</strong> ${candidate.operation_details.operation_location}</div>` : ''}
+                                ${candidate.operation_details.vertical !== '—' ? `<div><strong>Vertical:</strong> ${candidate.operation_details.vertical}</div>` : ''}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidate.mentor_name && candidate.mentor_name !== '—' ? `
+                        <div class="mentor-info-small">
+                            <h3>👨‍🏫 Mentor Information</h3>
+                            <div class="info-grid">
+                                <div><strong>Mentor Name:</strong> <span class="mentor-name">${candidate.mentor_name}</span></div>
+                                <div><strong>Mentor Title:</strong> ${candidate.mentor_title}</div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Navigation functions
+        function showDashboard() {
+            hideAllPages();
+            document.getElementById('dashboard').classList.add('active');
+            previousPage = currentPage;
+            currentPage = 'dashboard';
+        }
+
+        function showAllCandidates() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            previousPage = currentPage;
+            currentPage = 'all_candidates';
+            document.querySelector('.candidates-container h2').textContent = '👥 All Candidates';
+            loadAllCandidates();
+        }
+
+        function showOpenPositions() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            currentPage = 'open_positions';
+            document.querySelector('.candidates-container h2').textContent = '💼 Open Positions';
+            loadOpenPositions();
+        }
+
+        function showInTraining() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            previousPage = currentPage;
+            currentPage = 'in_training';
+            document.querySelector('.candidates-container h2').textContent = '🏋️ In Training Candidates';
+            loadInTrainingCandidates();
+        }
+
+        function showOfferPending() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            previousPage = currentPage;
+            currentPage = 'offer_pending';
+            document.querySelector('.candidates-container h2').textContent = '🤝 Offer Pending Candidates';
+            loadOfferPendingCandidates();
+        }
+
+        function showCandidateList() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            previousPage = currentPage;
+            currentPage = 'candidates';
+            document.querySelector('.candidates-container h2').textContent = '🧩 Ready for Placement';
+            loadCandidates();
+        }
+
+        function showProfile(candidateName) {
+            hideAllPages();
+            document.getElementById('profilePage').classList.add('active');
+            previousPage = currentPage;
+            currentPage = 'profile';
+            loadCandidateProfile(candidateName);
+        }
+
+        function showJobMatches(jobId) {
+            hideAllPages();
+            document.getElementById('jobMatches').classList.add('active');
+            previousPage = currentPage;
+            currentPage = 'job_matches';
+            loadJobMatches(jobId);
+        }
+
+        async function loadJobMatches(jobId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/job-matches/${jobId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                renderJobMatches(data);
+                
+            } catch (error) {
+                document.getElementById('matchesList').innerHTML = 
+                    `<div class="error">Error loading matches: ${error.message}</div>`;
+            }
+        }
+
+        function renderJobMatches(matchData) {
+            const matchesList = document.getElementById('matchesList');
+            const jobMatchesTitle = document.getElementById('jobMatchesTitle');
+            
+            // Update page title with job name
+            jobMatchesTitle.textContent = `🔍 Top Matches for: ${matchData.job_title}`;
+            
+            if (matchData.matches.length === 0) {
+                matchesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No matches found for this position</h3>
+                    </div>
+                `;
+                return;
+            }
+            
+            matchesList.innerHTML = matchData.matches.map((match, index) => {
+                const candidate = match.candidate_data;
+                const quality = match.match_quality.toLowerCase();
+                
+                return `
+                    <div class="candidate-card">
+                        <div class="candidate-info">
+                            <div class="match-candidate-name" onclick="showProfile('${candidate.name}')">
+                                ${index + 1}. ${candidate.name}
+                            </div>
+                            <div class="match-score">${match.match_score} pts</div>
+                            <div class="match-score-badge ${quality}">${match.match_quality}</div>
+                            
+                            <div class="candidate-details">
+                                <div><strong>Training Site:</strong> ${candidate.training_site}</div>
+                                <div><strong>Week:</strong> ${candidate.week}</div>
+                                <div><strong>Status:</strong> ${candidate.status}</div>
+                                <div><strong>Salary:</strong> $${candidate.salary.toLocaleString()}</div>
+                            </div>
+                        </div>
+                        <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function goBackToList() {
+            // Navigate back to the previous page that was being viewed
+            switch(previousPage) {
+                case 'all_candidates':
+                    showAllCandidates();
+                    break;
+                case 'in_training':
+                    showInTraining();
+                    break;
+                case 'offer_pending':
+                    showOfferPending();
+                    break;
+                case 'candidates':
+                    showCandidateList();
+                    break;
+                case 'open_positions':
+                    showOpenPositions();
+                    break;
+                case 'job_matches':
+                    showOpenPositions();
+                    break;
+                default:
+                    // Default to dashboard if previous page is unknown
+                    showDashboard();
+                    break;
+            }
+        }
+
+        function showComingSoon(feature) {
+            alert(`${feature} feature coming soon!\n\nThis feature will provide detailed insights and candidate information.`);
+        }
+
+        function hideAllPages() {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 MIT Dashboard loaded');
+            loadDashboardData();
+        });
+    </script>
+</body>
+</html>
