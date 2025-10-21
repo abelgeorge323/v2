@@ -1070,23 +1070,23 @@
                         <div class="metrics-grid-profile">
                             <div class="metric-item">
                                 <div class="metric-label">Mock QBR Score</div>
-                                <div class="metric-value">${candidate.scores.qbr_score}/100</div>
+                                <div class="metric-value">${candidate.scores.mock_qbr_score || 0}/100</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Assessment Score</div>
-                                <div class="metric-value">${candidate.scores.assessment_score}/100</div>
+                                <div class="metric-value">${candidate.scores.assessment_score || 0}/100</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Performance Evaluation</div>
-                                <div class="metric-value">${candidate.scores.performance_score}/100</div>
+                                <div class="metric-value">${candidate.scores.perf_eval_score || 0}/100</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Confidence Score</div>
-                                <div class="metric-value">${candidate.scores.confidence_score}/100</div>
+                                <div class="metric-value">${candidate.scores.confidence_score || 0}/100</div>
                             </div>
                             <div class="metric-item full-width">
                                 <div class="metric-label">Skill Ranking</div>
-                                <div class="metric-value">${candidate.scores.skill_ranking}</div>
+                                <div class="metric-value">${candidate.scores.skill_ranking || '—'}</div>
                             </div>
                         </div>
                     </div>
