@@ -51,8 +51,8 @@ COLUMN_MAPPING = {
     "Trainee Name": "MIT Name",
     "Ops Account- Location": "Training Site",
     # Performance metrics columns
-    "Mock QBR Point Alloca": "Mock QBR Score",  # Mock QBR Score column
-    "Perf Evaluation Score": "Performance Evaluation",  # Performance Evaluation column (Row AF)
+    "Mock QBR Score": "Mock QBR Score",  # Mock QBR Score column (Row AA)
+    "Perf Evaluation Score": "Perf Evaluation Score",  # Performance Evaluation column (Row AF)
     "Skill Ranking": "Skill Ranking",  # Skill Ranking column (Row AK)
     # Job matching algorithm columns
     "AJ": "Confidence",  # Column AJ for confidence scoring
@@ -80,7 +80,7 @@ ONBOARDING_TASKS = [
 SCORE_COLUMNS = {
     'mock_qbr_score': 'Mock QBR Score',
     'assessment_score': 'Assessment Score',
-    'perf_eval_score': 'Performance Evaluation',
+    'perf_eval_score': 'Perf Evaluation Score',
     'confidence_score': 'Confidence Score',
     'skill_ranking': 'Skill Ranking'
 }
