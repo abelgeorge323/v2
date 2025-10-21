@@ -50,6 +50,10 @@ COLUMN_MAPPING = {
     "Training Start Date": "Start Date",
     "Trainee Name": "MIT Name",
     "Ops Account- Location": "Training Site",
+    # Performance metrics columns
+    "Mock QBR Point Alloca": "Mock QBR Score",  # Mock QBR Score column
+    "Perf Evaluation Score": "Performance Evaluation",  # Performance Evaluation column (Row AF)
+    "Skill Ranking": "Skill Ranking",  # Skill Ranking column (Row AK)
     # Job matching algorithm columns
     "AJ": "Confidence",  # Column AJ for confidence scoring
     "AV": "Vertical",    # Column AV for vertical alignment
@@ -76,8 +80,9 @@ ONBOARDING_TASKS = [
 SCORE_COLUMNS = {
     'mock_qbr_score': 'Mock QBR Score',
     'assessment_score': 'Assessment Score',
-    'perf_eval_score': 'Perf Evaluation Score',
-    'confidence_score': 'Confidence Score'
+    'perf_eval_score': 'Performance Evaluation',
+    'confidence_score': 'Confidence Score',
+    'skill_ranking': 'Skill Ranking'
 }
 
 # =============================================================================
@@ -85,7 +90,7 @@ SCORE_COLUMNS = {
 # =============================================================================
 
 # Cache duration in minutes (how long to keep data in memory)
-CACHE_DURATION_MINUTES = 5
+CACHE_DURATION_MINUTES = 0  # Set to 0 for immediate testing, change back to 5 for production
 
 # =============================================================================
 # DEBUG CONFIGURATION
