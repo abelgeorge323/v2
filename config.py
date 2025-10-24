@@ -94,8 +94,8 @@ SCORE_COLUMNS = {
 # =============================================================================
 
 # Cache duration in minutes (how long to keep data in memory)
-CACHE_DURATION_MINUTES = -1  # Disable cache completely for immediate updates
-FORCE_FRESH_DATA = True  # Always fetch fresh data
+CACHE_DURATION_MINUTES = 2  # Cache for 2 minutes - balance between performance and freshness
+FORCE_FRESH_DATA = False  # Use cached data when available
 
 # =============================================================================
 # DEBUG CONFIGURATION
