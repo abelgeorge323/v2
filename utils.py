@@ -448,11 +448,11 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
     onboarding_progress = calculate_onboarding_progress(row)
     business_lessons_progress = calculate_business_lessons_progress(row)
     
-    # Generate local headshot path from candidate name
-    candidate_name = str(row.get('MIT Name', 'Unknown'))
-    # Remove spaces and convert to lowercase for filename matching
-    image_filename = candidate_name.replace(' ', '').lower() + '.png'
-    profile_image_path = f'/headshots/{image_filename}'
+           # Generate local headshot path from candidate name
+           candidate_name = str(row.get('MIT Name', 'Unknown'))
+           # Remove spaces and convert to lowercase for filename matching
+           image_filename = candidate_name.replace(' ', '').lower() + '.png'
+           profile_image_path = f'/headshots/{image_filename}'  # Fixed: back to /headshots/
     
     logger.info(f"Generated profile image path for {candidate_name}: {profile_image_path}")
     
