@@ -17,7 +17,7 @@ Author: AI Assistant
 Date: October 2025
 """
 
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, send_from_directory
 from flask_cors import CORS
 from datetime import datetime, timedelta
 import logging
@@ -401,6 +401,18 @@ def get_job_matches(job_id):
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 # =============================================================================
+# STATIC FILE SERVING
+# =============================================================================
+
+@app.route('/headshots/<filename>')
+def serve_headshot(filename):
+    """Serve headshot images from the headshots directory"""
+    try:
+        return send_from_directory('headshots', filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'Image not found'}), 404
+
+# =============================================================================
 # ERROR HANDLERS
 # =============================================================================
 
@@ -439,6 +451,7 @@ if __name__ == '__main__':
     print("   - GET /api/offer-pending-candidates - Offer pending candidates")
     print("   - GET /api/open-positions - Open job positions")
     print("   - GET /api/job-matches/<job_id> - Top candidate matches for a job")
+    print("   - GET /headshots/<filename> - Serve headshot images")
     print("   - GET /api/health - Health check")
     print()
     print(f"API Server running on: http://localhost:{port}")
