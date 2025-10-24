@@ -11,6 +11,7 @@ Date: October 2025
 
 import pandas as pd
 import requests
+import re
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
 import logging
@@ -447,13 +448,26 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
     onboarding_progress = calculate_onboarding_progress(row)
     business_lessons_progress = calculate_business_lessons_progress(row)
     
+    # Generate local headshot path from candidate name
+    candidate_name = str(row.get('MIT Name', 'Unknown'))
+    # Remove spaces and convert to lowercase for filename matching
+    image_filename = candidate_name.replace(' ', '').lower() + '.png'
+    profile_image_path = f'/headshots/{image_filename}'
+    
+    logger.info(f"Generated profile image path for {candidate_name}: {profile_image_path}")
+    
+    # Debug graduation week extraction
+    graduation_week_raw = row.get('Expected Graduation Week', 'NOT_FOUND')
+    logger.info(f"=== GRADUATION WEEK DEBUG FOR {candidate_name} ===")
+    logger.info(f"Raw graduation week value: '{graduation_week_raw}' (type: {type(graduation_week_raw)})")
+    
     # Build candidate data dictionary
     candidate_data = {
-        'name': str(row['MIT Name']),
+        'name': candidate_name,
         'training_site': str(row.get('Training Site', row.get('Ops Account- Location', '—'))),
         'location': str(row.get('Location', '—')),
         'week': week_value,
-        'level': str(row.get('Level', '—')),
+        'expected_graduation_week': str(row.get('Expected Graduation Week', '—')),
         'salary': salary_value,
         'status': str(row.get('Status', '—')),
         'training_program': str(row.get('Training Program', '—')),
@@ -467,7 +481,10 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
             'title': str(row.get('Title', '—')),
             'operation_location': str(row.get('Ops Account- Location', '—')),
             'vertical': str(row.get('Vertical', '—'))
-        }
+        },
+        # Local file paths
+        'resume_link': str(row.get('Resume', '')),
+        'profile_image': profile_image_path
     }
     
     return candidate_data
