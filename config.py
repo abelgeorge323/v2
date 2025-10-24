@@ -57,7 +57,11 @@ COLUMN_MAPPING = {
     # Job matching algorithm columns
     "AJ": "Confidence",  # Column AJ for confidence scoring
     "AV": "Vertical",    # Column AV for vertical alignment
-    "AT": "Training Location"  # Column AT for training location/background
+    "AT": "Training Location",  # Column AT for training location/background
+    # Resume column
+    "Resume": "Resume",  # Column AZ - Resume URLs
+    # Graduation week column - exact name from Google Sheets
+    "Initial Expected Graduation Week": "Expected Graduation Week"  # Column AO - Exact name from your Google Sheets
 }
 
 # =============================================================================
@@ -90,7 +94,8 @@ SCORE_COLUMNS = {
 # =============================================================================
 
 # Cache duration in minutes (how long to keep data in memory)
-CACHE_DURATION_MINUTES = 0  # Set to 0 for immediate testing, change back to 5 for production
+CACHE_DURATION_MINUTES = -1  # Disable cache completely for immediate updates
+FORCE_FRESH_DATA = True  # Always fetch fresh data
 
 # =============================================================================
 # DEBUG CONFIGURATION
