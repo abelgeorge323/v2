@@ -370,52 +370,59 @@
 
         .profile-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 30px;
+            border-radius: 24px;
+            padding: 50px;
+            margin-bottom: 40px;
             display: flex;
             align-items: center;
-            gap: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            gap: 40px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
         }
 
         .avatar {
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             background: rgba(255,255,255,0.2);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            font-weight: 600;
+            font-size: 2.8rem;
+            font-weight: 700;
             backdrop-filter: blur(10px);
-            border: 2px solid rgba(255,255,255,0.3);
+            border: 4px solid rgba(255,255,255,0.4);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
         }
 
         .profile-info h1 {
-            font-size: 2.2rem;
-            font-weight: 300;
-            margin-bottom: 8px;
+            font-size: 3.2rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
 
         .profile-info p {
-            font-size: 1rem;
-            opacity: 0.9;
+            font-size: 1.3rem;
+            opacity: 0.95;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: white;
         }
 
         .profile-content {
             display: grid;
             grid-template-columns: 35% 65%;
-            gap: 30px;
+            gap: 40px;
         }
 
         .contact-info, .performance-metrics, .mentor-info, .onboarding-progress, .business-lessons, .operation-details {
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 25px;
-            border: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 20px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 35px;
+            border: 1px solid rgba(255,255,255,0.15);
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
         }
 
         .operation-mentor-container {
@@ -466,76 +473,90 @@
         }
 
         .contact-info h3, .performance-metrics h3, .mentor-info h3, .onboarding-progress h3, .business-lessons h3, .operation-details h3 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 25px;
             color: #ffffff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
         .status-badge {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            margin-top: 10px;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 15px;
             display: inline-block;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
 
         .progress-container {
-            margin-top: 15px;
+            margin-top: 20px;
         }
 
         .progress-bar {
             width: 100%;
-            height: 12px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 6px;
+            height: 16px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
             overflow: hidden;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
             transition: width 0.3s ease;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
         }
 
         .progress-text {
             color: #ffffff;
-            font-size: 0.9rem;
-            font-weight: 500;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
         }
 
         .info-grid {
-            color: #e0e0e0;
-            font-size: 0.95rem;
-            line-height: 1.6;
+            color: #e8e8e8;
+            font-size: 1.1rem;
+            line-height: 1.8;
         }
 
         .info-grid > div {
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
 
         .info-grid strong {
             color: #667eea;
             display: block;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 1.05rem;
         }
 
         .metrics-grid-profile {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+            gap: 25px;
+            margin-bottom: 25px;
         }
 
         .metric-item {
-            background: rgba(102, 126, 234, 0.1);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid rgba(102, 126, 234, 0.2);
+            background: rgba(102, 126, 234, 0.15);
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            transition: transform 0.2s ease;
+        }
+
+        .metric-item:hover {
+            transform: translateY(-2px);
         }
 
         .metric-item.full-width {
@@ -544,20 +565,23 @@
 
         .metric-item .metric-label {
             color: #667eea;
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-bottom: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .metric-item .metric-value {
             color: #ffffff;
-            font-size: 1.8rem;
-            font-weight: 700;
+            font-size: 2.2rem;
+            font-weight: 800;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
         .metric-item.full-width .metric-value {
-            font-size: 1.2rem;
-            font-weight: 600;
+            font-size: 1.8rem;
+            font-weight: 700;
         }
 
         /* Buttons */
@@ -662,6 +686,104 @@
                 gap: 15px;
             }
         }
+
+        /* Resume Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, #1e2329, #2a2f37);
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 1200px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .modal-header h2 {
+            color: #ffffff;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .modal-close:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .modal-body {
+            padding: 20px 30px 30px;
+        }
+
+        .modal-actions {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        /* Avatar Image Styles */
+        .avatar-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid rgba(255,255,255,0.4);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            /* Fast fallback for missing images */
+            background: rgba(255,255,255,0.1);
+        }
+
+        .candidate-avatar-small {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .candidate-avatar-initial {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(102, 126, 234, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #667eea;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -670,6 +792,7 @@
         <header class="header">
             <h1>🎓 MIT Candidate Training Dashboard</h1>
             <p>Real-time candidate tracking and performance analytics</p>
+            <button onclick="forceRefresh()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-size: 0.9rem;">🔄 Force Refresh</button>
         </header>
 
         <!-- Dashboard Page -->
@@ -719,6 +842,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- Resume Modal -->
+        <div id="resumeModal" class="modal" onclick="closeResume()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2 id="resumeTitle">Resume</h2>
+                    <button class="modal-close" onclick="closeResume()">×</button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="resumeIframe" style="width: 100%; height: 70vh; border: none;"></iframe>
+                    <div class="modal-actions">
+                        <button class="back-btn" onclick="window.open(document.getElementById('resumeIframe').src, '_blank')">Open in New Tab</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -726,16 +865,58 @@
         const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
             ? 'http://localhost:5000' 
             : window.location.origin;
+        
+        // Ultra-aggressive cache-busting parameter to force fresh data
+        const CACHE_BUST = `?t=${Date.now()}&v=${Math.random()}&fresh=${Math.floor(Math.random() * 10000)}`;
+        
+        // Image cache to prevent repeated failed requests
+        const imageCache = new Set();
+        
+        // Smart image cache - only check once per session
+        const imageExistsCache = new Map();
+        
+        function checkImageExists(src) {
+            if (!src) return false;
+            
+            // Check cache first
+            if (imageExistsCache.has(src)) {
+                return imageExistsCache.get(src);
+            }
+            
+            // For local development, we know which images exist
+            // Only return true for images we know exist
+            const knownImages = ['abelgeorge.png'];
+            const filename = src.split('/').pop();
+            const exists = knownImages.includes(filename);
+            
+            // Cache the result
+            imageExistsCache.set(src, exists);
+            return exists;
+        }
+        
+        // Force refresh function to clear all caches and reload
+        function forceRefresh() {
+            // Clear all caches
+            imageCache.clear();
+            imageExistsCache.clear();
+            candidateCache = {};
+            
+            // Force reload with cache bypass
+            window.location.reload(true);
+        }
 
         // Global state
         let currentPage = 'dashboard';
         let previousPage = 'dashboard'; // Track the previous page for back navigation
         let candidates = [];
+        
+        // Client-side cache for candidate profiles (for instant profile switching)
+        const candidateCache = {};
 
         // Load dashboard data from API
         async function loadDashboardData() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/dashboard-data`);
+                const response = await fetch(`${API_BASE_URL}/api/dashboard-data${CACHE_BUST}`);
                 const data = await response.json();
                 
                 if (data.error) {
@@ -918,16 +1099,36 @@
                 return;
             }
             
-            candidatesList.innerHTML = candidates.map(candidate => `
+            // Process candidates with instant image checks
+            const processedCandidates = candidates.map(candidate => {
+                const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                let showImage = false;
+                
+                if (candidate.profile_image) {
+                    showImage = checkImageExists(candidate.profile_image);
+                }
+                
+                return { ...candidate, showImage, initials };
+            });
+            
+            candidatesList.innerHTML = processedCandidates.map(candidate => `
                 <div class="candidate-card">
                     <div class="candidate-info">
-                        <h3>${candidate.name}</h3>
-                        <div class="candidate-details">
-                            <div><strong>Site:</strong> ${candidate.training_site}</div>
-                            <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Status:</strong> ${candidate.status}</div>
-                            <div><strong>Level:</strong> ${candidate.level}</div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            ${candidate.showImage ? 
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                 <div class="candidate-avatar-initial" style="display: none;">${candidate.initials}</div>` 
+                                : 
+                                `<div class="candidate-avatar-initial">${candidate.initials}</div>`
+                            }
+                            <h3 style="margin: 0;">${candidate.name}</h3>
                         </div>
+                            <div class="candidate-details">
+                                <div><strong>Site:</strong> ${candidate.training_site}</div>
+                                <div><strong>Week:</strong> ${candidate.week}</div>
+                                <div><strong>Status:</strong> ${candidate.status}</div>
+                                <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week}</div>
+                            </div>
                     </div>
                     <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
                 </div>
@@ -947,10 +1148,20 @@
                 return;
             }
             
-            candidatesList.innerHTML = candidates.map(candidate => `
+            candidatesList.innerHTML = candidates.map(candidate => {
+                const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                return `
                 <div class="candidate-card">
                     <div class="candidate-info">
-                        <h3>${candidate.name}</h3>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            ${candidate.profile_image ? 
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                 <div class="candidate-avatar-initial" style="display: none;">${initials}</div>` 
+                                : 
+                                `<div class="candidate-avatar-initial">${initials}</div>`
+                            }
+                            <h3 style="margin: 0;">${candidate.name}</h3>
+                        </div>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${candidate.training_site}</div>
                             <div><strong>Week:</strong> ${candidate.week}</div>
@@ -959,7 +1170,8 @@
                     </div>
                     <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Render offer pending candidates
@@ -975,10 +1187,20 @@
                 return;
             }
             
-            candidatesList.innerHTML = candidates.map(candidate => `
+            candidatesList.innerHTML = candidates.map(candidate => {
+                const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                return `
                 <div class="candidate-card">
                     <div class="candidate-info">
-                        <h3>${candidate.name}</h3>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            ${candidate.profile_image ? 
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                 <div class="candidate-avatar-initial" style="display: none;">${initials}</div>` 
+                                : 
+                                `<div class="candidate-avatar-initial">${initials}</div>`
+                            }
+                            <h3 style="margin: 0;">${candidate.name}</h3>
+                        </div>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${candidate.training_site}</div>
                             <div><strong>Week:</strong> ${candidate.week}</div>
@@ -987,7 +1209,8 @@
                     </div>
                     <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Render open positions
@@ -1019,19 +1242,41 @@
             `).join('');
         }
 
-        // Load candidate profile from API
+        // Load candidate profile from API with client-side caching
         async function loadCandidateProfile(name) {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(name)}`);
+                console.log(`=== PROFILE LOADING DEBUG FOR ${name} ===`);
+                console.log(`Cache contents:`, candidateCache);
+                console.log(`Cache has ${name}:`, candidateCache.hasOwnProperty(name));
+                
+                // Check cache first for instant loading
+                if (candidateCache[name]) {
+                    console.log(`✅ Loading ${name} from cache (instant)`);
+                    renderProfile(candidateCache[name]);
+                    return;
+                }
+                
+                // If not cached, fetch from API
+                console.log(`⏳ Fetching ${name} from API...`);
+                const startTime = Date.now();
+                const response = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(name)}${CACHE_BUST}`);
                 const candidate = await response.json();
+                const endTime = Date.now();
+                console.log(`⏱️ API fetch took ${endTime - startTime}ms`);
                 
                 if (candidate.error) {
                     throw new Error(candidate.error);
                 }
                 
+                // Store in cache for future instant access
+                candidateCache[name] = candidate;
+                console.log(`💾 Stored ${name} in cache`);
+                console.log(`Updated cache contents:`, candidateCache);
+                
                 renderProfile(candidate);
                 
             } catch (error) {
+                console.error(`❌ Error loading profile for ${name}:`, error);
                 document.getElementById('profileContent').innerHTML = 
                     `<div class="error">Error loading profile: ${error.message}</div>`;
             }
@@ -1040,10 +1285,23 @@
         // Render profile with real data
         function renderProfile(candidate) {
             const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
+            console.log('🖼️ Rendering profile for:', candidate.name);
+            console.log('🖼️ Profile image URL:', candidate.profile_image);
+            
+            // Check if image exists before trying to load it
+            let showImage = false;
+            if (candidate.profile_image) {
+                showImage = checkImageExists(candidate.profile_image);
+            }
             
             document.getElementById('profileContent').innerHTML = `
                 <div class="profile-header">
-                    <div class="avatar">${initials}</div>
+                    ${showImage ? 
+                        `<img src="${candidate.profile_image}" alt="${candidate.name}" class="avatar-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                         <div class="avatar" style="display: none;">${initials}</div>` 
+                        : 
+                        `<div class="avatar">${initials}</div>`
+                    }
                     <div class="profile-info">
                         <h1>${candidate.name}</h1>
                         <p>${candidate.training_site} • ${candidate.location}</p>
@@ -1054,15 +1312,16 @@
                 <div class="profile-content">
                     <div class="contact-info">
                         <h3>📋 Contact Information</h3>
-                        <div class="info-grid">
-                            <div><strong>Training Site:</strong> ${candidate.training_site}</div>
-                            <div><strong>Location:</strong> ${candidate.location}</div>
-                            <div><strong>Level:</strong> ${candidate.level}</div>
-                            <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Salary:</strong> ${candidate.salary > 0 ? '$' + candidate.salary.toLocaleString() : 'TBD'}</div>
-                            <div><strong>Status:</strong> ${candidate.status}</div>
-                            <div><strong>Program:</strong> ${candidate.training_program}</div>
-                        </div>
+                            <div class="info-grid">
+                                <div><strong>Training Site:</strong> ${candidate.training_site}</div>
+                                <div><strong>Location:</strong> ${candidate.location}</div>
+                                <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week}</div>
+                                <div><strong>Week:</strong> ${candidate.week}</div>
+                                <div><strong>Salary:</strong> ${candidate.salary > 0 ? '$' + candidate.salary.toLocaleString() : 'TBD'}</div>
+                                <div><strong>Status:</strong> ${candidate.status}</div>
+                                <div><strong>Program:</strong> ${candidate.training_program}</div>
+                                ${candidate.resume_link ? `<div><strong>Resume:</strong> <a href="#" onclick="showResume('${candidate.resume_link}', '${candidate.name}'); return false;" style="color: #667eea; text-decoration: underline; cursor: pointer;">View Resume</a></div>` : ''}
+                            </div>
                     </div>
                     
                     <div class="performance-metrics">
@@ -1295,6 +1554,36 @@
                     showDashboard();
                     break;
             }
+        }
+
+        // Resume modal functions
+        function showResume(resumeLink, candidateName) {
+            const modal = document.getElementById('resumeModal');
+            const iframe = document.getElementById('resumeIframe');
+            const title = document.getElementById('resumeTitle');
+            
+            // Convert Google Drive link to embeddable format if needed
+            let embedUrl = resumeLink;
+            if (resumeLink.includes('drive.google.com/file/d/')) {
+                const fileIdMatch = resumeLink.match(/\/d\/([^\/]+)/);
+                if (fileIdMatch) {
+                    const fileId = fileIdMatch[1];
+                    embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+                }
+            } else if (resumeLink.includes('docs.google.com/document')) {
+                embedUrl = resumeLink.replace('/edit', '/preview');
+            }
+            
+            iframe.src = embedUrl;
+            title.textContent = `${candidateName}'s Resume`;
+            modal.style.display = 'block';
+        }
+
+        function closeResume() {
+            const modal = document.getElementById('resumeModal');
+            const iframe = document.getElementById('resumeIframe');
+            modal.style.display = 'none';
+            iframe.src = ''; // Clear iframe to stop loading
         }
 
         function showComingSoon(feature) {
