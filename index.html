@@ -685,6 +685,19 @@
                 grid-template-columns: 1fr;
                 gap: 15px;
             }
+            
+            .assessment-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .mentor-assessment-section {
+                padding: 25px;
+            }
+            
+            .assessment-tile {
+                padding: 15px;
+            }
         }
 
         /* Resume Modal Styles */
@@ -784,6 +797,94 @@
             color: #667eea;
             border: 2px solid rgba(102, 126, 234, 0.3);
         }
+
+        /* Mentor Assessment Section Styles */
+        .mentor-assessment-section {
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 35px;
+            border: 1px solid rgba(255,255,255,0.15);
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .mentor-assessment-section h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 25px;
+            color: #ffffff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .assessment-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .assessment-tile {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+
+        .assessment-tile:hover {
+            transform: translateY(-2px);
+        }
+
+        .assessment-tile .tile-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .assessment-progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .assessment-progress-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+
+        .score-excellent {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+        }
+
+        .score-good {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+        }
+
+        .score-needs-improvement {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+        }
+
+        .assessment-score-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
@@ -875,6 +976,18 @@
         // Smart image cache - only check once per session
         const imageExistsCache = new Map();
         
+        // Helper function to get score color class based on value
+        function getScoreColor(score) {
+            if (score >= 4.0) return 'score-excellent';
+            if (score >= 3.0) return 'score-good';
+            return 'score-needs-improvement';
+        }
+        
+        // Helper function to calculate progress bar width (score out of 5)
+        function getProgressWidth(score) {
+            return (score / 5) * 100;
+        }
+        
         function checkImageExists(src) {
             if (!src) return false;
             
@@ -901,6 +1014,14 @@
             imageExistsCache.clear();
             candidateCache = {};
             
+            // Clear localStorage cache
+            try {
+                localStorage.removeItem('mit_candidate_cache');
+                console.log('🗑️ Cleared localStorage cache');
+            } catch (error) {
+                console.warn('Failed to clear localStorage:', error);
+            }
+            
             // Force reload with cache bypass
             window.location.reload(true);
         }
@@ -910,8 +1031,78 @@
         let previousPage = 'dashboard'; // Track the previous page for back navigation
         let candidates = [];
         
+        // Store rendered content for instant back navigation
+        let cachedListContent = '';
+        let cachedListTitle = '';
+        let cacheTimestamp = 0; // Track when cache was created
+        
         // Client-side cache for candidate profiles (for instant profile switching)
-        const candidateCache = {};
+        let candidateCache = {};
+        
+        // Load cache from localStorage on page load
+        function loadCacheFromStorage() {
+            try {
+                const stored = localStorage.getItem('mit_candidate_cache');
+                if (stored) {
+                    candidateCache = JSON.parse(stored);
+                    console.log('📦 Loaded candidate cache from localStorage:', Object.keys(candidateCache).length, 'profiles');
+                }
+            } catch (error) {
+                console.warn('Failed to load cache from localStorage:', error);
+                candidateCache = {};
+            }
+        }
+        
+        // Save cache to localStorage
+        function saveCacheToStorage() {
+            try {
+                localStorage.setItem('mit_candidate_cache', JSON.stringify(candidateCache));
+                console.log('💾 Saved candidate cache to localStorage');
+            } catch (error) {
+                console.warn('Failed to save cache to localStorage:', error);
+            }
+        }
+        
+        // Preload candidate profiles for instant access
+        async function preloadCandidateProfiles(candidates) {
+            console.log('🚀 Preloading profiles for', candidates.length, 'candidates...');
+            
+            // Preload profiles in batches to avoid overwhelming the server
+            const batchSize = 3;
+            for (let i = 0; i < candidates.length; i += batchSize) {
+                const batch = candidates.slice(i, i + batchSize);
+                
+                // Process batch in parallel
+                const promises = batch.map(async (candidate) => {
+                    if (!candidateCache[candidate.name]) {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(candidate.name)}`);
+                            const profile = await response.json();
+                            
+                            if (!profile.error) {
+                                candidateCache[candidate.name] = profile;
+                                console.log(`✅ Preloaded: ${candidate.name}`);
+                            }
+                        } catch (error) {
+                            console.warn(`⚠️ Failed to preload ${candidate.name}:`, error);
+                        }
+                    } else {
+                        console.log(`⚡ Already cached: ${candidate.name}`);
+                    }
+                });
+                
+                await Promise.all(promises);
+                
+                // Small delay between batches
+                if (i + batchSize < candidates.length) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            
+            // Save updated cache to localStorage
+            saveCacheToStorage();
+            console.log('🎉 Profile preloading complete!');
+        }
 
         // Load dashboard data from API
         async function loadDashboardData() {
@@ -1072,7 +1263,7 @@
                 return;
             }
             
-            candidatesList.innerHTML = candidates.map(candidate => `
+            const renderedContent = candidates.map(candidate => `
                 <div class="candidate-card" onclick="showProfile('${candidate.name}')">
                     <div class="candidate-info">
                         <h3>${candidate.name}</h3>
@@ -1084,6 +1275,17 @@
                     <div class="view-profile-btn">View Profile →</div>
                 </div>
             `).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            
+            // Cache the rendered content for instant back navigation
+            cachedListContent = renderedContent;
+            cachedListTitle = '🧩 Ready for Placement';
+            cacheTimestamp = Date.now(); // Record when cache was created
+            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
+            
+            // Preload profiles for instant access
+            preloadCandidateProfiles(candidates);
         }
 
         // Render all candidates
@@ -1111,7 +1313,7 @@
                 return { ...candidate, showImage, initials };
             });
             
-            candidatesList.innerHTML = processedCandidates.map(candidate => `
+            const renderedContent = processedCandidates.map(candidate => `
                 <div class="candidate-card">
                     <div class="candidate-info">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
@@ -1133,6 +1335,17 @@
                     <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
                 </div>
             `).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            
+            // Cache the rendered content for instant back navigation
+            cachedListContent = renderedContent;
+            cachedListTitle = '👥 All Candidates';
+            cacheTimestamp = Date.now();
+            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
+            
+            // Preload profiles for instant access
+            preloadCandidateProfiles(candidates);
         }
 
         // Render in training candidates
@@ -1145,10 +1358,14 @@
                         <h3>No candidates currently in training</h3>
                     </div>
                 `;
+                cachedListContent = candidatesList.innerHTML;
+                cachedListTitle = '🏋️ In Training Candidates';
+                cacheTimestamp = Date.now();
+                console.log('💾 Cached empty list content with timestamp:', cacheTimestamp);
                 return;
             }
             
-            candidatesList.innerHTML = candidates.map(candidate => {
+            const renderedContent = candidates.map(candidate => {
                 const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
                 return `
                 <div class="candidate-card">
@@ -1172,6 +1389,17 @@
                 </div>
             `;
             }).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            
+            // Cache the rendered content for instant back navigation
+            cachedListContent = renderedContent;
+            cachedListTitle = '🏋️ In Training Candidates';
+            cacheTimestamp = Date.now();
+            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
+            
+            // Preload profiles for instant access
+            preloadCandidateProfiles(candidates);
         }
 
         // Render offer pending candidates
@@ -1184,6 +1412,10 @@
                         <h3>No candidates with pending offers</h3>
                     </div>
                 `;
+                cachedListContent = candidatesList.innerHTML;
+                cachedListTitle = '🤝 Offer Pending Candidates';
+                cacheTimestamp = Date.now();
+                console.log('💾 Cached empty list content with timestamp:', cacheTimestamp);
                 return;
             }
             
@@ -1211,6 +1443,17 @@
                 </div>
             `;
             }).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            
+            // Cache the rendered content for instant back navigation
+            cachedListContent = renderedContent;
+            cachedListTitle = '🤝 Offer Pending Candidates';
+            cacheTimestamp = Date.now();
+            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
+            
+            // Preload profiles for instant access
+            preloadCandidateProfiles(candidates);
         }
 
         // Render open positions
@@ -1223,10 +1466,14 @@
                         <h3>No open positions available</h3>
                     </div>
                 `;
+                cachedListContent = candidatesList.innerHTML;
+                cachedListTitle = '💼 Open Positions';
+                cacheTimestamp = Date.now();
+                console.log('💾 Cached empty list content with timestamp:', cacheTimestamp);
                 return;
             }
             
-            candidatesList.innerHTML = positions.map(position => `
+            const renderedContent = positions.map(position => `
                 <div class="candidate-card">
                     <div class="candidate-info">
                         <h3>${position.title}</h3>
@@ -1240,6 +1487,14 @@
                     <div class="view-profile-btn" onclick="showJobMatches(${position.id})">🔍 View Top Matches</div>
                 </div>
             `).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            
+            // Cache the rendered content for instant back navigation
+            cachedListContent = renderedContent;
+            cachedListTitle = '💼 Open Positions';
+            cacheTimestamp = Date.now();
+            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
         }
 
         // Load candidate profile from API with client-side caching
@@ -1259,7 +1514,7 @@
                 // If not cached, fetch from API
                 console.log(`⏳ Fetching ${name} from API...`);
                 const startTime = Date.now();
-                const response = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(name)}${CACHE_BUST}`);
+                const response = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(name)}`);
                 const candidate = await response.json();
                 const endTime = Date.now();
                 console.log(`⏱️ API fetch took ${endTime - startTime}ms`);
@@ -1272,6 +1527,9 @@
                 candidateCache[name] = candidate;
                 console.log(`💾 Stored ${name} in cache`);
                 console.log(`Updated cache contents:`, candidateCache);
+                
+                // Save to localStorage for persistence
+                saveCacheToStorage();
                 
                 renderProfile(candidate);
                 
@@ -1397,6 +1655,40 @@
                         </div>
                         ` : ''}
                     </div>
+                    
+                    <div class="mentor-assessment-section">
+                        <h3>⭐ Weekly Mentor Assessment</h3>
+                        <div class="assessment-grid">
+                            <div class="assessment-tile">
+                                <div class="tile-title">🎯 Core Competency</div>
+                                <div class="assessment-progress-bar">
+                                    <div class="assessment-progress-fill score-excellent" style="width: ${getProgressWidth(4.5)}%"></div>
+                                </div>
+                                <div class="assessment-score-value">4.5/5</div>
+                            </div>
+                            <div class="assessment-tile">
+                                <div class="tile-title">👥 Leadership & Soft Skills</div>
+                                <div class="assessment-progress-bar">
+                                    <div class="assessment-progress-fill score-good" style="width: ${getProgressWidth(3.8)}%"></div>
+                                </div>
+                                <div class="assessment-score-value">3.8/5</div>
+                            </div>
+                            <div class="assessment-tile">
+                                <div class="tile-title">⚡ Engagement & Aptitude</div>
+                                <div class="assessment-progress-bar">
+                                    <div class="assessment-progress-fill score-excellent" style="width: ${getProgressWidth(4.2)}%"></div>
+                                </div>
+                                <div class="assessment-score-value">4.2/5</div>
+                            </div>
+                            <div class="assessment-tile">
+                                <div class="tile-title">✓ Readiness & Confidence</div>
+                                <div class="assessment-progress-bar">
+                                    <div class="assessment-progress-fill score-needs-improvement" style="width: ${getProgressWidth(2.8)}%"></div>
+                                </div>
+                                <div class="assessment-score-value">2.8/5</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -1412,44 +1704,59 @@
         function showAllCandidates() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            // Immediately clear old content and show loading
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
+            document.querySelector('.candidates-container h2').textContent = '👥 All Candidates';
             previousPage = currentPage;
             currentPage = 'all_candidates';
-            document.querySelector('.candidates-container h2').textContent = '👥 All Candidates';
+            // Then fetch data asynchronously
             loadAllCandidates();
         }
 
         function showOpenPositions() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
-            currentPage = 'open_positions';
+            // Immediately clear old content and show loading
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading positions...</div>';
             document.querySelector('.candidates-container h2').textContent = '💼 Open Positions';
+            currentPage = 'open_positions';
+            // Then fetch data asynchronously
             loadOpenPositions();
         }
 
         function showInTraining() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            // Immediately clear old content and show loading
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
+            document.querySelector('.candidates-container h2').textContent = '🏋️ In Training Candidates';
             previousPage = currentPage;
             currentPage = 'in_training';
-            document.querySelector('.candidates-container h2').textContent = '🏋️ In Training Candidates';
+            // Then fetch data asynchronously
             loadInTrainingCandidates();
         }
 
         function showOfferPending() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            // Immediately clear old content and show loading
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
+            document.querySelector('.candidates-container h2').textContent = '🤝 Offer Pending Candidates';
             previousPage = currentPage;
             currentPage = 'offer_pending';
-            document.querySelector('.candidates-container h2').textContent = '🤝 Offer Pending Candidates';
+            // Then fetch data asynchronously
             loadOfferPendingCandidates();
         }
 
         function showCandidateList() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            // Immediately clear old content and show loading
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
+            document.querySelector('.candidates-container h2').textContent = '🧩 Ready for Placement';
             previousPage = currentPage;
             currentPage = 'candidates';
-            document.querySelector('.candidates-container h2').textContent = '🧩 Ready for Placement';
+            // Then fetch data asynchronously
             loadCandidates();
         }
 
@@ -1529,7 +1836,49 @@
         }
 
         function goBackToList() {
-            // Navigate back to the previous page that was being viewed
+            console.log('🔙 goBackToList called');
+            console.log('📊 Cache status:', {
+                hasContent: !!cachedListContent,
+                hasTitle: !!cachedListTitle,
+                timestamp: cacheTimestamp,
+                currentTime: Date.now()
+            });
+            
+            // Check if we have cached content for instant navigation
+            // Also check if cache is not too old (5 minutes max)
+            const cacheAge = Date.now() - cacheTimestamp;
+            const maxCacheAge = 5 * 60 * 1000; // 5 minutes in milliseconds
+            
+            console.log('⏰ Cache age:', Math.round(cacheAge/1000), 'seconds (max:', Math.round(maxCacheAge/1000), 'seconds)');
+            
+            if (cachedListContent && cachedListTitle && cacheAge < maxCacheAge) {
+                console.log('⚡ Instant back navigation using cached content (age:', Math.round(cacheAge/1000), 'seconds)');
+                
+                // Hide all pages and show candidate list
+                hideAllPages();
+                document.getElementById('candidateList').classList.add('active');
+                
+                // Restore cached content instantly
+                document.getElementById('candidatesList').innerHTML = cachedListContent;
+                document.querySelector('.candidates-container h2').textContent = cachedListTitle;
+                
+                // Update page state
+                previousPage = currentPage;
+                currentPage = previousPage; // Keep the same page type
+                
+                return; // Exit early - no API calls needed!
+            } else if (cachedListContent && cacheAge >= maxCacheAge) {
+                console.log('🕒 Cache expired, fetching fresh data (age:', Math.round(cacheAge/1000), 'seconds)');
+            } else {
+                console.log('❌ No valid cache available:', {
+                    hasContent: !!cachedListContent,
+                    hasTitle: !!cachedListTitle,
+                    ageValid: cacheAge < maxCacheAge
+                });
+            }
+            
+            // Fallback to original behavior if no cache
+            console.log('🔄 Fallback navigation - no cached content available');
             switch(previousPage) {
                 case 'all_candidates':
                     showAllCandidates();
@@ -1599,6 +1948,11 @@
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 MIT Dashboard loaded');
+            
+            // Load cached profiles from localStorage
+            loadCacheFromStorage();
+            
+            // Load dashboard data
             loadDashboardData();
         });
     </script>
