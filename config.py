@@ -49,6 +49,9 @@ BUSINESS_LESSON_COLUMNS = [
 COLUMN_MAPPING = {
     "Company Start Date": "Company Start Date",  # Keep original name for display AND week calculation
     "Training Start Date": "Training Start Date",  # Keep separate for display
+    # Handle potential variants with extra spaces
+    "Training Start Date ": "Training Start Date",  # Handle trailing space variant
+    " Training Start Date": "Training Start Date",  # Handle leading space variant
     "Trainee Name": "MIT Name",
     "Ops Account- Location": "Training Site",
     # Performance metrics columns
