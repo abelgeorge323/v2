@@ -413,6 +413,20 @@ def serve_headshot(filename):
         return jsonify({'error': 'Image not found'}), 404
 
 # =============================================================================
+# DEBUG ENDPOINT
+# =============================================================================
+
+@app.route('/api/debug-columns', methods=['GET'])
+def debug_columns():
+    """Return list of columns detected from Google Sheets."""
+    try:
+        df = fetch_google_sheets_data()
+        return jsonify({'columns': list(df.columns)}), 200
+    except Exception as e:
+        log_error("Error debugging columns", e)
+        return jsonify({'error': str(e)}), 500
+
+# =============================================================================
 # ERROR HANDLERS
 # =============================================================================
 
