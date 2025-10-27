@@ -14,7 +14,7 @@ Date: October 2025
 # =============================================================================
 
 # Google Sheets URL for the main data source
-GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0w31eBwBrasgaLS2h9e_Bj8GWC0SqikQ0R_cuV0_B12HxOzDPLJrZm8MWaNf-7zudxrrZfLXNPR3L/pub?gid=0&single=true&output=csv'
+GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRH719lKRRdQV8Y4CEEl7Gk-lfrAGulMcOgu3sltQ7zupMRDlP3Rpgaa-sEJlRTNqrRsTuPNcOswlv9/pub?gid=0&single=true&output=csv'
 
 # Google Sheets URL for open positions data
 OPEN_POSITIONS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbdhuieyA-axzb4aLe8c7zdAYXBLPNrIxKRder6j1ZAlj2g4U1k0YzkZbm_dEcSwBik4CJ57FROJ/pub?gid=1073524035&single=true&output=csv'
@@ -47,7 +47,8 @@ BUSINESS_LESSON_COLUMNS = [
 
 # Mapping from Google Sheets column names to dashboard field names
 COLUMN_MAPPING = {
-    "Training Start Date": "Start Date",
+    "Company Start Date": "Company Start Date",  # Keep original name for display AND week calculation
+    "Training Start Date": "Training Start Date",  # Keep separate for display
     "Trainee Name": "MIT Name",
     "Ops Account- Location": "Training Site",
     # Performance metrics columns
@@ -95,7 +96,7 @@ SCORE_COLUMNS = {
 
 # Cache duration in minutes (how long to keep data in memory)
 CACHE_DURATION_MINUTES = 2  # Cache for 2 minutes - balance between performance and freshness
-FORCE_FRESH_DATA = False  # Use cached data when available
+FORCE_FRESH_DATA = False  # Use cached data when available (reset after testing)
 
 # =============================================================================
 # DEBUG CONFIGURATION
