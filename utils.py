@@ -400,6 +400,9 @@ def fetch_google_sheets_data() -> pd.DataFrame:
         # Read CSV data
         df = pd.read_csv(GOOGLE_SHEETS_URL, dtype=str)
         
+        # Strip whitespace from column names to handle trailing spaces
+        df.columns = df.columns.str.strip()
+        
         # Filter for target programs
         df = df[df['Training Program'].isin(TARGET_PROGRAMS)]
         
