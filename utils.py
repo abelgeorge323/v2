@@ -454,6 +454,51 @@ def fetch_google_sheets_data() -> pd.DataFrame:
         raise
 
 # =============================================================================
+# WEEK-BASED CATEGORIZATION
+# =============================================================================
+
+def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict]]:
+    """
+    Categorize candidates by training week for pipeline stages.
+    Uses Company Start Date to calculate current week.
+    
+    Returns:
+        Dict with keys: 'weeks_0_3', 'week_7_only', 'weeks_8_plus', 'offer_pending', 
+                       'total_candidates', 'total_training'
+    """
+    weeks_0_3 = []
+    weeks_4_6 = []
+    week_7_only = []  # Week 7 for placement priority
+    weeks_8_plus = []  # Weeks 8+ for ready for placement
+    offer_pending = []
+    
+    for candidate in candidates:
+        status = candidate.get('status', '').lower()
+        week = candidate.get('week', 0)
+        
+        # Offer pending takes priority
+        if 'offer' in status or 'pending' in status:
+            offer_pending.append(candidate)
+        elif 0 <= week <= 3:
+            weeks_0_3.append(candidate)
+        elif 4 <= week <= 6:
+            weeks_4_6.append(candidate)
+        elif week == 7:
+            week_7_only.append(candidate)
+        elif week >= 8:
+            weeks_8_plus.append(candidate)
+    
+    return {
+        'weeks_0_3': weeks_0_3,  # Operational Overview (Weeks 0-3)
+        'weeks_4_6': weeks_4_6,  # Active Training (Weeks 4-6)
+        'week_7_only': week_7_only,  # Week 7 Priority
+        'weeks_8_plus': weeks_8_plus,  # Ready for Placement (Weeks 8+)
+        'offer_pending': offer_pending,  # Offer Pending
+        'total_candidates': len(candidates),
+        'total_training': len([c for c in candidates if c.get('week', 0) > 0])
+    }
+
+# =============================================================================
 # CANDIDATE DATA PROCESSING
 # =============================================================================
 
