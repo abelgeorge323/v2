@@ -400,14 +400,25 @@ def fetch_google_sheets_data() -> pd.DataFrame:
         # Read CSV data
         df = pd.read_csv(GOOGLE_SHEETS_URL, dtype=str)
         
-        # Strip whitespace from column names to handle trailing spaces
-        df.columns = df.columns.str.strip()
+        # --- Normalize headers: fix non-breaking spaces, spacing, and case issues ---
+        df.columns = (
+            df.columns.astype(str)
+              .str.replace('\u00A0', ' ', regex=False)   # Replace non-breaking spaces
+              .str.replace(r'\s+', ' ', regex=True)      # Collapse multiple spaces
+              .str.strip()
+        )
+        
+        # Apply case-insensitive renaming using COLUMN_MAPPING
+        import re
+        norm = lambda s: re.sub(r'\s+', ' ', s.replace('\u00A0', ' ').strip().lower())
+        mapping_norm = {norm(k): v for k, v in COLUMN_MAPPING.items()}
+        df.rename(columns=lambda c: mapping_norm.get(norm(c), c), inplace=True)
+        
+        # 🧩 DEBUG LOG
+        logger.info(f"[COLUMNS AFTER NORMALIZATION] {list(df.columns)}")
         
         # Filter for target programs
         df = df[df['Training Program'].isin(TARGET_PROGRAMS)]
-        
-        # Apply column mapping
-        df = df.rename(columns=COLUMN_MAPPING)
         
         # Calculate Week from Company Start Date
         if "Company Start Date" in df.columns:
