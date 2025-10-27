@@ -133,6 +133,58 @@
             border-color: rgba(102, 126, 234, 0.3);
         }
 
+        /* Professional color-coded metric cards */
+        .metric-card.week-0-3 {
+            border-left: 3px solid #5b8def;
+            background: linear-gradient(135deg, rgba(91, 141, 239, 0.08), rgba(91, 141, 239, 0.03));
+        }
+        
+        .metric-card.week-4-6 {
+            border-left: 3px solid #9b87f5;
+            background: linear-gradient(135deg, rgba(155, 135, 245, 0.08), rgba(155, 135, 245, 0.03));
+        }
+        
+        .metric-card.week-7-priority {
+            border-left: 3px solid #ef8354;
+            background: linear-gradient(135deg, rgba(239, 131, 84, 0.12), rgba(239, 131, 84, 0.05));
+            animation: pulse-subtle 3s infinite;
+        }
+        
+        .metric-card.week-8-plus {
+            border-left: 3px solid #2dd4bf;
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.08), rgba(45, 212, 191, 0.03));
+        }
+        
+        .metric-card.offer-pending {
+            border-left: 3px solid #34d399;
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(52, 211, 153, 0.03));
+        }
+        
+        .metric-card.mentors {
+            border-left: 3px solid #a78bfa;
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.08), rgba(167, 139, 250, 0.03));
+        }
+        
+        .metric-card.total-candidates {
+            border-left: 3px solid #60a5fa;
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(96, 165, 250, 0.03));
+        }
+        
+        .metric-card.open-positions {
+            border-left: 3px solid #818cf8;
+            background: linear-gradient(135deg, rgba(129, 140, 248, 0.08), rgba(129, 140, 248, 0.03));
+        }
+        
+        @keyframes pulse-subtle {
+            0%, 100% { box-shadow: 0 4px 20px rgba(239, 131, 84, 0.1); }
+            50% { box-shadow: 0 4px 25px rgba(239, 131, 84, 0.2); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 4px 20px rgba(249, 115, 22, 0.3); }
+            50% { box-shadow: 0 4px 30px rgba(249, 115, 22, 0.6); }
+        }
+
         .metric-label {
             font-size: 0.875rem;
             color: #a0a0a0;
@@ -227,41 +279,87 @@
 
         .candidate-card {
             background: linear-gradient(145deg, #1e2329, #2a2f37);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
             transition: all 0.3s ease;
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .candidate-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .candidate-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
-            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-6px);
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.3);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .candidate-card:hover::before {
+            opacity: 1;
         }
 
         .candidate-info h3 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 8px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 6px;
             color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+
+        .candidate-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .candidate-header h3 {
+            margin: 0;
+            margin-bottom: 4px;
+        }
+
+        .candidate-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background: rgba(102, 126, 234, 0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
         }
 
         .candidate-details {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            font-size: 0.85rem;
-            color: #a0a0a0;
+            gap: 10px 12px;
+            font-size: 0.875rem;
+            color: #d1d5db;
+            line-height: 1.5;
+            margin-top: 8px;
         }
 
         .candidate-details strong {
-            color: #667eea;
-            font-weight: 500;
+            color: #a5b4fc;
+            font-weight: 600;
+            display: inline-block;
+            min-width: 90px;
         }
 
         .view-profile-btn {
@@ -784,19 +882,7 @@
             border: 2px solid rgba(102, 126, 234, 0.3);
         }
 
-        .candidate-avatar-initial {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(102, 126, 234, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #667eea;
-            border: 2px solid rgba(102, 126, 234, 0.3);
-        }
+        /* Removed candidate-avatar-initial - no longer using initials */
 
         /* Mentor Assessment Section Styles */
         .mentor-assessment-section {
@@ -1126,30 +1212,38 @@
         function renderMetrics(data) {
             const metricsGrid = document.getElementById('metricsGrid');
             metricsGrid.innerHTML = `
-                <div class="metric-card" onclick="showAllCandidates()">
+                <!-- Row 1: Overview Metrics -->
+                <div class="metric-card total-candidates" onclick="showAllCandidates()">
                     <div class="metric-label">Total Candidates</div>
                     <div class="metric-value">${data.total_candidates}</div>
                     <div class="metric-change">All registered candidates</div>
                 </div>
-                <div class="metric-card" onclick="showOpenPositions()">
+                <div class="metric-card open-positions" onclick="showOpenPositions()">
                     <div class="metric-label">Open Positions</div>
                     <div class="metric-value">${data.open_positions}</div>
                     <div class="metric-change">Available roles</div>
                 </div>
-                <div class="metric-card" onclick="showCandidateList()">
-                    <div class="metric-label">Ready for Placement</div>
-                    <div class="metric-value">${data.ready_for_placement}</div>
-                    <div class="metric-change">Week > 6 & not placed</div>
+                <div class="metric-card week-8-plus" onclick="showWeeks8Plus()">
+                    <div class="metric-label">Weeks 8+</div>
+                    <div class="metric-value">${data.weeks_8_plus || 0}</div>
+                    <div class="metric-change">Ready for Placement</div>
                 </div>
-                <div class="metric-card" onclick="showInTraining()">
-                    <div class="metric-label">In Training (Weeks 1–5)</div>
-                    <div class="metric-value">${data.in_training}</div>
-                    <div class="metric-change">Early stage candidates</div>
+                
+                <!-- Row 2: Training Pipeline -->
+                <div class="metric-card week-0-3" onclick="showWeeks0to3()">
+                    <div class="metric-label">Weeks 0-3</div>
+                    <div class="metric-value">${data.weeks_0_3 || 0}</div>
+                    <div class="metric-change">Operational Overview</div>
                 </div>
-                <div class="metric-card" onclick="showOfferPending()">
-                    <div class="metric-label">Offer Pending</div>
-                    <div class="metric-value">${data.offer_pending}</div>
-                    <div class="metric-change">Awaiting placement</div>
+                <div class="metric-card week-4-6" onclick="showWeeks4to6()">
+                    <div class="metric-label">Weeks 4-6</div>
+                    <div class="metric-value">${data.weeks_4_6 || 0}</div>
+                    <div class="metric-change">Active Training</div>
+                </div>
+                <div class="metric-card week-7-priority" onclick="showWeek7Priority()">
+                    <div class="metric-label">Week 7 Priority</div>
+                    <div class="metric-value">${data.week_7_only || 0}</div>
+                    <div class="metric-change">Action Needed!</div>
                 </div>
             `;
         }
@@ -1204,6 +1298,82 @@
                 
                 candidates = data;
                 renderOfferPendingCandidates();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading candidates: ${error.message}</div>`;
+            }
+        }
+
+        // Load weeks 0-3 candidates from API
+        async function loadWeeks0to3() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-0-3`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                candidates = data;
+                renderWeeks0to3();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading candidates: ${error.message}</div>`;
+            }
+        }
+
+        // Load weeks 4-6 candidates from API
+        async function loadWeeks4to6() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-4-6`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                candidates = data;
+                renderWeeks4to6();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading candidates: ${error.message}</div>`;
+            }
+        }
+
+        // Load week 7 priority candidates from API
+        async function loadWeek7Priority() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/candidates/week-7-priority`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                candidates = data;
+                renderWeek7Priority();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading candidates: ${error.message}</div>`;
+            }
+        }
+
+        // Load weeks 8+ candidates from API
+        async function loadWeeks8Plus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-8-plus`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                candidates = data;
+                renderWeeks8Plus();
                 
             } catch (error) {
                 document.getElementById('candidatesList').innerHTML = 
@@ -1303,14 +1473,13 @@
             
             // Process candidates with instant image checks
             const processedCandidates = candidates.map(candidate => {
-                const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
                 let showImage = false;
                 
                 if (candidate.profile_image) {
                     showImage = checkImageExists(candidate.profile_image);
                 }
                 
-                return { ...candidate, showImage, initials };
+                return { ...candidate, showImage };
             });
             
             const renderedContent = processedCandidates.map(candidate => `
@@ -1318,10 +1487,8 @@
                     <div class="candidate-info">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                             ${candidate.showImage ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                 <div class="candidate-avatar-initial" style="display: none;">${candidate.initials}</div>` 
-                                : 
-                                `<div class="candidate-avatar-initial">${candidate.initials}</div>`
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
+                                : ''
                             }
                             <h3 style="margin: 0;">${candidate.name}</h3>
                         </div>
@@ -1366,16 +1533,13 @@
             }
             
             const renderedContent = candidates.map(candidate => {
-                const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
                 return `
                 <div class="candidate-card">
                     <div class="candidate-info">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                             ${candidate.profile_image ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                 <div class="candidate-avatar-initial" style="display: none;">${initials}</div>` 
-                                : 
-                                `<div class="candidate-avatar-initial">${initials}</div>`
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
+                                : ''
                             }
                             <h3 style="margin: 0;">${candidate.name}</h3>
                         </div>
@@ -1420,16 +1584,13 @@
             }
             
             candidatesList.innerHTML = candidates.map(candidate => {
-                const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
                 return `
                 <div class="candidate-card">
                     <div class="candidate-info">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                             ${candidate.profile_image ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                 <div class="candidate-avatar-initial" style="display: none;">${initials}</div>` 
-                                : 
-                                `<div class="candidate-avatar-initial">${initials}</div>`
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
+                                : ''
                             }
                             <h3 style="margin: 0;">${candidate.name}</h3>
                         </div>
@@ -1453,6 +1614,182 @@
             console.log('💾 Cached list content with timestamp:', cacheTimestamp);
             
             // Preload profiles for instant access
+            preloadCandidateProfiles(candidates);
+        }
+
+        // Render weeks 0-3 candidates
+        function renderWeeks0to3() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (candidates.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No candidates in weeks 0-3</h3>
+                    </div>
+                `;
+                cachedListContent = candidatesList.innerHTML;
+                cachedListTitle = '📋 Weeks 0-3 (Operational Overview)';
+                cacheTimestamp = Date.now();
+                return;
+            }
+            
+            const renderedContent = candidates.map(candidate => {
+                return `
+                <div class="candidate-card">
+                    <div class="candidate-info">
+                        <div class="candidate-header">
+                            <div>
+                                <h3>${candidate.name}</h3>
+                                <div class="candidate-status">Week ${candidate.week}</div>
+                            </div>
+                        </div>
+                        <div class="candidate-details">
+                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
+                            <div><strong>Mentor:</strong> ${candidate.mentor_name || '—'}</div>
+                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                </div>
+            `;
+            }).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            cachedListContent = renderedContent;
+            cachedListTitle = '📋 Weeks 0-3 (Operational Overview)';
+            cacheTimestamp = Date.now();
+            preloadCandidateProfiles(candidates);
+        }
+
+        // Render weeks 4-6 candidates
+        function renderWeeks4to6() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (candidates.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No candidates in weeks 4-6</h3>
+                    </div>
+                `;
+                cachedListContent = candidatesList.innerHTML;
+                cachedListTitle = '🏋️ Weeks 4-6 (Active Training)';
+                cacheTimestamp = Date.now();
+                return;
+            }
+            
+            const renderedContent = candidates.map(candidate => {
+                return `
+                <div class="candidate-card">
+                    <div class="candidate-info">
+                        <div class="candidate-header">
+                            <div>
+                                <h3>${candidate.name}</h3>
+                                <div class="candidate-status">Week ${candidate.week}</div>
+                            </div>
+                        </div>
+                        <div class="candidate-details">
+                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
+                            <div><strong>Mentor:</strong> ${candidate.mentor_name || '—'}</div>
+                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                </div>
+            `;
+            }).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            cachedListContent = renderedContent;
+            cachedListTitle = '🏋️ Weeks 4-6 (Active Training)';
+            cacheTimestamp = Date.now();
+            preloadCandidateProfiles(candidates);
+        }
+
+        // Render week 7 priority candidates
+        function renderWeek7Priority() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (candidates.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No candidates in week 7 priority</h3>
+                    </div>
+                `;
+                cachedListContent = candidatesList.innerHTML;
+                cachedListTitle = '⚡ Week 7 Priority (Action Needed!)';
+                cacheTimestamp = Date.now();
+                return;
+            }
+            
+            const renderedContent = candidates.map(candidate => {
+                return `
+                <div class="candidate-card" style="border: 2px solid #f97316;">
+                    <div class="candidate-info">
+                        <div class="candidate-header">
+                            <div>
+                                <h3>${candidate.name}</h3>
+                                <div class="candidate-status">Week 7 - Placement Priority</div>
+                            </div>
+                        </div>
+                        <div class="candidate-details">
+                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
+                            <div><strong>Mentor:</strong> ${candidate.mentor_name || '—'}</div>
+                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn" style="background: #f97316;" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                </div>
+            `;
+            }).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            cachedListContent = renderedContent;
+            cachedListTitle = '⚡ Week 7 Priority (Action Needed!)';
+            cacheTimestamp = Date.now();
+            preloadCandidateProfiles(candidates);
+        }
+
+        // Render weeks 8+ candidates
+        function renderWeeks8Plus() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (candidates.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No candidates ready for placement</h3>
+                    </div>
+                `;
+                cachedListContent = candidatesList.innerHTML;
+                cachedListTitle = '✅ Weeks 8+ (Ready for Placement)';
+                cacheTimestamp = Date.now();
+                return;
+            }
+            
+            const renderedContent = candidates.map(candidate => {
+                return `
+                <div class="candidate-card">
+                    <div class="candidate-info">
+                        <div class="candidate-header">
+                            <div>
+                                <h3>${candidate.name}</h3>
+                                <div class="candidate-status">Week ${candidate.week} - Ready for Placement</div>
+                            </div>
+                        </div>
+                        <div class="candidate-details">
+                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
+                            <div><strong>Mentor:</strong> ${candidate.mentor_name || '—'}</div>
+                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn" style="background: #10b981;" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                </div>
+            `;
+            }).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            cachedListContent = renderedContent;
+            cachedListTitle = '✅ Weeks 8+ (Ready for Placement)';
+            cacheTimestamp = Date.now();
             preloadCandidateProfiles(candidates);
         }
 
@@ -1749,6 +2086,51 @@
             loadOfferPendingCandidates();
         }
 
+        function showWeeks0to3() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
+            document.querySelector('.candidates-container h2').textContent = '📋 Weeks 0-3 (Operational Overview)';
+            previousPage = currentPage;
+            currentPage = 'weeks_0_3';
+            loadWeeks0to3();
+        }
+
+        function showWeeks4to6() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
+            document.querySelector('.candidates-container h2').textContent = '🏋️ Weeks 4-6 (Active Training)';
+            previousPage = currentPage;
+            currentPage = 'weeks_4_6';
+            loadWeeks4to6();
+        }
+
+        function showWeek7Priority() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
+            document.querySelector('.candidates-container h2').textContent = '⚡ Week 7 Priority (Action Needed!)';
+            previousPage = currentPage;
+            currentPage = 'week_7_priority';
+            loadWeek7Priority();
+        }
+
+        function showWeeks8Plus() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
+            document.querySelector('.candidates-container h2').textContent = '✅ Weeks 8+ (Ready for Placement)';
+            previousPage = currentPage;
+            currentPage = 'weeks_8_plus';
+            loadWeeks8Plus();
+        }
+
+        function showMentorsList() {
+            // TODO: Implement Phase 4 - mentor list page
+            alert('Mentor list coming in Phase 4!');
+        }
+
         function showCandidateList() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
@@ -1889,6 +2271,18 @@
                     break;
                 case 'offer_pending':
                     showOfferPending();
+                    break;
+                case 'weeks_0_3':
+                    showWeeks0to3();
+                    break;
+                case 'weeks_4_6':
+                    showWeeks4to6();
+                    break;
+                case 'week_7_priority':
+                    showWeek7Priority();
+                    break;
+                case 'weeks_8_plus':
+                    showWeeks8Plus();
                     break;
                 case 'candidates':
                     showCandidateList();
