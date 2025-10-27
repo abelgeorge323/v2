@@ -23,6 +23,25 @@ logger = logging.getLogger(__name__)
 # DATA PROCESSING UTILITIES
 # =============================================================================
 
+def format_company_start_date(date_value: Any) -> str:
+    """
+    Format Company Start Date for display
+    Converts pandas Timestamp or datetime to readable string format
+    """
+    if pd.isna(date_value) or date_value == '':
+        return '—'
+    
+    try:
+        # If it's a pandas Timestamp or datetime, format it
+        if isinstance(date_value, pd.Timestamp):
+            return date_value.strftime('%m/%d/%Y')
+        elif isinstance(date_value, datetime):
+            return date_value.strftime('%m/%d/%Y')
+        else:
+            return str(date_value)
+    except (ValueError, TypeError):
+        return '—'
+
 def parse_salary(salary_value: Any) -> float:
     """
     Parse salary value and convert to float
@@ -387,13 +406,15 @@ def fetch_google_sheets_data() -> pd.DataFrame:
         # Apply column mapping
         df = df.rename(columns=COLUMN_MAPPING)
         
-        # Calculate Week from Start Date
-        if "Start Date" in df.columns:
-            df["Start Date"] = pd.to_datetime(df["Start Date"], errors="coerce")
+        # Calculate Week from Company Start Date
+        if "Company Start Date" in df.columns:
+            # Save original string values before conversion
+            df["Company Start Date Original"] = df["Company Start Date"].copy()
+            df["Company Start Date"] = pd.to_datetime(df["Company Start Date"], errors="coerce")
             today = pd.Timestamp.now()
             
             # Calculate weeks with proper handling of NaN values
-            days_diff = (today - df["Start Date"]).dt.days
+            days_diff = (today - df["Company Start Date"]).dt.days
             weeks = (days_diff / 7).round(0)
             
             # Handle NaN and infinite values
@@ -435,8 +456,8 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
     Returns:
         Dict containing processed candidate data in dashboard format
     """
-    # Calculate week from start date
-    week_value = calculate_week_from_start_date(row.get('Start Date'))
+    # Calculate week from Company Start Date
+    week_value = calculate_week_from_start_date(row.get('Company Start Date'))
     
     # Parse salary
     salary_value = parse_salary(row.get('Salary', 0))
@@ -477,7 +498,8 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
         'onboarding_progress': {k: convert_numpy_types(v) for k, v in onboarding_progress.items()},
         'business_lessons_progress': {k: convert_numpy_types(v) for k, v in business_lessons_progress.items()},
         'operation_details': {
-            'company_start_date': str(row.get('Company Start Date', '—')),
+            'company_start_date': str(row.get('Company Start Date Original', '—')),  # Display original string
+            'training_start_date': str(row.get('Training Start Date', '—')),  # Display only
             'title': str(row.get('Title', '—')),
             'operation_location': str(row.get('Ops Account- Location', '—')),
             'vertical': str(row.get('Vertical', '—'))
