@@ -32,6 +32,7 @@ from utils import (
     fetch_open_positions_data,
     process_candidate_data, 
     get_top_matches,
+    categorize_candidates_by_week,
     log_debug, 
     log_error
 )
@@ -182,6 +183,14 @@ def get_dashboard_data():
         ready_for_placement = len(df[df['Status'] == 'ready'])
         offer_pending = len(df[df['Status'] == 'offer_pending'])
         
+        # Calculate week-based categories
+        candidates = []
+        for _, row in df.iterrows():
+            candidates.append(process_candidate_data(row))
+        
+        from utils import categorize_candidates_by_week
+        categorized = categorize_candidates_by_week(candidates)
+        
         # Calculate average salary
         from utils import parse_salary
         salaries = [parse_salary(row.get('Salary', 0)) for _, row in df.iterrows()]
@@ -197,6 +206,10 @@ def get_dashboard_data():
             'in_training': in_training,
             'ready_for_placement': ready_for_placement,
             'offer_pending': offer_pending,
+            'weeks_0_3': len(categorized['weeks_0_3']),  # Operational Overview
+            'weeks_4_6': len(categorized['weeks_4_6']),  # Active Training
+            'week_7_only': len(categorized['week_7_only']),  # Week 7 Priority
+            'weeks_8_plus': len(categorized['weeks_8_plus']),  # Ready for Placement
             'open_positions': open_positions_count,
             'average_salary': round(avg_salary, 2)
         }
@@ -427,6 +440,70 @@ def debug_columns():
         return jsonify({'error': str(e)}), 500
 
 # =============================================================================
+# WEEK-BASED FILTERING ENDPOINTS
+# =============================================================================
+
+@app.route('/api/candidates/weeks-0-3', methods=['GET'])
+def get_weeks_0_3():
+    """Candidates in weeks 0-3 (Operational Overview)"""
+    try:
+        df = fetch_google_sheets_data()
+        candidates = []
+        for _, row in df.iterrows():
+            candidate = process_candidate_data(row)
+            candidates.append(candidate)
+        categorized = categorize_candidates_by_week(candidates)
+        return jsonify(categorized['weeks_0_3']), 200
+    except Exception as e:
+        log_error("Error fetching weeks 0-3 candidates", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/candidates/weeks-4-6', methods=['GET'])
+def get_weeks_4_6():
+    """Candidates in weeks 4-6 (Active Training)"""
+    try:
+        df = fetch_google_sheets_data()
+        candidates = []
+        for _, row in df.iterrows():
+            candidate = process_candidate_data(row)
+            candidates.append(candidate)
+        categorized = categorize_candidates_by_week(candidates)
+        return jsonify(categorized['weeks_4_6']), 200
+    except Exception as e:
+        log_error("Error fetching weeks 4-6 candidates", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/candidates/week-7-priority', methods=['GET'])
+def get_week_7_priority():
+    """ONLY Week 7 candidates (Placement Priority)"""
+    try:
+        df = fetch_google_sheets_data()
+        candidates = []
+        for _, row in df.iterrows():
+            candidate = process_candidate_data(row)
+            candidates.append(candidate)
+        categorized = categorize_candidates_by_week(candidates)
+        return jsonify(categorized['week_7_only']), 200
+    except Exception as e:
+        log_error("Error fetching week 7 priority candidates", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/candidates/weeks-8-plus', methods=['GET'])
+def get_weeks_8_plus():
+    """Candidates week 8+ (Ready for Placement)"""
+    try:
+        df = fetch_google_sheets_data()
+        candidates = []
+        for _, row in df.iterrows():
+            candidate = process_candidate_data(row)
+            candidates.append(candidate)
+        categorized = categorize_candidates_by_week(candidates)
+        return jsonify(categorized['weeks_8_plus']), 200
+    except Exception as e:
+        log_error("Error fetching weeks 8+ candidates", e)
+        return jsonify({'error': str(e)}), 500
+
+# =============================================================================
 # ERROR HANDLERS
 # =============================================================================
 
@@ -465,6 +542,10 @@ if __name__ == '__main__':
     print("   - GET /api/offer-pending-candidates - Offer pending candidates")
     print("   - GET /api/open-positions - Open job positions")
     print("   - GET /api/job-matches/<job_id> - Top candidate matches for a job")
+    print("   - GET /api/candidates/weeks-0-3 - Weeks 0-3 candidates")
+    print("   - GET /api/candidates/weeks-4-6 - Weeks 4-6 candidates")
+    print("   - GET /api/candidates/week-7-priority - Week 7 priority candidates")
+    print("   - GET /api/candidates/weeks-8-plus - Weeks 8+ candidates")
     print("   - GET /headshots/<filename> - Serve headshot images")
     print("   - GET /api/health - Health check")
     print()
