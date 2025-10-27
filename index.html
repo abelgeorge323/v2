@@ -1632,12 +1632,13 @@
                     </div>
                     ` : ''}
                     
-                    <div class="operation-mentor-container">
-                        ${candidate.operation_details && (candidate.operation_details.company_start_date !== '—' || candidate.operation_details.title !== '—') ? `
+                    <div class="operation-mentor-container cache-break-20251027">
+                        ${candidate.operation_details ? `
                         <div class="operation-details">
                             <h3>🏢 Operation Details</h3>
                             <div class="info-grid">
-                                ${candidate.operation_details.company_start_date !== '—' ? `<div><strong>Company Start Date:</strong> ${candidate.operation_details.company_start_date}</div>` : ''}
+                                <div><strong>Company Start Date:</strong> ${candidate.operation_details.company_start_date || '—'}</div>
+                                <div><strong>Training Start Date:</strong> ${candidate.operation_details.training_start_date || '—'}</div>
                                 ${candidate.operation_details.title !== '—' ? `<div><strong>Title:</strong> ${candidate.operation_details.title}</div>` : ''}
                                 ${candidate.operation_details.operation_location !== '—' ? `<div><strong>Operation Location:</strong> ${candidate.operation_details.operation_location}</div>` : ''}
                                 ${candidate.operation_details.vertical !== '—' ? `<div><strong>Vertical:</strong> ${candidate.operation_details.vertical}</div>` : ''}
