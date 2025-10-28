@@ -971,6 +971,342 @@
             color: #ffffff;
             text-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
+    /* Data quality badges for source provenance */
+    .data-quality-badge { display:inline-block; padding:4px 12px; border-radius:12px; font-size:0.85em; font-weight:500; margin-left:8px; }
+    .data-quality-badge.warning { background: rgba(251,191,36,0.15); color:#f59e0b; border:1px solid rgba(251,191,36,0.3); }
+    .data-quality-badge.info { background: rgba(59,130,246,0.15); color:#3b82f6; border:1px solid rgba(59,130,246,0.3); }
+
+    /* Job Details Header */
+    .job-details-header {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(20, 184, 166, 0.08));
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .job-title-section {
+        margin-bottom: 24px;
+    }
+
+    .job-title {
+        font-size: 1.8em;
+        font-weight: 700;
+        color: #f3f4f6;
+        margin-bottom: 8px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .job-company {
+        font-size: 1.1em;
+        color: #9ca3af;
+        font-weight: 500;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .job-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+        max-width: 100%;
+    }
+
+    .job-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .info-label {
+        font-size: 0.8em;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .info-value {
+        font-size: 1em;
+        color: #f3f4f6;
+        font-weight: 600;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    /* Detailed Match Cards */
+    .match-card-detailed {
+        background: rgba(31, 41, 55, 0.6);
+        border: 1px solid rgba(75, 85, 99, 0.4);
+        border-radius: 16px;
+        padding: 28px;
+        margin-bottom: 24px;
+        transition: all 0.3s ease;
+    }
+
+    .match-card-detailed:hover {
+        border-color: rgba(16, 185, 129, 0.6);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .match-header {
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(75, 85, 99, 0.3);
+    }
+
+    .match-rank {
+        font-size: 1.2em;
+        font-weight: 800;
+        color: white;
+        background: linear-gradient(135deg, #10b981, #14b8a6);
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        margin-bottom: 16px;
+    }
+
+    .match-candidate-info {
+        margin-top: 8px;
+    }
+
+    .match-candidate-info h3 {
+        font-size: 1.4em;
+        font-weight: 700;
+        color: #f3f4f6;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: color 0.2s ease;
+    }
+
+    .match-candidate-info h3:hover {
+        color: #10b981;
+    }
+
+    .candidate-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(55, 65, 81, 0.4);
+        padding: 8px 12px;
+        border-radius: 8px;
+    }
+
+    .meta-icon {
+        font-size: 1.1em;
+    }
+
+    .meta-text {
+        color: #d1d5db;
+        font-size: 0.9em;
+        font-weight: 500;
+    }
+
+    /* Candidate Total Score */
+    .candidate-total-score {
+        margin-top: 16px;
+        text-align: center;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(20, 184, 166, 0.1));
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 8px;
+        padding: 12px 16px;
+    }
+
+    .candidate-score-number {
+        font-size: 1.8em;
+        font-weight: 800;
+        color: #10b981;
+        line-height: 1;
+    }
+
+    .candidate-score-label {
+        font-size: 0.75em;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+        font-weight: 600;
+    }
+
+    .match-total-score {
+        text-align: center;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(20, 184, 166, 0.15));
+        border: 2px solid rgba(16, 185, 129, 0.5);
+        border-radius: 12px;
+        padding: 16px 24px;
+    }
+
+    .score-number {
+        font-size: 2.2em;
+        font-weight: 800;
+        color: #10b981;
+        line-height: 1;
+    }
+
+    .score-label {
+        font-size: 0.75em;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+    }
+
+    .score-breakdown-visual {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .breakdown-header {
+        font-size: 0.95em;
+        font-weight: 700;
+        color: #10b981;
+        margin-bottom: 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .score-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .score-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .score-name {
+            font-weight: 600;
+        color: #e5e7eb;
+        font-size: 0.95em;
+    }
+
+    .score-value {
+        font-weight: 700;
+        color: #10b981;
+        font-size: 0.9em;
+    }
+
+    .score-bar-container {
+        width: 100%;
+        height: 12px;
+        background: rgba(31, 41, 55, 0.6);
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid rgba(75, 85, 99, 0.3);
+    }
+
+    .score-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #14b8a6);
+        border-radius: 6px;
+        transition: width 0.6s ease;
+    }
+
+    /* Dynamic score bar colors */
+    .score-bar.high-score {
+        background: linear-gradient(90deg, #22c55e, #10b981);
+    }
+
+    .score-bar.medium-score {
+        background: linear-gradient(90deg, #f59e0b, #fb923c);
+    }
+
+    .score-bar.low-score {
+        background: linear-gradient(90deg, #ef4444, #f87171);
+    }
+
+    .score-explanation {
+        font-size: 0.85em;
+        color: #9ca3af;
+        font-style: italic;
+    }
+
+    .match-actions {
+        display: flex;
+        justify-content: center;
+        padding-top: 16px;
+        border-top: 1px solid rgba(75, 85, 99, 0.3);
+    }
+
+    .view-profile-btn {
+        background: linear-gradient(135deg, #10b981, #14b8a6);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+    }
+
+    .view-profile-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Responsive adjustments for job matches */
+    @media (max-width: 768px) {
+        .job-details-header {
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .job-title {
+            font-size: 1.5em;
+        }
+        
+        .job-company {
+            font-size: 1em;
+        }
+        
+        .job-info-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        
+        .match-header {
+            text-align: center;
+        }
+        
+        .candidate-meta-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .loading {
+        text-align: center;
+        padding: 60px 20px;
+        color: #9ca3af;
+        font-size: 1.1em;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -1021,6 +1357,7 @@
         <div class="page" id="jobMatches">
             <div class="candidates-container">
                 <h2 id="jobMatchesTitle">🔍 Top Matches</h2>
+                <div id="jobHeaderContainer"></div>
                 <div id="matchesList" class="candidates-grid">
                     <div class="loading">Loading matches...</div>
                 </div>
@@ -1125,6 +1462,10 @@
         // Client-side cache for candidate profiles (for instant profile switching)
         let candidateCache = {};
         
+        // Job matches cache
+        let jobMatchesCache = {}; // Store matches by job ID
+        const JOB_MATCHES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+        
         // Load cache from localStorage on page load
         function loadCacheFromStorage() {
             try {
@@ -1227,6 +1568,11 @@
                     <div class="metric-label">Weeks 8+</div>
                     <div class="metric-value">${data.weeks_8_plus || 0}</div>
                     <div class="metric-change">Ready for Placement</div>
+                </div>
+                <div class="metric-card offer-pending" onclick="showOfferPending()">
+                    <div class="metric-label">Offer Pending</div>
+                    <div class="metric-value">${data.offer_pending || 0}</div>
+                    <div class="metric-change">Awaiting confirmation</div>
                 </div>
                 
                 <!-- Row 2: Training Pipeline -->
@@ -1374,6 +1720,24 @@
                 
                 candidates = data;
                 renderWeeks8Plus();
+                
+            } catch (error) {
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading candidates: ${error.message}</div>`;
+            }
+        }
+
+        async function loadOfferPending() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/offer-pending-candidates`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                candidates = data;
+                renderOfferPending();
                 
             } catch (error) {
                 document.getElementById('candidatesList').innerHTML = 
@@ -1793,6 +2157,49 @@
             preloadCandidateProfiles(candidates);
         }
 
+        function renderOfferPending() {
+            const candidatesList = document.getElementById('candidatesList');
+            
+            if (candidates.length === 0) {
+                candidatesList.innerHTML = `
+                    <div class="no-candidates">
+                        <h3>No offer pending candidates</h3>
+                    </div>
+                `;
+                cachedListContent = candidatesList.innerHTML;
+                cachedListTitle = '⏳ Offer Pending Candidates';
+                cacheTimestamp = Date.now();
+                return;
+            }
+            
+            const renderedContent = candidates.map(candidate => {
+                return `
+                <div class="candidate-card">
+                    <div class="candidate-info">
+                        <div class="candidate-header">
+                            <div>
+                                <h3>${candidate.name}</h3>
+                                <div class="candidate-status">Offer Pending</div>
+                            </div>
+                        </div>
+                        <div class="candidate-details">
+                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
+                            <div><strong>Location:</strong> ${candidate.location || '—'}</div>
+                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                        </div>
+                    </div>
+                    <div class="view-profile-btn" style="background: #34d399;" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                </div>
+            `;
+            }).join('');
+            
+            candidatesList.innerHTML = renderedContent;
+            cachedListContent = renderedContent;
+            cachedListTitle = '⏳ Offer Pending Candidates';
+            cacheTimestamp = Date.now();
+            preloadCandidateProfiles(candidates);
+        }
+
         // Render open positions
         function renderOpenPositions() {
             const candidatesList = document.getElementById('candidatesList');
@@ -1832,6 +2239,11 @@
             cachedListTitle = '💼 Open Positions';
             cacheTimestamp = Date.now();
             console.log('💾 Cached list content with timestamp:', cacheTimestamp);
+            
+            // Preload job matches in background after rendering
+            setTimeout(() => {
+                preloadJobMatches(positions);
+            }, 500);
         }
 
         // Load candidate profile from API with client-side caching
@@ -1898,7 +2310,10 @@
                         `<div class="avatar">${initials}</div>`
                     }
                     <div class="profile-info">
-                        <h1>${candidate.name}</h1>
+                        <h1>${candidate.name}
+                            ${candidate.data_quality === 'limited' ? '<span class="data-quality-badge warning">Limited Profile Data</span>' : ''}
+                            ${candidate.data_quality === 'archive' ? '<span class="data-quality-badge info">Archive Data</span>' : ''}
+                        </h1>
                         <p>${candidate.training_site} • ${candidate.location}</p>
                         <p class="status-badge">${candidate.status} • ${candidate.training_program}</p>
                     </div>
@@ -1924,7 +2339,7 @@
                         <div class="metrics-grid-profile">
                             <div class="metric-item">
                                 <div class="metric-label">Mock QBR Score</div>
-                                <div class="metric-value">${candidate.scores.mock_qbr_score || 0}/100</div>
+                                <div class="metric-value">${candidate.scores.mock_qbr_score || 0}/4</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Assessment Score</div>
@@ -2126,6 +2541,16 @@
             loadWeeks8Plus();
         }
 
+        function showOfferPending() {
+            hideAllPages();
+            document.getElementById('candidateList').classList.add('active');
+            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
+            document.querySelector('.candidates-container h2').textContent = '⏳ Offer Pending Candidates';
+            previousPage = currentPage;
+            currentPage = 'offer_pending';
+            loadOfferPending();
+        }
+
         function showMentorsList() {
             // TODO: Implement Phase 4 - mentor list page
             alert('Mentor list coming in Phase 4!');
@@ -2154,9 +2579,26 @@
         function showJobMatches(jobId) {
             hideAllPages();
             document.getElementById('jobMatches').classList.add('active');
+            
+            // Show loading state immediately
+            document.getElementById('matchesList').innerHTML = '<div class="loading">Loading matches...</div>';
+            document.getElementById('jobMatchesTitle').textContent = '🔍 Loading Top Matches...';
+            document.getElementById('jobHeaderContainer').innerHTML = '';
+            
             previousPage = currentPage;
             currentPage = 'job_matches';
+            
+            // Check cache first
+            const cached = jobMatchesCache[jobId];
+            const now = Date.now();
+            
+            if (cached && (now - cached.timestamp) < JOB_MATCHES_CACHE_DURATION) {
+                console.log(`✅ Using cached matches for job ${jobId}`);
+                renderJobMatches(cached.data);
+            } else {
+                console.log(`🔄 Fetching fresh matches for job ${jobId}`);
             loadJobMatches(jobId);
+            }
         }
 
         async function loadJobMatches(jobId) {
@@ -2168,6 +2610,12 @@
                     throw new Error(data.error);
                 }
                 
+                // Cache the results
+                jobMatchesCache[jobId] = {
+                    data: data,
+                    timestamp: Date.now()
+                };
+                
                 renderJobMatches(data);
                 
             } catch (error) {
@@ -2176,12 +2624,67 @@
             }
         }
 
+        function getScoreBarClass(score, maxScore) {
+            const percentage = (score / maxScore) * 100;
+            if (percentage >= 80) return 'high-score';
+            if (percentage >= 50) return 'medium-score';
+            return 'low-score';
+        }
+
+        function getJobLocation(jobData) {
+            // If we have both city and state, use them
+            if (jobData.job_city && jobData.job_state) {
+                return `${jobData.job_city}, ${jobData.job_state}`;
+            }
+            
+            // If we have just city or state, use what we have
+            if (jobData.job_city || jobData.job_state) {
+                return jobData.job_city || jobData.job_state;
+            }
+            
+            // Try to extract location from account name (e.g., "BMS Princeton Pike (NJ)" -> "NJ")
+            if (jobData.job_account && jobData.job_account.includes('(')) {
+                const match = jobData.job_account.match(/\(([^)]+)\)/);
+                if (match && match[1]) {
+                    return match[1];
+                }
+            }
+            
+            return 'Not specified';
+        }
+
         function renderJobMatches(matchData) {
             const matchesList = document.getElementById('matchesList');
             const jobMatchesTitle = document.getElementById('jobMatchesTitle');
+            const jobHeaderContainer = document.getElementById('jobHeaderContainer');
             
-            // Update page title with job name
+            // Update page title
             jobMatchesTitle.textContent = `🔍 Top Matches for: ${matchData.job_title}`;
+            
+            // Render job header
+            const jobHeaderHTML = `
+                <div class="job-details-header">
+                    <div class="job-title-section">
+                        <h1 class="job-title">${matchData.job_title}</h1>
+                        <div class="job-company">${matchData.job_account}</div>
+                    </div>
+                    <div class="job-info-grid">
+                        <div class="job-info-item">
+                            <span class="info-label">Location</span>
+                            <span class="info-value">${getJobLocation(matchData)}</span>
+                        </div>
+                        <div class="job-info-item">
+                            <span class="info-label">Salary</span>
+                            <span class="info-value">$${parseInt(matchData.job_salary || 0).toLocaleString()}</span>
+                        </div>
+                        <div class="job-info-item">
+                            <span class="info-label">Vertical</span>
+                            <span class="info-value">${matchData.job_vertical}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            jobHeaderContainer.innerHTML = jobHeaderHTML;
             
             if (matchData.matches.length === 0) {
                 matchesList.innerHTML = `
@@ -2192,30 +2695,135 @@
                 return;
             }
             
+            // Render detailed match cards
             matchesList.innerHTML = matchData.matches.map((match, index) => {
                 const candidate = match.candidate_data;
-                const quality = match.match_quality.toLowerCase();
+                const breakdown = match.score_breakdown;
                 
                 return `
-                    <div class="candidate-card">
-                        <div class="candidate-info">
-                            <div class="match-candidate-name" onclick="showProfile('${candidate.name}')">
-                                ${index + 1}. ${candidate.name}
-                            </div>
-                            <div class="match-score">${match.match_score} pts</div>
-                            <div class="match-score-badge ${quality}">${match.match_quality}</div>
-                            
-                            <div class="candidate-details">
-                                <div><strong>Training Site:</strong> ${candidate.training_site}</div>
-                                <div><strong>Week:</strong> ${candidate.week}</div>
-                                <div><strong>Status:</strong> ${candidate.status}</div>
-                                <div><strong>Salary:</strong> $${candidate.salary.toLocaleString()}</div>
+                    <div class="match-card-detailed">
+                        <div class="match-header">
+                            <div class="match-rank">#${index + 1}</div>
+                            <div class="match-candidate-info">
+                                <h3 onclick="showProfile('${candidate.name}')">${candidate.name}</h3>
+                                <div class="candidate-meta-grid">
+                                    <div class="meta-item">
+                                        <span class="meta-icon">📍</span>
+                                        <span class="meta-text">${candidate.training_site || '—'}${candidate.location ? ', ' + candidate.location : ''}</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <span class="meta-icon">📅</span>
+                                        <span class="meta-text">Week ${candidate.week || 0}</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <span class="meta-icon">💰</span>
+                                        <span class="meta-text">${candidate.salary > 0 ? '$' + candidate.salary.toLocaleString() : 'Not Available'}</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Total Score below salary -->
+                                <div class="candidate-total-score">
+                                    <div class="candidate-score-number">${match.match_score}</div>
+                                    <div class="candidate-score-label">Total Score</div>
+                                </div>
                             </div>
                         </div>
-                        <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
+                        
+                        <div class="score-breakdown-visual">
+                            <div class="breakdown-header">Score Breakdown</div>
+                            <div class="score-item">
+                                <div class="score-item-header">
+                                    <span class="score-name">Vertical Alignment</span>
+                                    <span class="score-value">${breakdown.vertical_alignment.score}/${breakdown.vertical_alignment.max}</span>
+                            </div>
+                                <div class="score-bar-container">
+                                    <div class="score-bar ${getScoreBarClass(breakdown.vertical_alignment.score, breakdown.vertical_alignment.max)}" style="width: ${(breakdown.vertical_alignment.score / breakdown.vertical_alignment.max) * 100}%"></div>
+                        </div>
+                                <div class="score-explanation">${breakdown.vertical_alignment.explanation}</div>
+                            </div>
+                            
+                            <div class="score-item">
+                                <div class="score-item-header">
+                                    <span class="score-name">Salary Trajectory</span>
+                                    <span class="score-value">${breakdown.salary_trajectory.score}/${breakdown.salary_trajectory.max}</span>
+                                </div>
+                                <div class="score-bar-container">
+                                    <div class="score-bar ${getScoreBarClass(Math.max(0, breakdown.salary_trajectory.score), breakdown.salary_trajectory.max)}" style="width: ${Math.max(0, (breakdown.salary_trajectory.score / breakdown.salary_trajectory.max) * 100)}%"></div>
+                                </div>
+                                <div class="score-explanation">${breakdown.salary_trajectory.explanation}</div>
+                            </div>
+                            
+                            <div class="score-item">
+                                <div class="score-item-header">
+                                    <span class="score-name">Geographic Fit</span>
+                                    <span class="score-value">${breakdown.geographic_fit.score}/${breakdown.geographic_fit.max}</span>
+                                </div>
+                                <div class="score-bar-container">
+                                    <div class="score-bar ${getScoreBarClass(breakdown.geographic_fit.score, breakdown.geographic_fit.max)}" style="width: ${(breakdown.geographic_fit.score / breakdown.geographic_fit.max) * 100}%"></div>
+                                </div>
+                                <div class="score-explanation">${breakdown.geographic_fit.explanation}</div>
+                            </div>
+                            
+                            <div class="score-item">
+                                <div class="score-item-header">
+                                    <span class="score-name">Confidence</span>
+                                    <span class="score-value">${breakdown.confidence.score}/${breakdown.confidence.max}</span>
+                                </div>
+                                <div class="score-bar-container">
+                                    <div class="score-bar ${getScoreBarClass(breakdown.confidence.score, breakdown.confidence.max)}" style="width: ${(breakdown.confidence.score / breakdown.confidence.max) * 100}%"></div>
+                                </div>
+                                <div class="score-explanation">${breakdown.confidence.explanation}</div>
+                            </div>
+                            
+                            <div class="score-item">
+                                <div class="score-item-header">
+                                    <span class="score-name">Readiness</span>
+                                    <span class="score-value">${breakdown.readiness.score}/${breakdown.readiness.max}</span>
+                                </div>
+                                <div class="score-bar-container">
+                                    <div class="score-bar ${getScoreBarClass(breakdown.readiness.score, breakdown.readiness.max)}" style="width: ${(breakdown.readiness.score / breakdown.readiness.max) * 100}%"></div>
+                                </div>
+                                <div class="score-explanation">${breakdown.readiness.explanation}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="match-actions">
+                            <button class="view-profile-btn" onclick="showProfile('${candidate.name}')">
+                                View Full Profile →
+                            </button>
+                        </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        async function preloadJobMatches(positions) {
+            console.log(`🔄 Preloading matches for ${positions.length} positions...`);
+            
+            // Preload in batches of 3 to avoid overwhelming the server
+            const batchSize = 3;
+            for (let i = 0; i < positions.length; i += batchSize) {
+                const batch = positions.slice(i, i + batchSize);
+                await Promise.all(
+                    batch.map(async (position) => {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/api/job-matches/${position.id}`);
+                            const data = await response.json();
+                            
+                            if (!data.error) {
+                                jobMatchesCache[position.id] = {
+                                    data: data,
+                                    timestamp: Date.now()
+                                };
+                            }
+                        } catch (error) {
+                            console.warn(`Failed to preload matches for job ${position.id}:`, error);
+                        }
+                    })
+                );
+            }
+            
+            console.log('✅ Job matches preloading complete');
         }
 
         function goBackToList() {
