@@ -34,7 +34,10 @@ from utils import (
     get_top_matches,
     categorize_candidates_by_week,
     log_debug, 
-    log_error
+    log_error,
+    merge_candidate_sources,
+    normalize_name,
+    parse_salary
 )
 
 # =============================================================================
@@ -175,26 +178,22 @@ def get_dashboard_data():
         JSON response with dashboard metrics
     """
     try:
-        df = get_cached_data()
+        # Use unified candidate list from three-tier integration
+        candidates = merge_candidate_sources()
         
-        # Calculate dashboard metrics
-        total_candidates = len(df)
-        in_training = len(df[df['Status'] == 'training'])
-        ready_for_placement = len(df[df['Status'] == 'ready'])
-        offer_pending = len(df[df['Status'] == 'offer_pending'])
-        
-        # Calculate week-based categories
-        candidates = []
-        for _, row in df.iterrows():
-            candidates.append(process_candidate_data(row))
-        
-        from utils import categorize_candidates_by_week
+        # Calculate week-based categories first
         categorized = categorize_candidates_by_week(candidates)
         
+        # Calculate dashboard metrics (exclude offer pending from total)
+        offer_pending_candidates = categorized['offer_pending']
+        offer_pending = len(offer_pending_candidates)
+        total_candidates = len(candidates) - offer_pending  # Exclude offer pending from total
+        in_training = len([c for c in candidates if str(c.get('status','')).lower() == 'training'])
+        ready_for_placement = len([c for c in candidates if str(c.get('status','')).lower() == 'ready'])
+        
         # Calculate average salary
-        from utils import parse_salary
-        salaries = [parse_salary(row.get('Salary', 0)) for _, row in df.iterrows()]
-        valid_salaries = [s for s in salaries if s > 0]
+        salaries = [float(c.get('salary', 0) or 0) for c in candidates]
+        valid_salaries = [s for s in salaries if s and s > 0]
         avg_salary = sum(valid_salaries) / len(valid_salaries) if valid_salaries else 0
         
         # Get open positions count
@@ -231,14 +230,9 @@ def get_candidates():
         JSON response with list of candidates ready for placement
     """
     try:
-        df = get_cached_data()
-        ready_candidates = df[df['Status'] == 'ready']
-        
-        candidates = []
-        for _, row in ready_candidates.iterrows():
-            candidates.append(process_candidate_data(row))
-        
-        response = jsonify(candidates)
+        unified = merge_candidate_sources()
+        ready_list = [c for c in unified if str(c.get('status','')).lower() == 'ready']
+        response = jsonify(ready_list)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
         
@@ -255,13 +249,7 @@ def get_all_candidates():
         JSON response with all candidates
     """
     try:
-        df = get_cached_data()
-        
-        candidates = []
-        for _, row in df.iterrows():
-            candidates.append(process_candidate_data(row))
-        
-        response = jsonify(candidates)
+        response = jsonify(merge_candidate_sources())
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
         
@@ -278,14 +266,9 @@ def get_in_training_candidates():
         JSON response with in-training candidates
     """
     try:
-        df = get_cached_data()
-        training_candidates = df[df['Status'] == 'training']
-        
-        candidates = []
-        for _, row in training_candidates.iterrows():
-            candidates.append(process_candidate_data(row))
-        
-        response = jsonify(candidates)
+        unified = merge_candidate_sources()
+        training_list = [c for c in unified if str(c.get('status','')).lower() == 'training']
+        response = jsonify(training_list)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
         
@@ -302,14 +285,9 @@ def get_offer_pending_candidates():
         JSON response with offer-pending candidates
     """
     try:
-        df = get_cached_data()
-        offer_pending = df[df['Status'] == 'offer_pending']
-        
-        candidates = []
-        for _, row in offer_pending.iterrows():
-            candidates.append(process_candidate_data(row))
-        
-        response = jsonify(candidates)
+        unified = merge_candidate_sources()
+        offer_list = [c for c in unified if 'offer' in str(c.get('status','')).lower()]
+        response = jsonify(offer_list)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
         
@@ -329,16 +307,15 @@ def get_candidate_profile(name: str):
         JSON response with detailed candidate profile
     """
     try:
-        df = get_cached_data()
-        
-        # Find candidate by name
-        candidate_row = df[df['MIT Name'] == name]
-        
-        if candidate_row.empty:
+        unified = merge_candidate_sources()
+        target_norm = normalize_name(name)
+        candidate_data = None
+        for c in unified:
+            if normalize_name(c.get('name','')) == target_norm:
+                candidate_data = c
+                break
+        if not candidate_data:
             return jsonify({'error': ERROR_MESSAGES['candidate_not_found']}), 404
-        
-        # Process candidate data
-        candidate_data = process_candidate_data(candidate_row.iloc[0])
         
         response = jsonify(candidate_data)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
@@ -383,15 +360,21 @@ def get_job_matches(job_id):
     """
     try:
         # Get top matches for the job
-        matches = get_top_matches(job_id, limit=3)
+        matches = get_top_matches(job_id, limit=6)
         
         if not matches:
             return jsonify({'error': f'No matches found for job ID {job_id}'}), 404
         
-        # Format response data
+        # Format response data with job details
+        job = matches[0]['job'] if matches else {}
         response_data = {
             'job_id': job_id,
-            'job_title': matches[0]['job']['title'] if matches else 'Unknown',
+            'job_title': job.get('title', 'Unknown'),
+            'job_account': job.get('account', 'Unknown'),
+            'job_city': job.get('city', 'Unknown'),
+            'job_state': job.get('state', 'Unknown'),
+            'job_salary': parse_salary(job.get('salary', 0)),
+            'job_vertical': job.get('vertical', 'Unknown'),
             'matches': []
         }
         
@@ -447,11 +430,7 @@ def debug_columns():
 def get_weeks_0_3():
     """Candidates in weeks 0-3 (Operational Overview)"""
     try:
-        df = fetch_google_sheets_data()
-        candidates = []
-        for _, row in df.iterrows():
-            candidate = process_candidate_data(row)
-            candidates.append(candidate)
+        candidates = merge_candidate_sources()
         categorized = categorize_candidates_by_week(candidates)
         return jsonify(categorized['weeks_0_3']), 200
     except Exception as e:
@@ -462,11 +441,7 @@ def get_weeks_0_3():
 def get_weeks_4_6():
     """Candidates in weeks 4-6 (Active Training)"""
     try:
-        df = fetch_google_sheets_data()
-        candidates = []
-        for _, row in df.iterrows():
-            candidate = process_candidate_data(row)
-            candidates.append(candidate)
+        candidates = merge_candidate_sources()
         categorized = categorize_candidates_by_week(candidates)
         return jsonify(categorized['weeks_4_6']), 200
     except Exception as e:
@@ -477,11 +452,7 @@ def get_weeks_4_6():
 def get_week_7_priority():
     """ONLY Week 7 candidates (Placement Priority)"""
     try:
-        df = fetch_google_sheets_data()
-        candidates = []
-        for _, row in df.iterrows():
-            candidate = process_candidate_data(row)
-            candidates.append(candidate)
+        candidates = merge_candidate_sources()
         categorized = categorize_candidates_by_week(candidates)
         return jsonify(categorized['week_7_only']), 200
     except Exception as e:
@@ -492,11 +463,7 @@ def get_week_7_priority():
 def get_weeks_8_plus():
     """Candidates week 8+ (Ready for Placement)"""
     try:
-        df = fetch_google_sheets_data()
-        candidates = []
-        for _, row in df.iterrows():
-            candidate = process_candidate_data(row)
-            candidates.append(candidate)
+        candidates = merge_candidate_sources()
         categorized = categorize_candidates_by_week(candidates)
         return jsonify(categorized['weeks_8_plus']), 200
     except Exception as e:
