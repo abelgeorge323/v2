@@ -14,6 +14,7 @@ import requests
 import re
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
+from difflib import SequenceMatcher
 import logging
 from config import *
 
@@ -66,6 +67,63 @@ def parse_salary(salary_value: Any) -> float:
     """
     if pd.isna(salary_value) or salary_value == '':
         return 0.0
+    try:
+        raw = str(salary_value).strip()
+        if raw.lower() in {'tbd', 'na', 'n/a', 'none', '-', 'nan'}:
+            return 0.0
+        # Remove currency symbols and commas
+        cleaned = raw.replace('$', '').replace(',', '').replace('USD', '').strip()
+        # Extract first numeric token
+        match = re.search(r"-?\d+(?:\.\d+)?", cleaned)
+        if match:
+            return float(match.group(0))
+        return 0.0
+    except Exception:
+        return 0.0
+
+def normalize_name(name: Any) -> str:
+    """
+    Normalize a person's name for comparison: lowercase, strip punctuation/extra spaces.
+    """
+    if pd.isna(name):
+        return ''
+    text = str(name).lower().strip()
+    # Replace non-breaking spaces and collapse spaces
+    text = text.replace('\u00A0', ' ')
+    text = re.sub(r'\s+', ' ', text)
+    # Remove punctuation
+    text = re.sub(r'[^\w\s]', '', text)
+    return text
+
+def fuzzy_match_name(name1: Any, name2: Any, threshold: float = 0.85) -> bool:
+    """
+    Enhanced fuzzy name matching with token containment and prefix checks.
+    Handles cases like "Stephany Lopez" vs "Stephany Lopez Cardona".
+    """
+    n1 = normalize_name(name1)
+    n2 = normalize_name(name2)
+    if not n1 or not n2:
+        return False
+
+    # Token containment (handles extra surname): "stephany lopez" vs "stephany lopez cardona"
+    t1, t2 = n1.split(), n2.split()
+    shorter, longer = (t1, t2) if len(t1) <= len(t2) else (t2, t1)
+    if len(shorter) >= 2 and all(tok in longer for tok in shorter):
+        return True
+
+    # Prefix containment (nicknames or partials)
+    if n1.startswith(n2) or n2.startswith(n1):
+        return True
+
+    # Dynamic threshold: lower for multi-token names
+    dyn_threshold = 0.80 if len(shorter) >= 2 else threshold
+    return SequenceMatcher(None, n1, n2).ratio() >= dyn_threshold
+
+def mentor_match(m1: Any, m2: Any) -> bool:
+    """
+    Check if two mentor names match after normalization.
+    """
+    return normalize_name(m1) != '' and normalize_name(m1) == normalize_name(m2)
     
     try:
         # Remove common currency symbols and commas
@@ -277,8 +335,12 @@ def extract_real_scores(row: pd.Series) -> Dict[str, Any]:
                 if score_key == 'skill_ranking':
                     scores[score_key] = val_str if val_str else '—'
                     logger.info(f"    -> SUCCESS: {scores[score_key]} (text field from '{score_value}')")
+                elif score_key == 'mock_qbr_score':
+                    # Mock QBR Score is out of 4, not 100
+                    scores[score_key] = float(val_str) if val_str else 0.0
+                    logger.info(f"    -> SUCCESS: {scores[score_key]} (Mock QBR out of 4 from '{score_value}')")
                 else:
-                    # Numeric fields
+                    # Other numeric fields (out of 100)
                     scores[score_key] = float(val_str) if val_str else 0.0
                     logger.info(f"    -> SUCCESS: {scores[score_key]} (cleaned from '{score_value}')")
             except (ValueError, TypeError) as e:
@@ -348,6 +410,9 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
         # Fetch data from Google Sheets with skiprows=5 to skip the first 5 rows
         df = pd.read_csv(OPEN_POSITIONS_URL, skiprows=5)
         
+        # Debug: Log available columns
+        logger.info(f"Available columns in open positions: {list(df.columns)}")
+        
         # Clean up the data - remove any completely empty rows
         df = df.dropna(how='all')
         
@@ -356,6 +421,24 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
         
         positions = []
         for _, row in df.iterrows():
+            # Parse location from Column F (Location) - try different possible column names
+            location = ''
+            for col_name in ['Location', 'location', 'LOCATION', 'City', 'city', 'CITY']:
+                if col_name in df.columns:
+                    location = str(row.get(col_name, ''))
+                    if location and location != 'nan':
+                        break
+            
+            city, state = '', ''
+            if location and location != 'nan':
+                # Split "Detroit, MI" into city and state
+                parts = location.split(',')
+                if len(parts) >= 2:
+                    city = parts[0].strip()
+                    state = parts[1].strip()
+                else:
+                    city = location.strip()
+            
             position = {
                 'id': int(row.get('JV ID', 0)) if pd.notna(row.get('JV ID')) else 0,
                 'title': str(row.get('Job Title', '')),
@@ -363,9 +446,9 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
                 'jv_link': str(row.get('JV Link', '')),
                 'vertical': str(row.get('VERT', '')),
                 'account': str(row.get('Account', '')),
-                'city': str(row.get('City', '')),
-                'state': str(row.get('State', '')),
-                'salary': str(row.get('Salary', ''))
+                'city': city,
+                'state': state,
+                'salary': parse_salary(row.get('Salary', 0))
             }
             positions.append(position)
         
@@ -376,6 +459,252 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
         logger.error(f"Error fetching open positions data: {str(e)}")
         # Return empty list on error
         return []
+
+def _read_csv_normalized(url: str, dtype: Optional[Dict[str, Any]] = None, skiprows: Optional[int] = None) -> pd.DataFrame:
+    """
+    Helper: read CSV from URL and normalize headers (strip spaces, collapse, replace NBSP).
+    """
+    df = pd.read_csv(url, dtype=dtype, skiprows=skiprows)
+    df.columns = (
+        df.columns.astype(str)
+          .str.replace('\u00A0', ' ', regex=False)
+          .str.replace(r'\s+', ' ', regex=True)
+          .str.strip()
+    )
+    return df
+
+def fetch_mit_tracking_data() -> pd.DataFrame:
+    """
+    Fetch the MIT Tracking Sheet which has two sections in one CSV:
+    - Top section: active MIT candidates (columns present)
+    - Second section after the row containing 'MIT Entering the Program': new entrants
+    Returns a unified DataFrame with consistent column names. New entrants are tagged as offer pending.
+    """
+    try:
+        # Read the CSV directly
+        df = pd.read_csv(MIT_TRACKING_SHEET_URL, dtype=str)
+        
+        # The actual data structure is different - let's inspect it
+        logger.info(f"Raw CSV shape: {df.shape}")
+        logger.info(f"Raw columns: {list(df.columns)}")
+        
+        # The first row contains the headers, but they're spread across columns
+        # Let's find the actual header row and data rows
+        header_row = None
+        data_start_row = None
+        
+        for idx, row in df.iterrows():
+            # Look for row containing 'MIT Name' in any column
+            if 'MIT Name' in str(row.values):
+                header_row = idx
+                data_start_row = idx + 1
+                break
+        
+        if header_row is None:
+            logger.error("Could not find header row with 'MIT Name'")
+            return pd.DataFrame(columns=['MIT Name'])
+        
+        # Extract the header row and create proper column mapping
+        header_values = df.iloc[header_row].values
+        logger.info(f"Header values: {list(header_values)}")
+        
+        # Create a new DataFrame starting from the data rows
+        df_data = df.iloc[data_start_row:].copy()
+        
+        # Map the columns based on the header row
+        column_mapping = {}
+        for i, header in enumerate(header_values):
+            if pd.notna(header) and str(header).strip():
+                column_mapping[df.columns[i]] = str(header).strip()
+        
+        logger.info(f"Column mapping: {column_mapping}")
+        
+        # Rename columns
+        df_data.rename(columns=column_mapping, inplace=True)
+        
+        # Normalize column headers
+        df_data.columns = (
+            df_data.columns.astype(str)
+              .str.replace('\u00A0', ' ', regex=False)
+              .str.replace(r'\s+', ' ', regex=True)
+              .str.strip()
+        )
+        
+        # Standardize column names
+        rename_map = {
+            'Week (in MIT budget)': 'Week',
+            'Start date': 'Start date',
+            'VERT': 'VERT',
+            'Training Site': 'Training Site',
+            'Location': 'Location',
+            'Salary': 'Salary',
+            'Level': 'Level',
+            'Status': 'Status',
+            'Confidence': 'Confidence',
+            'Mentor': 'Mentor',
+            'MIT Name': 'MIT Name',
+            'New Candidate Name': 'MIT Name'  # For the second section
+        }
+        df_data.rename(columns={k: v for k, v in rename_map.items() if k in df_data.columns}, inplace=True)
+        
+        # Filter out empty rows and header rows
+        df_data = df_data[df_data['MIT Name'].notna()]
+        df_data = df_data[df_data['MIT Name'].astype(str).str.strip().str.lower() != 'mit name']
+        df_data = df_data[df_data['MIT Name'].astype(str).str.strip() != '']
+        df_data = df_data[df_data['MIT Name'].astype(str).str.strip() != 'New Candidate Name']  # Remove header row from second section
+        
+        # Handle the two sections
+        # Mark candidates from second section as offer pending
+        if 'JV' in df_data.columns:
+            df_data.loc[df_data['JV'].notna(), 'Status'] = 'Offer Pending'
+        
+        # Also mark rows where Status is empty as Offer Pending (for second section)
+        df_data['Status'] = df_data['Status'].fillna('')
+        df_data.loc[(df_data['Status'] == '') & (df_data['MIT Name'].notna()), 'Status'] = 'Offer Pending'
+        
+        # Normalize Week to numeric
+        if 'Week' in df_data.columns:
+            df_data['Week'] = pd.to_numeric(df_data['Week'], errors='coerce').fillna(0).astype(int)
+        
+        # Ensure all expected columns exist
+        expected_cols = ['MIT Name', 'Week', 'Start date', 'VERT', 'Training Site', 'Location', 'Salary', 'Level', 'Status', 'Confidence', 'Mentor', 'Notes']
+        for col in expected_cols:
+            if col not in df_data.columns:
+                df_data[col] = None
+        
+        logger.info(f"MIT Tracking data: Found {len(df_data)} candidates")
+        logger.info(f"Candidate names: {list(df_data['MIT Name'].dropna())}")
+        
+        return df_data
+    except Exception as e:
+        logger.error(f"Error fetching MIT Tracking data: {e}")
+        return pd.DataFrame(columns=['MIT Name'])
+
+def fetch_fallback_candidate_data() -> pd.DataFrame:
+    """
+    Fetch fallback/historical candidate sheet. It contains an extra first column.
+    Drop the extra column and apply normal column mapping to align with main sheet.
+    """
+    try:
+        df = _read_csv_normalized(FALLBACK_CANDIDATE_SHEET_URL, dtype=str)
+        
+        # Drop the first column (the extra "6 month survey sent?" column)
+        # This ensures all columns align with the main sheet structure
+        if len(df.columns) > 0:
+            df = df.drop(df.columns[0], axis=1)
+        
+        # Now apply the normal column mapping
+        norm = lambda s: re.sub(r'\s+', ' ', s.replace('\u00A0', ' ').strip().lower())
+        mapping_norm = {norm(k): v for k, v in COLUMN_MAPPING.items()}
+        df.rename(columns=lambda c: mapping_norm.get(norm(c), c), inplace=True)
+
+        # Preserve original Company Start Date string for display parity with main sheet
+        if "Company Start Date" in df.columns and "Company Start Date Original" not in df.columns:
+            df["Company Start Date Original"] = df["Company Start Date"].copy()
+
+        # Ensure key columns exist
+        for key in ['MIT Name', 'Company Start Date', 'Training Program', 'Status']:
+            if key not in df.columns:
+                df[key] = None
+
+        return df
+    except Exception as e:
+        logger.error(f"Error fetching fallback candidate data: {e}")
+        return pd.DataFrame(columns=['MIT Name'])
+
+def find_candidate_in_sheet(name: str, df: pd.DataFrame, hint_mentor: str = None) -> Optional[pd.Series]:
+    """
+    Find candidate by name using exact normalized match, then fuzzy fallback.
+    If hint_mentor is provided, use mentor matching as a tiebreaker for fuzzy matches.
+    """
+    target = normalize_name(name)
+    if 'MIT Name' not in df.columns:
+        return None
+
+    # Exact first
+    for _, row in df.iterrows():
+        if normalize_name(row.get('MIT Name', '')) == target:
+            return row
+
+    # Fuzzy with mentor boost
+    for _, row in df.iterrows():
+        nm = row.get('MIT Name', '')
+        if fuzzy_match_name(name, nm, threshold=0.85):
+            return row
+        # If mentor matches, accept with lower name threshold
+        if hint_mentor and mentor_match(hint_mentor, row.get('Mentor Name', '')):
+            if fuzzy_match_name(name, nm, threshold=0.78):
+                return row
+
+    return None
+
+def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
+    """
+    Create a minimal candidate profile from MIT Tracking fields.
+    """
+    return {
+        'name': str(tracking_row.get('MIT Name', '—')),
+        'training_site': str(tracking_row.get('Training Site', '—')),
+        'location': str(tracking_row.get('Location', '—')),
+        'week': int(pd.to_numeric(tracking_row.get('Week', 0), errors='coerce') or 0),
+        'expected_graduation_week': '—',
+        'salary': parse_salary(tracking_row.get('Salary', 0)),
+        'status': str(tracking_row.get('Status', 'offer_pending')).lower(),
+        'training_program': 'MIT',
+        'mentor_name': str(tracking_row.get('Mentor', '—')),
+        'mentor_title': '—',
+        'scores': {},
+        'onboarding_progress': None,
+        'business_lessons_progress': None,
+        'operation_details': {
+            'company_start_date': str(tracking_row.get('Start date', '—')),
+            'training_start_date': '—',
+            'title': '—',
+            'operation_location': str(tracking_row.get('Training Site', '—')),
+            'vertical': str(tracking_row.get('VERT', '—'))
+        },
+        'resume_link': '',
+        'profile_image': f"/headshots/{str(tracking_row.get('MIT Name','')).replace(' ', '').lower()}.png",
+        'data_quality': 'limited'
+    }
+
+def merge_candidate_sources() -> List[Dict[str, Any]]:
+    """
+    Build a unified candidate list from MIT Tracking (master), Main sheet, and Fallback sheet.
+    Matching uses exact normalized name, then fuzzy.
+    """
+    mit_df = fetch_mit_tracking_data()
+    main_df = fetch_google_sheets_data()
+    fallback_df = fetch_fallback_candidate_data()
+
+    unified: List[Dict[str, Any]] = []
+
+    for _, trow in mit_df.iterrows():
+        candidate_name = trow.get('MIT Name', '')
+        mentor_name = trow.get('Mentor', '')
+        if not str(candidate_name).strip():
+            continue
+
+        # Try main with mentor hint
+        found = find_candidate_in_sheet(candidate_name, main_df, hint_mentor=mentor_name)
+        if found is not None:
+            cand = process_candidate_data(found)
+            cand['data_quality'] = 'full'
+            unified.append(cand)
+            continue
+
+        # Try fallback with mentor hint
+        found = find_candidate_in_sheet(candidate_name, fallback_df, hint_mentor=mentor_name)
+        if found is not None:
+            cand = process_candidate_data(found)
+            cand['data_quality'] = 'archive'
+            unified.append(cand)
+            continue
+
+        # Basic profile
+        unified.append(create_basic_profile_from_mit(trow))
+
+    return unified
 
 def fetch_google_sheets_data() -> pd.DataFrame:
     """
@@ -638,7 +967,13 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
     if 'amazon' in training_location or candidate_vertical == 'aviation':
         vertical_score += 10
     
-    score_breakdown['vertical_alignment'] = vertical_score
+    # Create detailed breakdown with explanations
+    score_breakdown['vertical_alignment'] = {
+        'score': vertical_score,
+        'max': 40,
+        'explanation': f"{'Perfect match' if vertical_score >= 30 else 'No match'} - {candidate_vertical} vs {job_vertical}" + 
+                      (f" (+{vertical_score-30} bonus for Amazon/Aviation)" if vertical_score > 30 else "")
+    }
     total_score += vertical_score
     
     # 2. Salary Trajectory (25 pts)
@@ -655,7 +990,11 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
         elif salary_ratio < 0.95:  # Job is more than 5% below
             salary_score = -10
     
-    score_breakdown['salary_trajectory'] = salary_score
+    score_breakdown['salary_trajectory'] = {
+        'score': salary_score,
+        'max': 25,
+        'explanation': f"Job offers {'5%+ increase' if salary_score == 25 else 'similar pay' if salary_score == 15 else 'lower pay' if salary_score == -10 else 'no data'}"
+    }
     total_score += salary_score
     
     # 3. Geographic Fit (20 pts)
@@ -672,7 +1011,11 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
         else:
             geo_score = 5
     
-    score_breakdown['geographic_fit'] = geo_score
+    score_breakdown['geographic_fit'] = {
+        'score': geo_score,
+        'max': 20,
+        'explanation': f"{'Same city' if geo_score == 20 else 'Same state' if geo_score == 10 else 'Different location' if geo_score == 5 else 'No location data'}"
+    }
     total_score += geo_score
     
     # 4. Confidence (15 pts)
@@ -686,7 +1029,11 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
     elif 'low' in confidence_value:
         confidence_score = 5
     
-    score_breakdown['confidence'] = confidence_score
+    score_breakdown['confidence'] = {
+        'score': confidence_score,
+        'max': 15,
+        'explanation': f"Candidate confidence: {confidence_value or 'moderate'}"
+    }
     total_score += confidence_score
     
     # 5. Readiness (10 pts)
@@ -698,7 +1045,11 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
     elif week > 0:
         readiness_score = min(10, week * 1.5)
     
-    score_breakdown['readiness'] = readiness_score
+    score_breakdown['readiness'] = {
+        'score': readiness_score,
+        'max': 10,
+        'explanation': f"Week {week} of training"
+    }
     total_score += readiness_score
     
     # Determine match quality
@@ -717,16 +1068,16 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
         'breakdown': score_breakdown
     }
 
-def get_top_matches(job_id: int, limit: int = 3) -> List[Dict[str, Any]]:
+def get_top_matches(job_id: int, limit: int = 6) -> List[Dict[str, Any]]:
     """
     Get top matching candidates for a specific job position
     
-    This function fetches all candidates, calculates match scores against
+    This function fetches all candidates from three-tier integration, calculates match scores against
     the specified job, and returns the top N matches sorted by score.
     
     Args:
         job_id: Job position ID to match against
-        limit: Maximum number of matches to return (default: 3)
+        limit: Maximum number of matches to return (default: 4)
         
     Returns:
         List of dictionaries containing top matching candidates with scores
@@ -745,13 +1096,11 @@ def get_top_matches(job_id: int, limit: int = 3) -> List[Dict[str, Any]]:
             logger.error(f"Job with ID {job_id} not found")
             return []
         
-        # Get all candidates
-        df = fetch_google_sheets_data()
-        candidates = []
+        # Get all candidates from three-tier integration
+        candidates = merge_candidate_sources()
         
-        for _, row in df.iterrows():
-            candidate_data = process_candidate_data(row)
-            candidates.append(candidate_data)
+        # Exclude offer pending candidates from matching
+        candidates = [c for c in candidates if c.get('status', '').lower() != 'offer_pending']
         
         # Calculate match scores
         matches = []
