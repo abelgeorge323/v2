@@ -19,6 +19,12 @@ GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRH719lKRRd
 # Google Sheets URL for open positions data
 OPEN_POSITIONS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbdhuieyA-axzb4aLe8c7zdAYXBLPNrIxKRder6j1ZAlj2g4U1k0YzkZbm_dEcSwBik4CJ57FROJ/pub?gid=1073524035&single=true&output=csv'
 
+# Master list: MIT Tracking Sheet (active candidates; two-section layout)
+MIT_TRACKING_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbdhuieyA-axzb4aLe8c7zdAYXBLPNrIxKRder6j1ZAlj2g4U1k0YzkZbm_dEcSwBik4CJ57FROJ/pub?gid=813046237&single=true&output=csv'
+
+# Fallback/historical sheet (similar to main but with an extra leading column)
+FALLBACK_CANDIDATE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRH719lKRRdQV8Y4CEEl7Gk-lfrAGulMcOgu3sltQ7zupMRDlP3Rpgaa-sEJlRTNqrRsTuPNcOswlv9/pub?gid=1149285782&single=true&output=csv'
+
 # =============================================================================
 # TRAINING PROGRAM CONFIGURATION
 # =============================================================================
@@ -59,8 +65,10 @@ COLUMN_MAPPING = {
     "Perf Evaluation Score": "Perf Evaluation Score",  # Performance Evaluation column (Row AF)
     "Skill Ranking": "Skill Ranking",  # Skill Ranking column (Row AK)
     # Job matching algorithm columns
-    "AJ": "Confidence",  # Column AJ for confidence scoring
-    "AV": "Vertical",    # Column AV for vertical alignment
+    # Normalize any 'Confidence' header variant to the canonical 'Confidence Score'
+    "Confidence Score": "Confidence Score",
+    "Confidence": "Confidence Score",
+    "Vertical": "Vertical",    # Column AV for vertical alignment
     "AT": "Training Location",  # Column AT for training location/background
     # Resume column
     "Resume": "Resume",  # Column AZ - Resume URLs
