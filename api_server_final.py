@@ -37,7 +37,9 @@ from utils import (
     log_error,
     merge_candidate_sources,
     normalize_name,
-    parse_salary
+    parse_salary,
+    build_mentor_profiles,
+    get_mentor_dashboard_metrics
 )
 
 # =============================================================================
@@ -200,6 +202,9 @@ def get_dashboard_data():
         open_positions = fetch_open_positions_data()
         open_positions_count = len(open_positions)
         
+        # Get mentor metrics
+        mentor_metrics = get_mentor_dashboard_metrics()
+        
         dashboard_data = {
             'total_candidates': total_candidates,
             'in_training': in_training,
@@ -210,7 +215,8 @@ def get_dashboard_data():
             'week_7_only': len(categorized['week_7_only']),  # Week 7 Priority
             'weeks_8_plus': len(categorized['weeks_8_plus']),  # Ready for Placement
             'open_positions': open_positions_count,
-            'average_salary': round(avg_salary, 2)
+            'average_salary': round(avg_salary, 2),
+            'mentor_metrics': mentor_metrics
         }
         
         response = jsonify(dashboard_data)
@@ -485,6 +491,36 @@ def internal_error(error):
     return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 # =============================================================================
+# MENTOR ENDPOINTS
+# =============================================================================
+
+@app.route('/api/mentors', methods=['GET'])
+def get_all_mentors():
+    """Get list of all mentors with their profiles"""
+    profiles = build_mentor_profiles()
+    return jsonify(profiles), 200
+
+@app.route('/api/mentor/<mentor_name>', methods=['GET'])
+def get_mentor_profile(mentor_name):
+    """Get detailed profile for a specific mentor"""
+    profiles = build_mentor_profiles()
+    
+    # Find mentor by name (case-insensitive)
+    mentor_name_lower = mentor_name.lower()
+    mentor = next((m for m in profiles if m['name'].lower() == mentor_name_lower), None)
+    
+    if not mentor:
+        return jsonify({'error': 'Mentor not found'}), 404
+    
+    return jsonify(mentor), 200
+
+@app.route('/api/mentor-metrics', methods=['GET'])
+def get_mentor_metrics():
+    """Get mentor metrics for dashboard block"""
+    metrics = get_mentor_dashboard_metrics()
+    return jsonify(metrics), 200
+
+# =============================================================================
 # MAIN APPLICATION
 # =============================================================================
 
@@ -513,6 +549,9 @@ if __name__ == '__main__':
     print("   - GET /api/candidates/weeks-4-6 - Weeks 4-6 candidates")
     print("   - GET /api/candidates/week-7-priority - Week 7 priority candidates")
     print("   - GET /api/candidates/weeks-8-plus - Weeks 8+ candidates")
+    print("   - GET /api/mentors - All mentors with profiles")
+    print("   - GET /api/mentor/<name> - Individual mentor profile")
+    print("   - GET /api/mentor-metrics - Mentor dashboard metrics")
     print("   - GET /headshots/<filename> - Serve headshot images")
     print("   - GET /api/health - Health check")
     print()
