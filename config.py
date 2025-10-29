@@ -25,6 +25,10 @@ MIT_TRACKING_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbd
 # Fallback/historical sheet (similar to main but with an extra leading column)
 FALLBACK_CANDIDATE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRH719lKRRdQV8Y4CEEl7Gk-lfrAGulMcOgu3sltQ7zupMRDlP3Rpgaa-sEJlRTNqrRsTuPNcOswlv9/pub?gid=1149285782&single=true&output=csv'
 
+# Mentor Effectiveness Data URLs
+MENTOR_RELATIONSHIPS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRH719lKRRdQV8Y4CEEl7Gk-lfrAGulMcOgu3sltQ7zupMRDlP3Rpgaa-sEJlRTNqrRsTuPNcOswlv9/pub?gid=1269990929&single=true&output=csv'
+MENTOR_MEI_SUMMARY_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRH719lKRRdQV8Y4CEEl7Gk-lfrAGulMcOgu3sltQ7zupMRDlP3Rpgaa-sEJlRTNqrRsTuPNcOswlv9/pub?gid=1759772785&single=true&output=csv'
+
 # =============================================================================
 # TRAINING PROGRAM CONFIGURATION
 # =============================================================================
