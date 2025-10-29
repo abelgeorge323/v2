@@ -1123,3 +1123,172 @@ def get_top_matches(job_id: int, limit: int = 6) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error getting top matches for job {job_id}: {str(e)}")
         return []
+
+
+# =============================================================================
+# MENTOR EFFECTIVENESS FUNCTIONS
+# =============================================================================
+
+def fetch_mentor_relationships_data() -> List[Dict[str, Any]]:
+    """
+    Fetch individual mentor-trainee relationship data from Google Sheets
+    
+    Returns:
+        List of dictionaries with mentor-trainee pairs and effectiveness scores
+    """
+    try:
+        logger.info("Fetching mentor relationships data from Google Sheets")
+        df = pd.read_csv(MENTOR_RELATIONSHIPS_URL, dtype=str)
+        
+        # Clean column names
+        df.columns = df.columns.str.strip()
+        
+        # Filter out empty rows
+        df = df.dropna(subset=['Mentor Name', 'Trainee Name'], how='all')
+        
+        relationships = []
+        for _, row in df.iterrows():
+            relationships.append({
+                'mentor_name': str(row.get('Mentor Name', '')).strip(),
+                'trainee_name': str(row.get('Trainee Name', '')).strip(),
+                'training_program': str(row.get('Training Program', '')).strip(),
+                'completion_status': str(row.get('Completion Status', '')).strip(),
+                'effectiveness_score': float(row.get('Mentor Effectiveness Score', 0)) if pd.notna(row.get('Mentor Effectiveness Score')) else 0.0
+            })
+        
+        logger.info(f"Successfully fetched {len(relationships)} mentor relationships")
+        return relationships
+        
+    except Exception as e:
+        logger.error(f"Error fetching mentor relationships data: {str(e)}")
+        return []
+
+
+def fetch_mentor_mei_summary() -> Dict[str, Dict[str, Any]]:
+    """
+    Fetch aggregated mentor MEI scores from Google Sheets
+    
+    Returns:
+        Dictionary mapping mentor names to their summary stats
+    """
+    try:
+        logger.info("Fetching mentor MEI summary from Google Sheets")
+        df = pd.read_csv(MENTOR_MEI_SUMMARY_URL, dtype=str)
+        
+        # Clean column names
+        df.columns = df.columns.str.strip()
+        
+        # Filter out empty rows
+        df = df.dropna(subset=['Mentor Name'], how='all')
+        
+        summary = {}
+        for _, row in df.iterrows():
+            mentor_name = str(row.get('Mentor Name', '')).strip()
+            if mentor_name:
+                summary[mentor_name] = {
+                    'num_trainees': int(row.get('Number of Trainees', 0)) if pd.notna(row.get('Number of Trainees')) else 0,
+                    'average_mei': float(row.get('Average MEI', 0)) if pd.notna(row.get('Average MEI')) else 0.0
+                }
+        
+        logger.info(f"Successfully fetched MEI summary for {len(summary)} mentors")
+        return summary
+        
+    except Exception as e:
+        logger.error(f"Error fetching mentor MEI summary: {str(e)}")
+        return {}
+
+
+def build_mentor_profiles() -> List[Dict[str, Any]]:
+    """
+    Build comprehensive mentor profiles by combining relationship and summary data
+    
+    Returns:
+        List of mentor profile dictionaries
+    """
+    relationships = fetch_mentor_relationships_data()
+    mei_summary = fetch_mentor_mei_summary()
+    
+    # Group relationships by mentor
+    mentor_trainees = {}
+    for rel in relationships:
+        mentor_name = rel['mentor_name']
+        if mentor_name not in mentor_trainees:
+            mentor_trainees[mentor_name] = []
+        mentor_trainees[mentor_name].append(rel)
+    
+    # Build profiles
+    profiles = []
+    for mentor_name, trainees in mentor_trainees.items():
+        # Get MEI summary or calculate from relationships
+        summary = mei_summary.get(mentor_name, {})
+        avg_mei = summary.get('average_mei', 0.0)
+        
+        # If no summary, calculate from relationships
+        if avg_mei == 0 and trainees:
+            scores = [t['effectiveness_score'] for t in trainees if t['effectiveness_score'] > 0]
+            avg_mei = sum(scores) / len(scores) if scores else 0.0
+        
+        # Count completion statuses
+        completed = sum(1 for t in trainees if 'Complete' in t['completion_status'])
+        in_progress = sum(1 for t in trainees if 'Currently' in t['completion_status'] or 'Pending' in t['completion_status'])
+        unsuccessful = sum(1 for t in trainees if any(x in t['completion_status'] for x in ['Removed', 'Resigned', 'Incomplete', 'Never']))
+        
+        # Determine mentor tier
+        if avg_mei >= 2.5:
+            tier = 'Strong Mentor'
+            tier_color = 'green'
+        elif avg_mei >= 1.5:
+            tier = 'In Progress'
+            tier_color = 'yellow'
+        else:
+            tier = 'Needs Improvement'
+            tier_color = 'red'
+        
+        profiles.append({
+            'name': mentor_name,
+            'average_mei': round(avg_mei, 2),
+            'num_trainees': len(trainees),
+            'completed': completed,
+            'in_progress': in_progress,
+            'unsuccessful': unsuccessful,
+            'tier': tier,
+            'tier_color': tier_color,
+            'trainees': trainees,
+            'success_rate': round((completed / len(trainees) * 100) if trainees else 0, 1)
+        })
+    
+    # Sort by average MEI descending
+    profiles.sort(key=lambda x: x['average_mei'], reverse=True)
+    
+    logger.info(f"Built {len(profiles)} mentor profiles")
+    return profiles
+
+
+def get_mentor_dashboard_metrics() -> Dict[str, Any]:
+    """
+    Calculate dashboard metrics for mentor block
+    
+    Returns:
+        Dictionary with mentor metrics for dashboard display
+    """
+    profiles = build_mentor_profiles()
+    
+    if not profiles:
+        return {
+            'total_mentors': 0,
+            'average_mei': 0.0,
+            'strong_mentors': 0,
+            'needs_improvement': 0
+        }
+    
+    total = len(profiles)
+    avg_mei = sum(p['average_mei'] for p in profiles) / total if total > 0 else 0.0
+    strong = sum(1 for p in profiles if p['average_mei'] >= 2.5)
+    needs_improvement = sum(1 for p in profiles if p['average_mei'] < 1.5)
+    
+    return {
+        'total_mentors': total,
+        'average_mei': round(avg_mei, 2),
+        'strong_mentors': strong,
+        'needs_improvement': needs_improvement
+    }
