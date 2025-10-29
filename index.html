@@ -723,6 +723,21 @@
             padding: 40px;
         }
 
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #374151;
+            border-top: 4px solid #8b5cf6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .no-candidates {
             text-align: center;
             color: #64748b;
@@ -1067,7 +1082,7 @@
         background: linear-gradient(135deg, #10b981, #14b8a6);
         width: 48px;
         height: 48px;
-        border-radius: 50%;
+            border-radius: 50%;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1100,8 +1115,8 @@
     }
 
     .meta-item {
-        display: flex;
-        align-items: center;
+            display: flex;
+            align-items: center;
         gap: 8px;
         background: rgba(55, 65, 81, 0.4);
         padding: 8px 12px;
@@ -1244,7 +1259,7 @@
 
     .match-actions {
         display: flex;
-        justify-content: center;
+            justify-content: center;
         padding-top: 16px;
         border-top: 1px solid rgba(75, 85, 99, 0.3);
     }
@@ -1255,7 +1270,7 @@
         border: none;
         padding: 12px 24px;
         border-radius: 8px;
-        font-weight: 600;
+            font-weight: 600;
         font-size: 0.95em;
         cursor: pointer;
         transition: all 0.2s ease;
@@ -1306,6 +1321,411 @@
     @keyframes pulse {
         0%, 100% { opacity: 0.6; }
         50% { opacity: 1; }
+        }
+
+    /* =============================================================================
+       MENTOR EFFECTIVENESS STYLES
+       ============================================================================= */
+
+    /* Mentor Block Styling */
+    .stat-card.mentor-block {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.05));
+        border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    .mentor-metrics {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .mentor-metric-item {
+        text-align: center;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+    }
+
+    .mentor-metric-label {
+        font-size: 0.75em;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .mentor-metric-value {
+        font-size: 1.4em;
+        font-weight: 700;
+        color: #8b5cf6;
+    }
+
+    /* Mentor List Styles */
+    .mentor-list-container {
+        padding: 24px;
+    }
+
+    .mentor-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    @media (max-width: 1200px) {
+        .mentor-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .mentor-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .mentor-card {
+        background: #1f2937;
+        border: 2px solid #374151;
+        border-radius: 12px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .mentor-card.strong-mentor {
+        border-color: #10b981;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), #1f2937);
+    }
+
+    .mentor-card.in-progress-mentor {
+        border-color: #f59e0b;
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), #1f2937);
+    }
+
+    .mentor-card.needs-improvement-mentor {
+        border-color: #ef4444;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), #1f2937);
+    }
+
+    .mentor-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .mentor-card.strong-mentor:hover {
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+    }
+
+    .mentor-card.in-progress-mentor:hover {
+        box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+    }
+
+    .mentor-card.needs-improvement-mentor:hover {
+        box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+    }
+
+    .mentor-card-header {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .mentor-name {
+        font-size: 1.3em;
+        font-weight: 700;
+        color: #f3f4f6;
+    }
+
+    .mentor-mei-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: 700;
+    }
+
+    .mentor-mei-badge.green {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        border: 1px solid #10b981;
+    }
+
+    .mentor-mei-badge.yellow {
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+        border: 1px solid #f59e0b;
+    }
+
+    .mentor-mei-badge.red {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border: 1px solid #ef4444;
+    }
+
+    .mentor-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .mentor-stat {
+        text-align: center;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+    }
+
+    .mentor-stat-value {
+        font-size: 1.5em;
+        font-weight: 700;
+        color: #8b5cf6;
+    }
+
+    .mentor-stat-label {
+        font-size: 0.75em;
+        color: #9ca3af;
+        text-transform: uppercase;
+        margin-top: 4px;
+    }
+
+    .mentor-tier-summary {
+        font-size: 0.9em;
+        color: #9ca3af;
+        text-align: center;
+    }
+
+    /* Mentor Filter Styles */
+    .mentor-filter-container {
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .mentor-filter-label {
+        font-size: 0.95em;
+        color: #9ca3af;
+        font-weight: 500;
+    }
+
+    .mentor-filter-select {
+        padding: 10px 16px;
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 8px;
+        color: #f3f4f6;
+        font-size: 0.95em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 200px;
+    }
+
+    .mentor-filter-select:hover {
+        border-color: #8b5cf6;
+    }
+
+    .mentor-filter-select:focus {
+        outline: none;
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    /* Pagination Styles */
+    .pagination-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 32px;
+        flex-wrap: wrap;
+    }
+
+    .pagination-button {
+        padding: 8px 16px;
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 8px;
+        color: #f3f4f6;
+        font-size: 0.9em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 40px;
+        text-align: center;
+    }
+
+    .pagination-button:hover:not(:disabled) {
+        background: #374151;
+        border-color: #8b5cf6;
+    }
+
+    .pagination-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pagination-button.active {
+        background: #8b5cf6;
+        border-color: #8b5cf6;
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    .pagination-info {
+        margin: 0 16px;
+        color: #9ca3af;
+        font-size: 0.9em;
+    }
+
+    /* Navigation Buttons */
+    .bottom-nav {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .back-button {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border: none;
+        border-radius: 8px;
+        color: #ffffff;
+        font-size: 0.95em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .back-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .back-button:active {
+        transform: translateY(0);
+    }
+
+    /* Mentor Profile Page */
+    .mentor-profile-container {
+        padding: 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .mentor-profile-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    @media (max-width: 1024px) {
+        .mentor-profile-content {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .mentor-profile-header {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.08));
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 16px;
+        padding: 32px;
+    }
+
+    .mentor-profile-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .mentor-profile-name {
+        font-size: 2.2em;
+        font-weight: 700;
+        color: #f3f4f6;
+    }
+
+    .mentor-overview-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+
+    .mentor-trainee-list {
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 12px;
+        padding: 24px;
+    }
+
+    .trainee-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .trainee-item:hover {
+        border-color: #8b5cf6;
+        background: rgba(139, 92, 246, 0.05);
+    }
+
+    .trainee-info {
+        flex: 1;
+    }
+
+    .trainee-name {
+        font-size: 1.1em;
+        font-weight: 600;
+        color: #f3f4f6;
+        margin-bottom: 4px;
+    }
+
+    .trainee-program {
+        font-size: 0.85em;
+        color: #9ca3af;
+    }
+
+    .trainee-status {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        font-weight: 600;
+    }
+
+    .trainee-status.complete {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+
+    .trainee-status.in-progress {
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+    }
+
+    .trainee-status.unsuccessful {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    .trainee-score {
+        margin-left: 16px;
+        font-size: 1.2em;
+        font-weight: 700;
+        color: #8b5cf6;
         }
     </style>
 </head>
@@ -1464,7 +1884,18 @@
         
         // Job matches cache
         let jobMatchesCache = {}; // Store matches by job ID
+        let openPositionsCache = {}; // Store open positions data
+        let candidatesCache = {}; // Store different candidate lists
         const JOB_MATCHES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+        const OPEN_POSITIONS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+        const CANDIDATES_CACHE_DURATION = 3 * 60 * 1000; // 3 minutes
+        
+        // Mentor state management
+        let allMentors = [];
+        let filteredMentors = [];
+        let currentMentorPage = 1;
+        const mentorsPerPage = 8;
+        let currentMentorFilter = 'all';
         
         // Load cache from localStorage on page load
         function loadCacheFromStorage() {
@@ -1591,18 +2022,53 @@
                     <div class="metric-value">${data.week_7_only || 0}</div>
                     <div class="metric-change">Action Needed!</div>
                 </div>
+                
+                <!-- Row 3: Mentor Effectiveness -->
+                <div class="metric-card mentor-block" onclick="showAllMentors()">
+                    <div class="metric-label">Active Mentors</div>
+                    <div class="metric-value">${data.mentor_metrics?.total_mentors || 0}</div>
+                    <div class="metric-change">Average MEI: ${data.mentor_metrics?.average_mei?.toFixed(2) || '0.00'}/3.0</div>
+                    <div class="mentor-metrics">
+                        <div class="mentor-metric-item">
+                            <div class="mentor-metric-label">Strong</div>
+                            <div class="mentor-metric-value" style="color: #10b981;">${data.mentor_metrics?.strong_mentors || 0}</div>
+                        </div>
+                        <div class="mentor-metric-item">
+                            <div class="mentor-metric-label">Needs Help</div>
+                            <div class="mentor-metric-value" style="color: #ef4444;">${data.mentor_metrics?.needs_improvement || 0}</div>
+                        </div>
+                    </div>
+                </div>
             `;
         }
 
         // Load all candidates data from API
         async function loadAllCandidates() {
             try {
+                // Check cache first
+                const cached = candidatesCache.all;
+                const now = Date.now();
+                
+                if (cached && (now - cached.timestamp) < CANDIDATES_CACHE_DURATION) {
+                    console.log('✅ Using cached all candidates');
+                    candidates = cached.data;
+                    renderAllCandidates();
+                    return;
+                }
+                
+                console.log('🔄 Fetching fresh all candidates');
                 const response = await fetch(`${API_BASE_URL}/api/all-candidates`);
                 const data = await response.json();
                 
                 if (data.error) {
                     throw new Error(data.error);
                 }
+                
+                // Cache the results
+                candidatesCache.all = {
+                    data: data,
+                    timestamp: Date.now()
+                };
                 
                 candidates = data;
                 renderAllCandidates();
@@ -1616,12 +2082,30 @@
         // Load in training candidates from API
         async function loadInTrainingCandidates() {
             try {
+                // Check cache first
+                const cached = candidatesCache.in_training;
+                const now = Date.now();
+                
+                if (cached && (now - cached.timestamp) < CANDIDATES_CACHE_DURATION) {
+                    console.log('✅ Using cached in-training candidates');
+                    candidates = cached.data;
+                    renderInTrainingCandidates();
+                    return;
+                }
+                
+                console.log('🔄 Fetching fresh in-training candidates');
                 const response = await fetch(`${API_BASE_URL}/api/in-training-candidates`);
                 const data = await response.json();
                 
                 if (data.error) {
                     throw new Error(data.error);
                 }
+                
+                // Cache the results
+                candidatesCache.in_training = {
+                    data: data,
+                    timestamp: Date.now()
+                };
                 
                 candidates = data;
                 renderInTrainingCandidates();
@@ -1748,12 +2232,30 @@
         // Load open positions from API
         async function loadOpenPositions() {
             try {
+                // Check cache first
+                const cached = openPositionsCache.data;
+                const now = Date.now();
+                
+                if (cached && (now - cached.timestamp) < OPEN_POSITIONS_CACHE_DURATION) {
+                    console.log('✅ Using cached open positions');
+                    positions = cached.data;
+                    renderOpenPositions();
+                    return;
+                }
+                
+                console.log('🔄 Fetching fresh open positions');
                 const response = await fetch(`${API_BASE_URL}/api/open-positions`);
                 const data = await response.json();
                 
                 if (data.error) {
                     throw new Error(data.error);
                 }
+                
+                // Cache the results
+                openPositionsCache.data = {
+                    data: data,
+                    timestamp: Date.now()
+                };
                 
                 positions = data;
                 renderOpenPositions();
@@ -2402,7 +2904,12 @@
                         <div class="mentor-info-small">
                             <h3>👨‍🏫 Mentor Information</h3>
                             <div class="info-grid">
-                                <div><strong>Mentor Name:</strong> <span class="mentor-name">${candidate.mentor_name}</span></div>
+                                <div><strong>Mentor Name:</strong> 
+                                    <span class="mentor-name" style="color: #8b5cf6; text-decoration: underline; cursor: pointer;" 
+                                          onclick="event.preventDefault(); showMentorProfile('${candidate.mentor_name}');">
+                                        ${candidate.mentor_name}
+                                    </span>
+                                </div>
                                 <div><strong>Mentor Title:</strong> ${candidate.mentor_title}</div>
                             </div>
                         </div>
@@ -2551,9 +3058,278 @@
             loadOfferPending();
         }
 
+        // =============================================================================
+        // MENTOR FUNCTIONS
+        // =============================================================================
+
+        async function showAllMentors() {
+            try {
+                hideAllPages();
+                document.getElementById('candidateList').classList.add('active');
+                document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading mentors...</div>';
+                document.querySelector('.candidates-container h2').textContent = '👨‍🏫 Active Mentors';
+                previousPage = currentPage;
+                currentPage = 'mentors';
+                
+                const response = await fetch(`${API_BASE_URL}/api/mentors${CACHE_BUST}`);
+                const mentors = await response.json();
+                
+                if (mentors.error) {
+                    throw new Error(mentors.error);
+                }
+                
+                // Store all mentors and reset pagination
+                allMentors = mentors;
+                currentMentorPage = 1;
+                currentMentorFilter = 'all';
+                
+                // Initial filter and render
+                filterAndRenderMentors();
+                
+            } catch (error) {
+                console.error('Error loading mentors:', error);
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading mentors: ${error.message}</div>`;
+            }
+        }
+
+        function filterMentorsByMEI(filterType) {
+            currentMentorFilter = filterType;
+            switch(filterType) {
+                case 'strong':
+                    filteredMentors = allMentors.filter(m => m.average_mei >= 2.5);
+                    break;
+                case 'in_progress':
+                    filteredMentors = allMentors.filter(m => m.average_mei >= 1.5 && m.average_mei < 2.5);
+                    break;
+                case 'needs_improvement':
+                    filteredMentors = allMentors.filter(m => m.average_mei < 1.5);
+                    break;
+                default:
+                    filteredMentors = allMentors;
+            }
+            currentMentorPage = 1; // Reset to first page when filter changes
+            renderMentorPage();
+        }
+
+        function renderMentorPage() {
+            const startIndex = (currentMentorPage - 1) * mentorsPerPage;
+            const endIndex = startIndex + mentorsPerPage;
+            const mentorsToShow = filteredMentors.slice(startIndex, endIndex);
+            const totalPages = Math.ceil(filteredMentors.length / mentorsPerPage);
+            
+            const mentorsHTML = `
+                <div class="mentor-list-container">
+                    <div class="page-header">
+                        <p style="font-size: 1.1em; margin-bottom: 16px;">${filteredMentors.length} of ${allMentors.length} mentors${currentMentorFilter !== 'all' ? ' (filtered)' : ''}</p>
+                    </div>
+                    
+                    <div class="mentor-filter-container">
+                        <span class="mentor-filter-label">Filter by MEI Score:</span>
+                        <select class="mentor-filter-select" onchange="filterMentorsByMEI(this.value)">
+                            <option value="all" ${currentMentorFilter === 'all' ? 'selected' : ''}>All Mentors</option>
+                            <option value="strong" ${currentMentorFilter === 'strong' ? 'selected' : ''}>Strong (≥2.5)</option>
+                            <option value="in_progress" ${currentMentorFilter === 'in_progress' ? 'selected' : ''}>In Progress (1.5-2.49)</option>
+                            <option value="needs_improvement" ${currentMentorFilter === 'needs_improvement' ? 'selected' : ''}>Needs Improvement (&lt;1.5)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mentor-grid">
+                        ${mentorsToShow.map(mentor => {
+                            let cardClass = 'mentor-card';
+                            if (mentor.average_mei >= 2.5) {
+                                cardClass += ' strong-mentor';
+                            } else if (mentor.average_mei >= 1.5) {
+                                cardClass += ' in-progress-mentor';
+                            } else {
+                                cardClass += ' needs-improvement-mentor';
+                            }
+                            const name = mentor.name.replace(/'/g, "&#39;");
+                            return '<div class="' + cardClass + '" onclick="showMentorProfile(\'' + name + '\')">' +
+                                '<div class="mentor-card-header">' +
+                                    '<div class="mentor-name">' + mentor.name + '</div>' +
+                                '</div>' +
+                                '<div class="mentor-stats">' +
+                                    '<div class="mentor-stat">' +
+                                        '<div class="mentor-stat-value">' + mentor.num_trainees + '</div>' +
+                                        '<div class="mentor-stat-label">Trainees</div>' +
+                                    '</div>' +
+                                    '<div class="mentor-stat">' +
+                                        '<div class="mentor-stat-value">' + mentor.completed + '</div>' +
+                                        '<div class="mentor-stat-label">Completed</div>' +
+                                    '</div>' +
+                                    '<div class="mentor-stat">' +
+                                        '<div class="mentor-stat-value">' + mentor.success_rate + '%</div>' +
+                                        '<div class="mentor-stat-label">Success</div>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="mentor-tier-summary">' +
+                                    mentor.tier + ' • ' + mentor.in_progress + ' in progress' +
+                                '</div>' +
+                            '</div>';
+                        }).join('')}
+                    </div>
+                    
+                    ${totalPages > 1 ? `
+                        <div class="pagination-controls">
+                            <button class="pagination-button" onclick="goToMentorPage(${currentMentorPage - 1})" ${currentMentorPage === 1 ? 'disabled' : ''}>
+                                Previous
+                            </button>
+                            ${Array.from({ length: totalPages }, (_, i) => i + 1).map(page => `
+                                <button class="pagination-button ${page === currentMentorPage ? 'active' : ''}" onclick="goToMentorPage(${page})">
+                                    ${page}
+                                </button>
+                            `).join('')}
+                            <button class="pagination-button" onclick="goToMentorPage(${currentMentorPage + 1})" ${currentMentorPage === totalPages ? 'disabled' : ''}>
+                                Next
+                            </button>
+                            <span class="pagination-info">
+                                Page ${currentMentorPage} of ${totalPages}
+                            </span>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="bottom-nav">
+                        <button onclick="showDashboard()" class="back-button">← Back to Dashboard</button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('candidatesList').innerHTML = mentorsHTML;
+        }
+
+        function filterAndRenderMentors() {
+            filterMentorsByMEI(currentMentorFilter);
+        }
+
+        function goToMentorPage(page) {
+            const totalPages = Math.ceil(filteredMentors.length / mentorsPerPage);
+            if (page >= 1 && page <= totalPages) {
+                currentMentorPage = page;
+                renderMentorPage();
+            }
+        }
+
+        async function showMentorProfile(mentorName) {
+            try {
+                hideAllPages();
+                document.getElementById('candidateList').classList.add('active');
+                document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading mentor profile...</div>';
+                document.querySelector('.candidates-container h2').textContent = `👨‍🏫 ${mentorName}`;
+                previousPage = currentPage;
+                currentPage = 'mentor_profile';
+                
+                const response = await fetch(`${API_BASE_URL}/api/mentor/${encodeURIComponent(mentorName)}${CACHE_BUST}`);
+                const mentor = await response.json();
+                
+                if (mentor.error) {
+                    throw new Error(mentor.error);
+                }
+                
+                // Categorize trainees
+                const completed = mentor.trainees.filter(t => t.completion_status.includes('Complete'));
+                const inProgress = mentor.trainees.filter(t => t.completion_status.includes('Currently') || t.completion_status.includes('Pending'));
+                const unsuccessful = mentor.trainees.filter(t => 
+                    ['Removed', 'Resigned', 'Incomplete', 'Never', 'Terminated'].some(s => t.completion_status.includes(s))
+                );
+                
+                const profileHTML = `
+                    <div class="mentor-profile-container">
+                        <div class="mentor-profile-content">
+                            <div class="mentor-profile-header">
+                                <div class="mentor-profile-title">
+                                    <h1 class="mentor-profile-name">${mentor.name}</h1>
+                                    <div class="mentor-mei-badge ${mentor.tier_color}">
+                                        ${mentor.average_mei.toFixed(2)}/3.0 MEI
+                                    </div>
+                                </div>
+                                
+                                <div class="mentor-overview-stats">
+                                    <div class="info-card">
+                                        <div class="info-label">Total Trainees</div>
+                                        <div class="info-value">${mentor.num_trainees}</div>
+                                    </div>
+                                    <div class="info-card">
+                                        <div class="info-label">Completed</div>
+                                        <div class="info-value" style="color: #10b981;">${mentor.completed}</div>
+                                    </div>
+                                    <div class="info-card">
+                                        <div class="info-label">In Progress</div>
+                                        <div class="info-value" style="color: #f59e0b;">${mentor.in_progress}</div>
+                                    </div>
+                                    <div class="info-card">
+                                        <div class="info-label">Success Rate</div>
+                                        <div class="info-value">${mentor.success_rate}%</div>
+                                    </div>
+                                    <div class="info-card">
+                                        <div class="info-label">Mentor Tier</div>
+                                        <div class="info-value">${mentor.tier}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mentor-trainee-list">
+                            <h3 style="margin-bottom: 20px;">Mentorship History</h3>
+                            
+                            ${completed.length > 0 ? `
+                                <h4 style="color: #10b981; margin: 16px 0 12px 0;">✓ Completed (${completed.length})</h4>
+                                ${completed.map(t => `
+                                    <div class="trainee-item">
+                                        <div class="trainee-info">
+                                            <div class="trainee-name">${t.trainee_name}</div>
+                                            <div class="trainee-program">${t.training_program} • ${t.completion_status}</div>
+                                        </div>
+                                        <div class="trainee-status complete">Complete</div>
+                                    </div>
+                                `).join('')}
+                            ` : ''}
+                            
+                            ${inProgress.length > 0 ? `
+                                <h4 style="color: #f59e0b; margin: 16px 0 12px 0;">→ In Progress (${inProgress.length})</h4>
+                                ${inProgress.map(t => `
+                                    <div class="trainee-item">
+                                        <div class="trainee-info">
+                                            <div class="trainee-name">${t.trainee_name}</div>
+                                            <div class="trainee-program">${t.training_program} • ${t.completion_status}</div>
+                                        </div>
+                                        <div class="trainee-status in-progress">In Progress</div>
+                                    </div>
+                                `).join('')}
+                            ` : ''}
+                            
+                            ${unsuccessful.length > 0 ? `
+                                <h4 style="color: #ef4444; margin: 16px 0 12px 0;">✗ Unsuccessful (${unsuccessful.length})</h4>
+                                ${unsuccessful.map(t => `
+                                    <div class="trainee-item">
+                                        <div class="trainee-info">
+                                            <div class="trainee-name">${t.trainee_name}</div>
+                                            <div class="trainee-program">${t.training_program} • ${t.completion_status}</div>
+                                        </div>
+                                        <div class="trainee-status unsuccessful">${t.completion_status}</div>
+                                    </div>
+                                `).join('')}
+                            ` : ''}
+                        </div>
+                        
+                        <div class="bottom-nav">
+                            <button onclick="showAllMentors()" class="back-button">← Back to Mentors</button>
+                            <button onclick="showDashboard()" class="back-button">← Back to Dashboard</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('candidatesList').innerHTML = profileHTML;
+                
+            } catch (error) {
+                console.error('Error loading mentor profile:', error);
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading mentor profile: ${error.message}</div>`;
+            }
+        }
+
         function showMentorsList() {
-            // TODO: Implement Phase 4 - mentor list page
-            alert('Mentor list coming in Phase 4!');
+            // Legacy function - redirect to new implementation
+            showAllMentors();
         }
 
         function showCandidateList() {
@@ -2581,7 +3357,15 @@
             document.getElementById('jobMatches').classList.add('active');
             
             // Show loading state immediately
-            document.getElementById('matchesList').innerHTML = '<div class="loading">Loading matches...</div>';
+            document.getElementById('matchesList').innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Loading matches for job ${jobId}...</div>
+                    <div style="font-size: 0.8em; color: #9ca3af; margin-top: 8px;">
+                        This may take a few moments
+                    </div>
+                </div>
+            `;
             document.getElementById('jobMatchesTitle').textContent = '🔍 Loading Top Matches...';
             document.getElementById('jobHeaderContainer').innerHTML = '';
             
@@ -2603,8 +3387,25 @@
 
         async function loadJobMatches(jobId) {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/job-matches/${jobId}`);
+                console.log(`🔄 Starting to load job matches for job ${jobId}`);
+                
+                // Add timeout to prevent hanging
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                
+                const response = await fetch(`${API_BASE_URL}/api/job-matches/${jobId}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                console.log(`✅ Got response for job ${jobId}, status: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log(`✅ Parsed JSON for job ${jobId}, matches count: ${data.matches ? data.matches.length : 'unknown'}`);
                 
                 if (data.error) {
                     throw new Error(data.error);
@@ -2616,11 +3417,22 @@
                     timestamp: Date.now()
                 };
                 
+                console.log(`🔄 About to render job matches for job ${jobId}`);
                 renderJobMatches(data);
+                console.log(`✅ Finished rendering job matches for job ${jobId}`);
                 
             } catch (error) {
+                console.error(`❌ Error loading job matches for ${jobId}:`, error);
+                let errorMessage = 'Error loading matches';
+                
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Request timed out. Please try again.';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
                 document.getElementById('matchesList').innerHTML = 
-                    `<div class="error">Error loading matches: ${error.message}</div>`;
+                    `<div class="error">${errorMessage}</div>`;
             }
         }
 
@@ -2654,13 +3466,16 @@
         }
 
         function renderJobMatches(matchData) {
+            console.log('🔄 Starting renderJobMatches');
             const matchesList = document.getElementById('matchesList');
             const jobMatchesTitle = document.getElementById('jobMatchesTitle');
             const jobHeaderContainer = document.getElementById('jobHeaderContainer');
             
+            console.log('🔄 Updating page title');
             // Update page title
             jobMatchesTitle.textContent = `🔍 Top Matches for: ${matchData.job_title}`;
             
+            console.log('🔄 Rendering job header');
             // Render job header
             const jobHeaderHTML = `
                 <div class="job-details-header">
@@ -2685,8 +3500,10 @@
                 </div>
             `;
             jobHeaderContainer.innerHTML = jobHeaderHTML;
+            console.log('✅ Job header rendered');
             
             if (matchData.matches.length === 0) {
+                console.log('⚠️ No matches found');
                 matchesList.innerHTML = `
                     <div class="no-candidates">
                         <h3>No matches found for this position</h3>
@@ -2710,7 +3527,7 @@
                                     <div class="meta-item">
                                         <span class="meta-icon">📍</span>
                                         <span class="meta-text">${candidate.training_site || '—'}${candidate.location ? ', ' + candidate.location : ''}</span>
-                                    </div>
+                            </div>
                                     <div class="meta-item">
                                         <span class="meta-icon">📅</span>
                                         <span class="meta-text">Week ${candidate.week || 0}</span>
@@ -2725,8 +3542,8 @@
                                 <div class="candidate-total-score">
                                     <div class="candidate-score-number">${match.match_score}</div>
                                     <div class="candidate-score-label">Total Score</div>
-                                </div>
                             </div>
+                        </div>
                         </div>
                         
                         <div class="score-breakdown-visual">
@@ -2795,6 +3612,7 @@
                     </div>
                 `;
             }).join('');
+            console.log('✅ Job matches rendered successfully');
         }
 
         async function preloadJobMatches(positions) {
