@@ -16,9 +16,79 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
 from difflib import SequenceMatcher
 import logging
+import os
+import json
 from config import *
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# BIOS SUPPORT (loaded from data/bios.json)
+# =============================================================================
+
+_BIOS_CACHE: Optional[Dict[str, str]] = None
+
+def _load_bios_file() -> Dict[str, str]:
+    """Load bios from data/bios.json once and cache."""
+    global _BIOS_CACHE
+    if _BIOS_CACHE is not None:
+        return _BIOS_CACHE
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        data_path = os.path.join(base_dir, 'data', 'bios.json')
+        # If utils.py is at repo root, adjust path accordingly
+        if not os.path.exists(data_path):
+            data_path = os.path.join(os.path.dirname(base_dir), 'data', 'bios.json')
+        with open(data_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        # Normalize keys to lowercase for lookup
+        _BIOS_CACHE = {str(k).lower(): str(v) for k, v in data.items()}
+    except Exception:
+        _BIOS_CACHE = {}
+    return _BIOS_CACHE
+
+def get_bio_for_name(name: Any) -> str:
+    """Return a short bio for a candidate using tolerant matching."""
+    bios = _load_bios_file()
+    key = normalize_name(name)
+    # 1) Exact normalized key
+    if key in bios:
+        return bios[key]
+    # 2) Token containment / fuzzy match against bios keys
+    for bio_key, bio_text in bios.items():
+        if fuzzy_match_name(bio_key, key, threshold=0.82):
+            return bio_text
+    # 3) No match
+    return ''
+
+# =============================================================================
+# HEADSHOT RESOLUTION
+# =============================================================================
+
+def resolve_headshot_path(name: Any) -> str:
+    """Return a headshot path under /headshots supporting multiple extensions.
+    File naming convention: <first><last>.<ext> lowercased, spaces removed.
+    """
+    # Build slug
+    text = str(name or '').strip()
+    slug = re.sub(r'\s+', '', text).lower()
+    candidates = [
+        f"headshots/{slug}.png",
+        f"headshots/{slug}.jpg",
+        f"headshots/{slug}.jpeg",
+        f"headshots/{slug}.webp",
+    ]
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # Try current dir then parent (in case utils.py is inside a subdir)
+    search_roots = [base_dir, os.path.dirname(base_dir)]
+    for rel in candidates:
+        for root in search_roots:
+            abs_path = os.path.join(root, rel)
+            if os.path.exists(abs_path):
+                # Return public URL path
+                return '/' + rel.replace('\\', '/')
+    # Fallback to default .png (keeps previous behavior)
+    return f"/headshots/{slug}.png"
 
 # =============================================================================
 # DATA PROCESSING UTILITIES
@@ -642,8 +712,9 @@ def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
     """
     Create a minimal candidate profile from MIT Tracking fields.
     """
+    name_value = str(tracking_row.get('MIT Name', '—'))
     return {
-        'name': str(tracking_row.get('MIT Name', '—')),
+        'name': name_value,
         'training_site': str(tracking_row.get('Training Site', '—')),
         'location': str(tracking_row.get('Location', '—')),
         'week': int(pd.to_numeric(tracking_row.get('Week', 0), errors='coerce') or 0),
@@ -653,6 +724,7 @@ def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
         'training_program': 'MIT',
         'mentor_name': str(tracking_row.get('Mentor', '—')),
         'mentor_title': '—',
+        'bio': get_bio_for_name(name_value),
         'scores': {},
         'onboarding_progress': None,
         'business_lessons_progress': None,
@@ -664,7 +736,7 @@ def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
             'vertical': str(tracking_row.get('VERT', '—'))
         },
         'resume_link': '',
-        'profile_image': f"/headshots/{str(tracking_row.get('MIT Name','')).replace(' ', '').lower()}.png",
+        'profile_image': resolve_headshot_path(name_value),
         'data_quality': 'limited'
     }
 
@@ -857,11 +929,9 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
     onboarding_progress = calculate_onboarding_progress(row)
     business_lessons_progress = calculate_business_lessons_progress(row)
     
-    # Generate local headshot path from candidate name
+    # Resolve headshot path from candidate name
     candidate_name = str(row.get('MIT Name', 'Unknown'))
-    # Remove spaces and convert to lowercase for filename matching
-    image_filename = candidate_name.replace(' ', '').lower() + '.png'
-    profile_image_path = f'/headshots/{image_filename}'  # Fixed: back to /headshots/
+    profile_image_path = resolve_headshot_path(candidate_name)
     
     logger.info(f"Generated profile image path for {candidate_name}: {profile_image_path}")
     
@@ -882,6 +952,7 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
         'training_program': str(row.get('Training Program', '—')),
         'mentor_name': str(row.get('Mentor Name', '—')),
         'mentor_title': str(row.get('Title of Mentor', '—')),
+        'bio': get_bio_for_name(candidate_name),
         'scores': {k: convert_numpy_types(v) for k, v in real_scores.items()},
         'onboarding_progress': {k: convert_numpy_types(v) for k, v in onboarding_progress.items()},
         'business_lessons_progress': {k: convert_numpy_types(v) for k, v in business_lessons_progress.items()},
