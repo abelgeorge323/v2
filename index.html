@@ -508,6 +508,17 @@
             color: white;
         }
 
+        .profile-bio {
+            margin-top: 6px;
+            font-size: 1.15rem;
+            color: rgba(255,255,255,0.85);
+            max-width: 900px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
         .profile-content {
             display: grid;
             grid-template-columns: 35% 65%;
@@ -1833,19 +1844,13 @@
         
         function checkImageExists(src) {
             if (!src) return false;
-            
-            // Check cache first
-            if (imageExistsCache.has(src)) {
-                return imageExistsCache.get(src);
-            }
-            
-            // For local development, we know which images exist
-            // Only return true for images we know exist
-            const knownImages = ['abelgeorge.png'];
-            const filename = src.split('/').pop();
-            const exists = knownImages.includes(filename);
-            
-            // Cache the result
+            if (imageExistsCache.has(src)) return imageExistsCache.get(src);
+            // Try to load image; default to true so <img> attempts to render
+            const img = new Image();
+            img.src = src;
+            let exists = true;
+            img.onerror = () => imageExistsCache.set(src, false);
+            img.onload = () => imageExistsCache.set(src, true);
             imageExistsCache.set(src, exists);
             return exists;
         }
@@ -2792,16 +2797,25 @@
         }
 
         // Render profile with real data
-        function renderProfile(candidate) {
+        async function renderProfile(candidate) {
             const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
             console.log('🖼️ Rendering profile for:', candidate.name);
             console.log('🖼️ Profile image URL:', candidate.profile_image);
-            
-            // Check if image exists before trying to load it
-            let showImage = false;
-            if (candidate.profile_image) {
-                showImage = checkImageExists(candidate.profile_image);
+            // If cached profile lacks bio, fetch fresh profile
+            if (!candidate.bio) {
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(candidate.name)}`);
+                    const fresh = await resp.json();
+                    if (!fresh.error) {
+                        candidate = fresh;
+                    }
+                } catch (e) {
+                    console.warn('Could not refresh profile, using cached.', e);
+                }
             }
+            
+            // Render image directly; onerror falls back to initials
+            const showImage = !!candidate.profile_image;
             
             document.getElementById('profileContent').innerHTML = `
                 <div class="profile-header">
@@ -2816,6 +2830,7 @@
                             ${candidate.data_quality === 'limited' ? '<span class="data-quality-badge warning">Limited Profile Data</span>' : ''}
                             ${candidate.data_quality === 'archive' ? '<span class="data-quality-badge info">Archive Data</span>' : ''}
                         </h1>
+                        <p class="profile-bio">${candidate.bio || ''}</p>
                         <p>${candidate.training_site} • ${candidate.location}</p>
                         <p class="status-badge">${candidate.status} • ${candidate.training_program}</p>
                     </div>
