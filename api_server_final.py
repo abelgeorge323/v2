@@ -406,11 +406,14 @@ def get_job_matches(job_id):
 # STATIC FILE SERVING
 # =============================================================================
 
+@app.route('/headshots/<path:filename>')
 @app.route('/headshots/<filename>')
 def serve_headshot(filename):
-    """Serve headshot images from the headshots directory"""
+    """Serve headshot images from the headshots directory (supports nested paths)."""
     try:
-        return send_from_directory('headshots', filename)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        headshots_dir = os.path.join(base_dir, 'headshots')
+        return send_from_directory(headshots_dir, filename)
     except FileNotFoundError:
         return jsonify({'error': 'Image not found'}), 404
 
