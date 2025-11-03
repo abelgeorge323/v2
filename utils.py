@@ -1005,12 +1005,12 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
     """
     Calculate match score between a candidate and a job position
     
-    This function implements the scoring system based on 5 criteria:
-    1. Vertical Alignment (30 pts + 10 bonus)
-    2. Salary Trajectory (25 pts)
-    3. Geographic Fit (20 pts)
-    4. Confidence (15 pts)
-    5. Readiness (10 pts)
+    This function implements the NEW 100-point scoring system based on 5 criteria:
+    1. Vertical Alignment (20 pts max)
+    2. Salary Trajectory (20 pts max)
+    3. Geographic Fit (20 pts max)
+    4. Confidence (20 pts max)
+    5. Readiness (20 pts max)
     
     Args:
         candidate: Candidate data dictionary
@@ -1022,53 +1022,67 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
     total_score = 0
     score_breakdown = {}
     
-    # 1. Vertical Alignment (30 pts + 10 bonus)
+    # 1. Vertical Alignment (20 pts max)
     vertical_score = 0
     candidate_vertical = str(candidate.get('operation_details', {}).get('vertical', '')).lower()
     job_vertical = str(job.get('vertical', '')).lower()
+    training_location = str(candidate.get('operation_details', {}).get('operation_location', '')).lower()
     
     if candidate_vertical and job_vertical:
         if candidate_vertical == job_vertical:
-            vertical_score = 30
+            # Check for Amazon/LGA bonus
+            if 'amazon' in training_location or 'lga' in training_location.lower():
+                vertical_score = 15
+                explanation = f"Match + Amazon/LGA bonus - {candidate_vertical}"
+            else:
+                vertical_score = 10
+                explanation = f"Vertical match - {candidate_vertical}"
         else:
             vertical_score = 0
+            explanation = f"No match - {candidate_vertical} vs {job_vertical}"
+    else:
+        vertical_score = 0
+        explanation = "No vertical data"
     
-    # Bonus points for Amazon or Aviation
-    training_location = str(candidate.get('operation_details', {}).get('operation_location', '')).lower()
-    if 'amazon' in training_location or candidate_vertical == 'aviation':
-        vertical_score += 10
-    
-    # Create detailed breakdown with explanations
     score_breakdown['vertical_alignment'] = {
         'score': vertical_score,
-        'max': 40,
-        'explanation': f"{'Perfect match' if vertical_score >= 30 else 'No match'} - {candidate_vertical} vs {job_vertical}" + 
-                      (f" (+{vertical_score-30} bonus for Amazon/Aviation)" if vertical_score > 30 else "")
+        'max': 20,
+        'explanation': explanation
     }
     total_score += vertical_score
     
-    # 2. Salary Trajectory (25 pts)
+    # 2. Salary Trajectory (20 pts max, -5 penalty for decrease)
     salary_score = 0
     candidate_salary = candidate.get('salary', 0)
     job_salary = parse_salary(job.get('salary', 0))
     
     if candidate_salary > 0 and job_salary > 0:
-        salary_ratio = job_salary / candidate_salary
-        if salary_ratio >= 1.05:  # Job is 5%+ above candidate salary
-            salary_score = 25
-        elif salary_ratio >= 0.95:  # Within 5% of candidate salary
-            salary_score = 15
-        elif salary_ratio < 0.95:  # Job is more than 5% below
-            salary_score = -10
+        salary_increase_pct = ((job_salary - candidate_salary) / candidate_salary) * 100
+        
+        if salary_increase_pct >= 15:  # Big increase
+            salary_score = 20
+            explanation = f"Big increase ({salary_increase_pct:.1f}%)"
+        elif salary_increase_pct >= 5:  # Medium increase
+            salary_score = 12
+            explanation = f"Medium increase ({salary_increase_pct:.1f}%)"
+        elif salary_increase_pct >= 1:  # Small increase
+            salary_score = 5
+            explanation = f"Small increase ({salary_increase_pct:.1f}%)"
+        else:  # No increase or decrease
+            salary_score = -5
+            explanation = f"Decrease ({salary_increase_pct:.1f}%)"
+    else:
+        salary_score = 0
+        explanation = "No salary data"
     
     score_breakdown['salary_trajectory'] = {
         'score': salary_score,
-        'max': 25,
-        'explanation': f"Job offers {'5%+ increase' if salary_score == 25 else 'similar pay' if salary_score == 15 else 'lower pay' if salary_score == -10 else 'no data'}"
+        'max': 20,
+        'explanation': explanation
     }
     total_score += salary_score
     
-    # 3. Geographic Fit (20 pts)
+    # 3. Geographic Fit (20 pts max)
     geo_score = 0
     candidate_location = str(candidate.get('location', '')).lower()
     job_city = str(job.get('city', '')).lower()
@@ -1077,58 +1091,70 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
     if candidate_location and job_city:
         if job_city in candidate_location:
             geo_score = 20
-        elif job_state in candidate_location:
-            geo_score = 10
+            explanation = f"Same city - {job_city.title()}"
         else:
             geo_score = 5
+            explanation = f"Different location - {job_city.title()}, {job_state.upper()}"
+    else:
+        geo_score = 0
+        explanation = "No location data"
     
     score_breakdown['geographic_fit'] = {
         'score': geo_score,
         'max': 20,
-        'explanation': f"{'Same city' if geo_score == 20 else 'Same state' if geo_score == 10 else 'Different location' if geo_score == 5 else 'No location data'}"
+        'explanation': explanation
     }
     total_score += geo_score
     
-    # 4. Confidence (15 pts)
-    confidence_score = 10  # Default
-    confidence_value = str(candidate.get('confidence', '')).lower()
+    # 4. Confidence (20 pts max) — using numeric confidence_score
+    numeric_confidence = float(candidate.get('scores', {}).get('confidence_score') or 0)
     
-    if 'high' in confidence_value:
-        confidence_score = 15
-    elif 'moderate' in confidence_value:
-        confidence_score = 10
-    elif 'low' in confidence_value:
-        confidence_score = 5
+    if numeric_confidence >= 80:
+        confidence_score = 20
+        confidence_label = 'excellent'
+    elif numeric_confidence >= 60:
+        confidence_score = 13
+        confidence_label = 'good'
+    elif numeric_confidence >= 40:
+        confidence_score = 7
+        confidence_label = 'moderate'
+    else:
+        confidence_score = 2
+        confidence_label = 'low'
     
     score_breakdown['confidence'] = {
         'score': confidence_score,
-        'max': 15,
-        'explanation': f"Candidate confidence: {confidence_value or 'moderate'}"
+        'max': 20,
+        'explanation': f"Confidence score: {numeric_confidence:.0f}/100 ({confidence_label})"
     }
     total_score += confidence_score
     
-    # 5. Readiness (10 pts)
-    readiness_score = 5  # Default
+    # 5. Readiness (20 pts max) — week-based
     week = candidate.get('week', 0)
     
     if week >= 6:
-        readiness_score = 10
-    elif week > 0:
-        readiness_score = min(10, week * 1.5)
+        readiness_score = 20
+        readiness_label = 'ready for placement'
+    elif week >= 4:
+        readiness_score = 12
+        readiness_label = 'almost ready'
+    else:
+        readiness_score = 5
+        readiness_label = 'not ready yet'
     
     score_breakdown['readiness'] = {
         'score': readiness_score,
-        'max': 10,
-        'explanation': f"Week {week} of training"
+        'max': 20,
+        'explanation': f"Week {week} - {readiness_label}"
     }
     total_score += readiness_score
     
-    # Determine match quality
-    if total_score >= 80:
+    # Determine match quality (based on 100-point scale)
+    if total_score >= 75:
         quality = "Excellent"
     elif total_score >= 55:
         quality = "Good"
-    elif total_score >= 30:
+    elif total_score >= 35:
         quality = "Fair"
     else:
         quality = "Poor"
@@ -1193,6 +1219,60 @@ def get_top_matches(job_id: int, limit: int = 6) -> List[Dict[str, Any]]:
         
     except Exception as e:
         logger.error(f"Error getting top matches for job {job_id}: {str(e)}")
+        return []
+
+def get_candidate_top_matches(candidate_name: str, limit: int = 3) -> List[Dict[str, Any]]:
+    """
+    Get top matching jobs for a specific candidate (reverse match)
+    
+    This function fetches all open positions, calculates match scores against
+    the specified candidate, and returns the top N job matches sorted by score.
+    
+    Args:
+        candidate_name: Candidate name to match against
+        limit: Maximum number of matches to return (default: 3)
+        
+    Returns:
+        List of dictionaries containing top matching jobs with scores
+    """
+    try:
+        # Get candidate data
+        candidates = merge_candidate_sources()
+        target_candidate = None
+        target_norm = normalize_name(candidate_name)
+        
+        for c in candidates:
+            if normalize_name(c.get('name', '')) == target_norm:
+                target_candidate = c
+                break
+        
+        if not target_candidate:
+            logger.error(f"Candidate {candidate_name} not found")
+            return []
+        
+        # Get all open positions
+        open_positions = fetch_open_positions_data()
+        
+        # Calculate match scores for each job
+        matches = []
+        for job in open_positions:
+            match_result = calculate_match_score(target_candidate, job)
+            
+            match_data = {
+                'job': job,
+                'candidate': target_candidate,
+                'match_score': match_result['total_score'],
+                'match_quality': match_result['quality'],
+                'score_breakdown': match_result['breakdown']
+            }
+            matches.append(match_data)
+        
+        # Sort by score descending and return top N
+        matches.sort(key=lambda x: x['match_score'], reverse=True)
+        return matches[:limit]
+        
+    except Exception as e:
+        logger.error(f"Error getting top matches for candidate {candidate_name}: {str(e)}")
         return []
 
 
