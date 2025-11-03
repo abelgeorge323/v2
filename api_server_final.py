@@ -32,6 +32,7 @@ from utils import (
     fetch_open_positions_data,
     process_candidate_data, 
     get_top_matches,
+    get_candidate_top_matches,
     categorize_candidates_by_week,
     log_debug, 
     log_error,
@@ -402,6 +403,57 @@ def get_job_matches(job_id):
         log_error(f"Error in job matches endpoint for job {job_id}", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
+@app.route('/api/candidate-matches/<candidate_name>', methods=['GET'])
+def get_candidate_matches(candidate_name):
+    """
+    Get top matching jobs for a specific candidate (reverse match)
+    
+    This endpoint calculates match scores for all open positions against the specified candidate
+    and returns the top 3 matches based on the scoring algorithm.
+    
+    Args:
+        candidate_name: Candidate name to match against (URL encoded)
+        
+    Returns:
+        JSON response with top matching jobs and their scores
+    """
+    try:
+        # Get top matches for the candidate
+        matches = get_candidate_top_matches(candidate_name, limit=3)
+        
+        if not matches:
+            return jsonify({'error': f'No matches found for candidate {candidate_name}'}), 404
+        
+        # Format response data
+        response_data = {
+            'candidate_name': candidate_name,
+            'matches': []
+        }
+        
+        for match in matches:
+            job = match['job']
+            match_data = {
+                'job_id': job.get('id', 0),
+                'job_title': job.get('title', 'Unknown'),
+                'job_account': job.get('account', 'Unknown'),
+                'job_city': job.get('city', 'Unknown'),
+                'job_state': job.get('state', 'Unknown'),
+                'job_salary': job.get('salary', 0),
+                'job_vertical': job.get('vertical', 'Unknown'),
+                'match_score': match['match_score'],
+                'match_quality': match['match_quality'],
+                'score_breakdown': match['score_breakdown']
+            }
+            response_data['matches'].append(match_data)
+        
+        response = jsonify(response_data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error(f"Error in candidate matches endpoint for {candidate_name}", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
 # =============================================================================
 # STATIC FILE SERVING
 # =============================================================================
@@ -508,9 +560,9 @@ def get_mentor_profile(mentor_name):
     """Get detailed profile for a specific mentor"""
     profiles = build_mentor_profiles()
     
-    # Find mentor by name (case-insensitive)
-    mentor_name_lower = mentor_name.lower()
-    mentor = next((m for m in profiles if m['name'].lower() == mentor_name_lower), None)
+    # Find mentor by name using normalized matching (handles trailing spaces, case, etc.)
+    target_norm = normalize_name(mentor_name)
+    mentor = next((m for m in profiles if normalize_name(m['name']) == target_norm), None)
     
     if not mentor:
         return jsonify({'error': 'Mentor not found'}), 404
