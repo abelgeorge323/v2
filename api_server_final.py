@@ -41,7 +41,8 @@ from utils import (
     parse_salary,
     build_mentor_profiles,
     get_mentor_dashboard_metrics,
-    get_active_training_mentors
+    get_active_training_mentors,
+    get_mit_alumni
 )
 
 # =============================================================================
@@ -306,7 +307,7 @@ def get_offer_pending_candidates():
 @app.route('/api/candidate/<name>', methods=['GET'])
 def get_candidate_profile(name: str):
     """
-    Get detailed profile for a specific candidate
+    Get detailed profile for a specific candidate or alumni
     
     Args:
         name: Candidate name (URL encoded)
@@ -315,13 +316,48 @@ def get_candidate_profile(name: str):
         JSON response with detailed candidate profile
     """
     try:
+        # Step 1: Check current MIT candidates
         unified = merge_candidate_sources()
         target_norm = normalize_name(name)
         candidate_data = None
+        
         for c in unified:
             if normalize_name(c.get('name','')) == target_norm:
                 candidate_data = c
                 break
+        
+        # Step 2: If not found in current candidates, check MIT alumni
+        if not candidate_data:
+            log_debug(f"Candidate '{name}' not found in current roster, checking alumni...")
+            alumni_data = get_mit_alumni()
+            
+            for alum in alumni_data.get('alumni', []):
+                if normalize_name(alum.get('name','')) == target_norm:
+                    candidate_data = alum
+                    # Mark as alumni and add required fields for profile rendering
+                    candidate_data['is_alumni'] = True
+                    candidate_data['status'] = 'Alumni - Placed'
+                    candidate_data['week'] = int(alum.get('weeks_in_program', 0) or 0)
+                    # Use placement location instead of training location for alumni
+                    candidate_data['location'] = alum.get('placement_site', 'TBD')
+                    # Include salary from Placed MITs sheet
+                    candidate_data['salary'] = alum.get('training_salary', 'TBD')
+                    # Organize scores into expected structure
+                    candidate_data['scores'] = {
+                        'mock_qbr_score': alum.get('mock_qbr_score', 0),
+                        'assessment_score': alum.get('assessment_score', 0),
+                        'perf_eval_score': alum.get('perf_eval_score', 0),
+                        'confidence_score': alum.get('confidence_score', 0),
+                        'skill_ranking': alum.get('skill_ranking', 'TBD')
+                    }
+                    # Add operation details
+                    candidate_data['operation_details'] = {
+                        'vertical': alum.get('training_vertical', 'TBD')
+                    }
+                    log_debug(f"Found '{name}' in alumni list")
+                    break
+        
+        # Step 3: Return 404 if still not found
         if not candidate_data:
             return jsonify({'error': ERROR_MESSAGES['candidate_not_found']}), 404
         
@@ -586,6 +622,18 @@ def get_training_mentors_endpoint():
         return response, 200
     except Exception as e:
         log_error("Error in training mentors endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+@app.route('/api/mit-alumni', methods=['GET'])
+def get_mit_alumni_endpoint():
+    """Get MIT alumni with placement information"""
+    try:
+        alumni_data = get_mit_alumni()
+        response = jsonify(alumni_data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, 200
+    except Exception as e:
+        log_error("Error in MIT alumni endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 # =============================================================================
