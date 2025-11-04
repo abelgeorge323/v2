@@ -943,12 +943,12 @@ def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict
     Uses Company Start Date to calculate current week.
     
     Returns:
-        Dict with keys: 'weeks_0_3', 'week_7_only', 'weeks_8_plus', 'offer_pending', 
-                       'total_candidates', 'total_training'
+        Dict with keys: 'weeks_0_3' (0-2), 'weeks_4_6' (3-7), 'week_7_only' (6-7), 
+                       'weeks_8_plus' (8+), 'offer_pending', 'total_candidates', 'total_training'
     """
     weeks_0_3 = []
     weeks_4_6 = []
-    week_7_only = []  # Week 7 for placement priority
+    week_7_only = []  # Weeks 6-7 priority spotlight
     weeks_8_plus = []  # Weeks 8+ for ready for placement
     offer_pending = []
     
@@ -959,19 +959,19 @@ def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict
         # Offer pending takes priority
         if 'offer' in status or 'pending' in status:
             offer_pending.append(candidate)
-        elif 0 <= week <= 3:
+        elif 0 <= week <= 2:
             weeks_0_3.append(candidate)
-        elif 4 <= week <= 6:
+        elif 3 <= week <= 7:
             weeks_4_6.append(candidate)
-        elif week == 7:
+        elif 6 <= week <= 7:
             week_7_only.append(candidate)
         elif week >= 8:
             weeks_8_plus.append(candidate)
     
     return {
-        'weeks_0_3': weeks_0_3,  # Operational Overview (Weeks 0-3)
-        'weeks_4_6': weeks_4_6,  # Active Training (Weeks 4-6)
-        'week_7_only': week_7_only,  # Week 7 Priority
+        'weeks_0_3': weeks_0_3,  # Operational Overview (Weeks 0-2)
+        'weeks_4_6': weeks_4_6,  # Active Training (Weeks 3-7)
+        'week_7_only': week_7_only,  # Weeks 6-7 Priority
         'weeks_8_plus': weeks_8_plus,  # Ready for Placement (Weeks 8+)
         'offer_pending': offer_pending,  # Offer Pending
         'total_candidates': len(candidates),
@@ -1103,21 +1103,27 @@ def calculate_match_score(candidate: Dict[str, Any], job: Dict[str, Any]) -> Dic
     
     # 1. Vertical Alignment (20 pts max)
     vertical_score = 0
-    candidate_vertical = str(candidate.get('operation_details', {}).get('vertical', '')).lower()
-    job_vertical = str(job.get('vertical', '')).lower()
+    candidate_vertical = str(candidate.get('operation_details', {}).get('vertical', '')).lower().strip()
+    job_vertical = str(job.get('vertical', '')).lower().strip()
     training_location = str(candidate.get('operation_details', {}).get('operation_location', '')).lower()
     
+    # Normalize "technology" and "tech" to be treated as the same
+    candidate_vertical_normalized = 'technology' if candidate_vertical in ['tech', 'technology'] else candidate_vertical
+    job_vertical_normalized = 'technology' if job_vertical in ['tech', 'technology'] else job_vertical
+    
     if candidate_vertical and job_vertical:
-        if candidate_vertical == job_vertical:
-            # Check for Amazon/LGA bonus
-            if 'amazon' in training_location or 'lga' in training_location.lower():
-                vertical_score = 15
-                explanation = f"Match + Amazon/LGA bonus - {candidate_vertical}"
+        if candidate_vertical_normalized == job_vertical_normalized:
+            # Perfect vertical match
+            # Check for Amazon/AVI bonus
+            if 'amazon' in training_location or 'avi' in training_location.lower():
+                vertical_score = 20
+                explanation = f"Perfect match + Amazon/AVI - {candidate_vertical}"
             else:
-                vertical_score = 10
-                explanation = f"Vertical match - {candidate_vertical}"
+                vertical_score = 15
+                explanation = f"Perfect vertical match - {candidate_vertical}"
         else:
-            vertical_score = 0
+            # No match but give partial credit
+            vertical_score = 5
             explanation = f"No match - {candidate_vertical} vs {job_vertical}"
     else:
         vertical_score = 0
