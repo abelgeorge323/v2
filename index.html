@@ -2158,17 +2158,17 @@
                 
                 <!-- Row 2: Training Pipeline -->
                 <div class="metric-card week-0-3" onclick="showWeeks0to3()">
-                    <div class="metric-label">Weeks 0-3</div>
+                    <div class="metric-label">Weeks 0-2</div>
                     <div class="metric-value">${data.weeks_0_3 || 0}</div>
                     <div class="metric-change">Operational Overview</div>
                 </div>
                 <div class="metric-card week-4-6" onclick="showWeeks4to6()">
-                    <div class="metric-label">Weeks 4-6</div>
+                    <div class="metric-label">Weeks 3-7</div>
                     <div class="metric-value">${data.weeks_4_6 || 0}</div>
                     <div class="metric-change">Active Training</div>
                 </div>
                 <div class="metric-card week-7-priority" onclick="showWeek7Priority()">
-                    <div class="metric-label">Week 7 Priority</div>
+                    <div class="metric-label">Weeks 6-7 Priority</div>
                     <div class="metric-value">${data.week_7_only || 0}</div>
                     <div class="metric-change">Action Needed!</div>
                 </div>
@@ -2295,7 +2295,7 @@
             }
         }
 
-        // Load weeks 0-3 candidates from API
+        // Load weeks 0-2 candidates from API
         async function loadWeeks0to3() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-0-3`);
@@ -2314,7 +2314,7 @@
             }
         }
 
-        // Load weeks 4-6 candidates from API
+        // Load weeks 3-7 candidates from API
         async function loadWeeks4to6() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-4-6`);
@@ -2333,7 +2333,7 @@
             }
         }
 
-        // Load week 7 priority candidates from API
+        // Load weeks 6-7 priority candidates from API
         async function loadWeek7Priority() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/candidates/week-7-priority`);
@@ -2650,11 +2650,11 @@
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
-                        <h3>No candidates in weeks 0-3</h3>
+                        <h3>No candidates in weeks 0-2</h3>
                     </div>
                 `;
                 cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '📋 Weeks 0-3 (Operational Overview)';
+                cachedListTitle = '📋 Weeks 0-2 (Operational Overview)';
                 cacheTimestamp = Date.now();
                 return;
             }
@@ -2682,23 +2682,23 @@
             
             candidatesList.innerHTML = renderedContent;
             cachedListContent = renderedContent;
-            cachedListTitle = '📋 Weeks 0-3 (Operational Overview)';
+            cachedListTitle = '📋 Weeks 0-2 (Operational Overview)';
             cacheTimestamp = Date.now();
             preloadCandidateProfiles(candidates);
         }
 
-        // Render weeks 4-6 candidates
+        // Render weeks 3-7 candidates
         function renderWeeks4to6() {
             const candidatesList = document.getElementById('candidatesList');
             
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
-                        <h3>No candidates in weeks 4-6</h3>
+                        <h3>No candidates in weeks 3-7</h3>
                     </div>
                 `;
                 cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '🏋️ Weeks 4-6 (Active Training)';
+                cachedListTitle = '🏋️ Weeks 3-7 (Active Training)';
                 cacheTimestamp = Date.now();
                 return;
             }
@@ -2726,23 +2726,23 @@
             
             candidatesList.innerHTML = renderedContent;
             cachedListContent = renderedContent;
-            cachedListTitle = '🏋️ Weeks 4-6 (Active Training)';
+            cachedListTitle = '🏋️ Weeks 3-7 (Active Training)';
             cacheTimestamp = Date.now();
             preloadCandidateProfiles(candidates);
         }
 
-        // Render week 7 priority candidates
+        // Render weeks 6-7 priority candidates
         function renderWeek7Priority() {
             const candidatesList = document.getElementById('candidatesList');
             
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
-                        <h3>No candidates in week 7 priority</h3>
+                        <h3>No candidates in weeks 6-7 priority</h3>
                     </div>
                 `;
                 cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '⚡ Week 7 Priority (Action Needed!)';
+                cachedListTitle = '⚡ Weeks 6-7 Priority (Action Needed!)';
                 cacheTimestamp = Date.now();
                 return;
             }
@@ -2770,7 +2770,7 @@
             
             candidatesList.innerHTML = renderedContent;
             cachedListContent = renderedContent;
-            cachedListTitle = '⚡ Week 7 Priority (Action Needed!)';
+            cachedListTitle = '⚡ Weeks 6-7 Priority (Action Needed!)';
             cacheTimestamp = Date.now();
             preloadCandidateProfiles(candidates);
         }
@@ -3250,7 +3250,7 @@
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '📋 Weeks 0-3 (Operational Overview)';
+            document.querySelector('.candidates-container h2').textContent = '📋 Weeks 0-2 (Operational Overview)';
             previousPage = currentPage;
             currentPage = 'weeks_0_3';
             loadWeeks0to3();
@@ -3260,7 +3260,7 @@
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🏋️ Weeks 4-6 (Active Training)';
+            document.querySelector('.candidates-container h2').textContent = '🏋️ Weeks 3-7 (Active Training)';
             previousPage = currentPage;
             currentPage = 'weeks_4_6';
             loadWeeks4to6();
@@ -3270,7 +3270,7 @@
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '⚡ Week 7 Priority (Action Needed!)';
+            document.querySelector('.candidates-container h2').textContent = '⚡ Weeks 6-7 Priority (Action Needed!)';
             previousPage = currentPage;
             currentPage = 'week_7_priority';
             loadWeek7Priority();
@@ -3748,9 +3748,6 @@
                     ` : ''}
                     
                     <div class="bottom-nav">
-                        ${candidate.is_alumni ? `
-                        <button onclick="showMITAlumni()" class="back-button">← Back to MIT Alumni</button>
-                        ` : ''}
                         <button onclick="showDashboard()" class="back-button">← Back to Dashboard</button>
                     </div>
                 </div>
