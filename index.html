@@ -1464,6 +1464,21 @@
             grid-template-columns: 1fr;
         }
     }
+    
+    /* Training Mentors Grid - Responsive Design */
+    @media (max-width: 1400px) {
+        /* 2 columns on medium screens */
+        #candidatesList > div[style*="grid-template-columns: repeat(3, 1fr)"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+    
+    @media (max-width: 900px) {
+        /* 1 column on small screens */
+        #candidatesList > div[style*="grid-template-columns"] {
+            grid-template-columns: 1fr !important;
+        }
+    }
 
     .mentor-card {
         background: #1f2937;
@@ -1938,6 +1953,18 @@
             return 'score-needs-improvement'; // Red
         }
         
+        // Helper function to clean up display values (replace nan, null, —, etc. with TBD)
+        // This is for TEXT fields like dates, names, titles - NOT for numeric scores
+        function cleanDisplayValue(value, defaultValue = 'TBD') {
+            if (value === null || value === undefined || value === '' || 
+                String(value).toLowerCase() === 'nan' || 
+                String(value).toLowerCase() === 'null' ||
+                value === '—') {
+                return defaultValue;
+            }
+            return value;
+        }
+        
         function checkImageExists(src) {
             if (!src) return false;
             if (imageExistsCache.has(src)) return imageExistsCache.get(src);
@@ -2073,6 +2100,20 @@
                     throw new Error(data.error);
                 }
                 
+                // Fetch training mentors separately
+                try {
+                    const trainingMentorsResponse = await fetch(`${API_BASE_URL}/api/training-mentors${CACHE_BUST}`);
+                    data.training_mentor_metrics = await trainingMentorsResponse.json();
+                } catch (err) {
+                    console.warn('Could not fetch training mentors:', err);
+                    data.training_mentor_metrics = {
+                        total_training_mentors: 0,
+                        strong_mentors: [],
+                        needs_help_mentors: [],
+                        monitoring_mentors: []
+                    };
+                }
+                
                 renderMetrics(data);
                 
             } catch (error) {
@@ -2124,19 +2165,19 @@
                     <div class="metric-change">Action Needed!</div>
                 </div>
                 
-                <!-- Row 3: Mentor Effectiveness -->
-                <div class="metric-card mentor-block" onclick="showAllMentors()">
-                    <div class="metric-label">Active Mentors</div>
-                    <div class="metric-value">${data.mentor_metrics?.total_mentors || 0}</div>
-                    <div class="metric-change">Average MEI: ${data.mentor_metrics?.average_mei?.toFixed(2) || '0.00'}/3.0</div>
+                <!-- Row 3: Training Mentors (Focused View) -->
+                <div class="metric-card mentor-block" onclick="showTrainingMentors()">
+                    <div class="metric-label">Training Mentors</div>
+                    <div class="metric-value">${data.training_mentor_metrics?.total_training_mentors || 0}</div>
+                    <div class="metric-change">Active with trainees</div>
                     <div class="mentor-metrics">
                         <div class="mentor-metric-item">
                             <div class="mentor-metric-label">Strong</div>
-                            <div class="mentor-metric-value" style="color: #10b981;">${data.mentor_metrics?.strong_mentors || 0}</div>
+                            <div class="mentor-metric-value" style="color: #10b981;">${data.training_mentor_metrics?.strong_mentors?.length || 0}</div>
                         </div>
                         <div class="mentor-metric-item">
-                            <div class="mentor-metric-label">Needs Help</div>
-                            <div class="mentor-metric-value" style="color: #ef4444;">${data.mentor_metrics?.needs_improvement || 0}</div>
+                            <div class="mentor-metric-label">Needs Support</div>
+                            <div class="mentor-metric-value" style="color: #ef4444;">${data.training_mentor_metrics?.needs_help_mentors?.length || 0}</div>
                         </div>
                     </div>
                 </div>
@@ -2611,9 +2652,9 @@
                             </div>
                         </div>
                         <div class="candidate-details">
-                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
-                            <div><strong>Mentor:</strong> ${candidate.mentor_name || '—'}</div>
-                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                            <div><strong>Training Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
+                            <div><strong>Mentor:</strong> ${cleanDisplayValue(candidate.mentor_name, 'TBD')}</div>
+                            <div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details?.vertical, 'TBD')}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2655,9 +2696,9 @@
                             </div>
                         </div>
                         <div class="candidate-details">
-                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
-                            <div><strong>Mentor:</strong> ${candidate.mentor_name || '—'}</div>
-                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                            <div><strong>Training Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
+                            <div><strong>Mentor:</strong> ${cleanDisplayValue(candidate.mentor_name, 'TBD')}</div>
+                            <div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details?.vertical, 'TBD')}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2699,9 +2740,9 @@
                             </div>
                         </div>
                         <div class="candidate-details">
-                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
-                            <div><strong>Mentor:</strong> ${candidate.mentor_name || '—'}</div>
-                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                            <div><strong>Training Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
+                            <div><strong>Mentor:</strong> ${cleanDisplayValue(candidate.mentor_name, 'TBD')}</div>
+                            <div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details?.vertical, 'TBD')}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" style="background: #f97316;" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2743,9 +2784,9 @@
                             </div>
                         </div>
                         <div class="candidate-details">
-                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
-                            <div><strong>Mentor:</strong> ${candidate.mentor_name || '—'}</div>
-                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                            <div><strong>Training Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
+                            <div><strong>Mentor:</strong> ${cleanDisplayValue(candidate.mentor_name, 'TBD')}</div>
+                            <div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details?.vertical, 'TBD')}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" style="background: #10b981;" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2966,11 +3007,11 @@
                         <h3>🎯 Readiness Summary</h3>
                         <div class="info-grid">
                             <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week}</div>
+                            <div><strong>Expected Graduation:</strong> ${cleanDisplayValue(candidate.expected_graduation_week, 'TBD')}</div>
                             <div><strong>Status:</strong> ${candidate.status}</div>
                             <div><strong>Salary:</strong> ${candidate.salary > 0 ? '$' + candidate.salary.toLocaleString() : 'TBD'}</div>
-                            ${candidate.operation_details && candidate.operation_details.company_start_date !== '—' ? `<div><strong>Company Start:</strong> ${candidate.operation_details.company_start_date}</div>` : ''}
-                            ${candidate.operation_details && candidate.operation_details.training_start_date !== '—' ? `<div><strong>Training Start:</strong> ${candidate.operation_details.training_start_date}</div>` : ''}
+                            ${candidate.operation_details && candidate.operation_details.company_start_date && candidate.operation_details.company_start_date !== '—' ? `<div><strong>Company Start:</strong> ${cleanDisplayValue(candidate.operation_details.company_start_date, 'TBD')}</div>` : ''}
+                            ${candidate.operation_details && candidate.operation_details.training_start_date && candidate.operation_details.training_start_date !== '—' ? `<div><strong>Training Start:</strong> ${cleanDisplayValue(candidate.operation_details.training_start_date, 'TBD')}</div>` : ''}
                             ${candidate.resume_link ? `<div><strong>Resume:</strong> <a href="#" onclick="showResume('${candidate.resume_link}', '${candidate.name}'); return false;" style="color: #667eea; text-decoration: underline; cursor: pointer;">View Resume</a></div>` : ''}
                         </div>
                     </div>
@@ -2992,7 +3033,7 @@
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Skill Ranking</div>
-                                <div class="metric-value">${candidate.scores.skill_ranking || '—'}</div>
+                                <div class="metric-value">${candidate.scores.skill_ranking || 'TBD'}</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Mock QBR</div>
@@ -3043,8 +3084,8 @@
                         <div class="operation-details">
                             <h3>🏢 Role Context</h3>
                             <div class="info-grid">
-                                ${candidate.operation_details.title !== '—' ? `<div><strong>Title:</strong> ${candidate.operation_details.title}</div>` : ''}
-                                ${candidate.operation_details.vertical !== '—' ? `<div><strong>Vertical:</strong> ${candidate.operation_details.vertical}</div>` : ''}
+                                ${candidate.operation_details.title !== '—' && candidate.operation_details.title ? `<div><strong>Title:</strong> ${cleanDisplayValue(candidate.operation_details.title, 'TBD')}</div>` : ''}
+                                ${candidate.operation_details.vertical !== '—' && candidate.operation_details.vertical ? `<div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details.vertical, 'TBD')}</div>` : ''}
                             </div>
                             
                             <!-- OIG Task Completion Section -->
@@ -3074,7 +3115,7 @@
                                         ${candidate.mentor_name}
                                     </span>
                                 </div>
-                                <div><strong>Title:</strong> ${candidate.mentor_title}</div>
+                                <div><strong>Title:</strong> ${cleanDisplayValue(candidate.mentor_title, 'TBD')}</div>
                             </div>
                         </div>
                         ` : ''}
@@ -3265,6 +3306,191 @@
                 document.getElementById('candidatesList').innerHTML = 
                     `<div class="error">Error loading mentors: ${error.message}</div>`;
             }
+        }
+
+        // Global variables for training mentor filtering
+        let allTrainingMentors = [];
+        let currentTrainingMentorFilter = 'all';
+
+        async function showTrainingMentors() {
+            try {
+                hideAllPages();
+                document.getElementById('candidateList').classList.add('active');
+                // Force clear with empty string first, then add loading message
+                const container = document.getElementById('candidatesList');
+                container.innerHTML = '';
+                container.innerHTML = '<div class="loading">Loading training mentors...</div>';
+                document.querySelector('.candidates-container h2').textContent = '👨‍🏫 Active Training Mentors';
+                previousPage = currentPage;
+                currentPage = 'training_mentors';
+                
+                const response = await fetch(`${API_BASE_URL}/api/training-mentors${CACHE_BUST}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Store all mentors for filtering
+                allTrainingMentors = [
+                    ...data.strong_mentors,
+                    ...data.needs_help_mentors,
+                    ...data.monitoring_mentors
+                ];
+                currentTrainingMentorFilter = 'all';
+                
+                renderTrainingMentors(allTrainingMentors, data);
+                
+            } catch (error) {
+                console.error('Error loading training mentors:', error);
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading training mentors: ${error.message}</div>`;
+            }
+        }
+        
+        function filterTrainingMentors(filterType) {
+            currentTrainingMentorFilter = filterType;
+            let filtered = [];
+            
+            switch(filterType) {
+                case 'strong':
+                    filtered = allTrainingMentors.filter(m => m.mei_score >= 2.5);
+                    break;
+                case 'monitoring':
+                    filtered = allTrainingMentors.filter(m => m.mei_score >= 2.0 && m.mei_score < 2.5);
+                    break;
+                case 'needs_support':
+                    filtered = allTrainingMentors.filter(m => m.mei_score < 2.0 && m.mei_score > 0);
+                    break;
+                default:
+                    filtered = allTrainingMentors;
+            }
+            
+            const data = {
+                total_training_mentors: allTrainingMentors.length,
+                total_trainees: allTrainingMentors.reduce((sum, m) => sum + m.trainee_count, 0)
+            };
+            
+            renderTrainingMentors(filtered, data);
+        }
+        
+        function renderTrainingMentors(mentors, data) {
+            // VERSION: 2025-11-03-13:25 - OVERRIDE candidates-grid CSS completely
+            // Wrap everything in a container that overrides default grid styles
+            let html = '<div style="display: block; width: 100%;">';  // Override candidates-grid
+            
+            // Centered filter banner (removed overview text)
+            html += `
+                <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%); 
+                            padding: 15px 24px; border-radius: 10px; margin-bottom: 20px; 
+                            border: 1px solid rgba(139, 92, 246, 0.3);
+                            display: flex; justify-content: center; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <label style="color: rgba(255,255,255,0.95); font-size: 1.1rem; font-weight: 600;">Filter by MEI:</label>
+                        <select onchange="filterTrainingMentors(this.value)" value="${currentTrainingMentorFilter}" 
+                                style="padding: 12px 20px; border-radius: 8px;
+                                       background: #1a202c; 
+                                       color: #fff; border: 2px solid rgba(139, 92, 246, 0.5); 
+                                       font-size: 1.1rem; cursor: pointer; font-weight: 600;
+                                       box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                            <option value="all" style="background: #1a202c; color: #ffffff;" ${currentTrainingMentorFilter === 'all' ? 'selected' : ''}>All Mentors</option>
+                            <option value="strong" style="background: #1a202c; color: #ffffff;" ${currentTrainingMentorFilter === 'strong' ? 'selected' : ''}>🟢 Strong (≥2.5)</option>
+                            <option value="monitoring" style="background: #1a202c; color: #ffffff;" ${currentTrainingMentorFilter === 'monitoring' ? 'selected' : ''}>📊 Monitoring (2.0-2.49)</option>
+                            <option value="needs_support" style="background: #1a202c; color: #ffffff;" ${currentTrainingMentorFilter === 'needs_support' ? 'selected' : ''}>⚠️ Needs Support (&lt;2.0)</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            
+            // Display mentors in a 3x3 grid
+            if (mentors && mentors.length > 0) {
+                html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-bottom: 30px; width: 100%;">';
+                
+                mentors.forEach(mentor => {
+                    // Use teal-green color scheme for all cards (matching first image style)
+                    const borderColor = '#14b8a6'; // Teal
+                    const bgColor = 'rgba(45, 55, 72, 0.6)'; // Dark gray-blue
+                    const scoreColor = '#14b8a6'; // Teal
+                    
+                    html += `
+                        <div class="mentor-card" style="background: ${bgColor}; 
+                                                         padding: 24px; border-radius: 12px; border: 2px solid ${borderColor}; 
+                                                         box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s ease;
+                                                         display: flex; flex-direction: column;" 
+                             onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.4)';" 
+                             onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
+                            
+                            <!-- Mentor Name -->
+                            <h3 style="margin: 0 0 20px 0; font-size: 1.3rem; font-weight: 700; color: #fff; text-align: center;">
+                                <a href="#" onclick="showMentorProfile('${mentor.name.replace(/'/g, "\\'")}'); return false;" 
+                                   style="color: #fff; text-decoration: none; transition: color 0.2s;"
+                                   onmouseenter="this.style.color='${scoreColor}';"
+                                   onmouseleave="this.style.color='#fff';">
+                                    ${mentor.name}
+                                </a>
+                            </h3>
+                            
+                            <!-- Performance Metrics (3 boxes in a row): MEI | Lifetime Trainees | Current Trainee Week -->
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+                                <!-- MEI Score (color-coded by performance) -->
+                                <div style="background: rgba(20, 184, 166, 0.15); padding: 16px 12px; border-radius: 10px; text-align: center; border: 2px solid ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'};">
+                                    <div style="font-size: 2rem; font-weight: 800; color: ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'}; margin-bottom: 4px;">
+                                        ${mentor.mei_score.toFixed(1)}
+                                    </div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        MEI
+                                    </div>
+                                </div>
+                                
+                                <!-- Lifetime Trainees -->
+                                <div style="background: rgba(20, 184, 166, 0.15); padding: 16px 12px; border-radius: 10px; text-align: center;">
+                                    <div style="font-size: 2rem; font-weight: 800; color: #14b8a6; margin-bottom: 4px;">
+                                        ${mentor.trainee_count}
+                                    </div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        LIFETIME<br>TRAINEES
+                                    </div>
+                                </div>
+                                
+                                <!-- Success Rate % (color-coded by performance) -->
+                                <div style="background: rgba(20, 184, 166, 0.15); padding: 16px 12px; border-radius: 10px; text-align: center; border: 2px solid ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'};">
+                                    <div style="font-size: 2rem; font-weight: 800; color: ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'}; margin-bottom: 4px;">
+                                        ${(mentor.success_rate || 0).toFixed(0)}%
+                                    </div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        SUCCESS<br>RATE
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Mentee Names as Pills/Tags -->
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto;">
+                                ${mentor.trainees.map(t => `
+                                    <a href="#" onclick="loadCandidateProfile('${t.name.replace(/'/g, "\\'")}'); return false;" 
+                                       style="background: rgba(20, 184, 166, 0.2); 
+                                              padding: 8px 14px; border-radius: 20px; 
+                                              color: ${scoreColor}; text-decoration: none; font-weight: 600; font-size: 0.85rem;
+                                              border: 1px solid ${scoreColor}66;
+                                              transition: all 0.2s; display: inline-block;
+                                              box-shadow: 0 2px 4px rgba(0,0,0,0.2);"
+                                       onmouseenter="this.style.background='rgba(20, 184, 166, 0.3)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.3)';"
+                                       onmouseleave="this.style.background='rgba(20, 184, 166, 0.2)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)';">
+                                        ${t.name}
+                                    </a>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';  // Close mentor grid
+            } else {
+                html += '<div class="no-data" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6);">No mentors found for this filter</div>';
+            }
+            
+            html += '</div>';  // Close wrapper div that overrides candidates-grid
+            
+            document.getElementById('candidatesList').innerHTML = html;
         }
 
         function filterMentorsByMEI(filterType) {
@@ -3487,6 +3713,7 @@
                         
                         <div class="bottom-nav">
                             <button onclick="showAllMentors()" class="back-button">← Back to Mentors</button>
+                            <button onclick="showTrainingMentors()" class="back-button">← Back to MIT Mentors</button>
                             <button onclick="showDashboard()" class="back-button">← Back to Dashboard</button>
                         </div>
                     </div>
