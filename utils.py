@@ -100,7 +100,7 @@ def format_company_start_date(date_value: Any) -> str:
     Converts pandas Timestamp or datetime to readable string format
     """
     if pd.isna(date_value) or date_value == '':
-        return '—'
+        return 'TBD'
     
     try:
         # If it's a pandas Timestamp or datetime, format it
@@ -111,7 +111,7 @@ def format_company_start_date(date_value: Any) -> str:
         else:
             return str(date_value)
     except (ValueError, TypeError):
-        return '—'
+        return 'TBD'
 
 def parse_salary(salary_value: Any) -> float:
     """
@@ -403,7 +403,7 @@ def extract_real_scores(row: pd.Series) -> Dict[str, Any]:
                 
                 # Special handling for skill_ranking (text field)
                 if score_key == 'skill_ranking':
-                    scores[score_key] = val_str if val_str else '—'
+                    scores[score_key] = val_str if val_str else 'TBD'
                     logger.info(f"    -> SUCCESS: {scores[score_key]} (text field from '{score_value}')")
                 elif score_key == 'mock_qbr_score':
                     # Mock QBR Score is out of 4, not 100
@@ -415,15 +415,15 @@ def extract_real_scores(row: pd.Series) -> Dict[str, Any]:
                     logger.info(f"    -> SUCCESS: {scores[score_key]} (cleaned from '{score_value}')")
             except (ValueError, TypeError) as e:
                 if score_key == 'skill_ranking':
-                    scores[score_key] = '—'
-                    logger.info(f"    -> ERROR: {e}, defaulting to '—'")
+                    scores[score_key] = 'TBD'
+                    logger.info(f"    -> ERROR: {e}, defaulting to 'TBD'")
                 else:
                     scores[score_key] = 0.0
                     logger.info(f"    -> ERROR: {e}, defaulting to 0.0")
         else:
             if score_key == 'skill_ranking':
-                scores[score_key] = '—'
-                logger.info(f"    -> EMPTY/NULL, defaulting to '—'")
+                scores[score_key] = 'TBD'
+                logger.info(f"    -> EMPTY/NULL, defaulting to 'TBD'")
             else:
                 scores[score_key] = 0.0
                 logger.info(f"    -> EMPTY/NULL, defaulting to 0.0")
@@ -712,28 +712,28 @@ def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
     """
     Create a minimal candidate profile from MIT Tracking fields.
     """
-    name_value = str(tracking_row.get('MIT Name', '—'))
+    name_value = str(tracking_row.get('MIT Name', 'TBD'))
     return {
         'name': name_value,
-        'training_site': str(tracking_row.get('Training Site', '—')),
-        'location': str(tracking_row.get('Location', '—')),
+        'training_site': str(tracking_row.get('Training Site', 'TBD')),
+        'location': str(tracking_row.get('Location', 'TBD')),
         'week': int(pd.to_numeric(tracking_row.get('Week', 0), errors='coerce') or 0),
-        'expected_graduation_week': '—',
+        'expected_graduation_week': 'TBD',
         'salary': parse_salary(tracking_row.get('Salary', 0)),
         'status': str(tracking_row.get('Status', 'offer_pending')).lower(),
         'training_program': 'MIT',
-        'mentor_name': str(tracking_row.get('Mentor', '—')),
-        'mentor_title': '—',
+        'mentor_name': str(tracking_row.get('Mentor', 'TBD')),
+        'mentor_title': 'TBD',
         'bio': get_bio_for_name(name_value),
         'scores': {},
         'onboarding_progress': None,
         'business_lessons_progress': None,
         'operation_details': {
-            'company_start_date': str(tracking_row.get('Start date', '—')),
-            'training_start_date': '—',
-            'title': '—',
-            'operation_location': str(tracking_row.get('Training Site', '—')),
-            'vertical': str(tracking_row.get('VERT', '—'))
+            'company_start_date': str(tracking_row.get('Start date', 'TBD')),
+            'training_start_date': 'TBD',
+            'title': 'TBD',
+            'operation_location': str(tracking_row.get('Training Site', 'TBD')),
+            'vertical': str(tracking_row.get('VERT', 'TBD'))
         },
         'resume_link': '',
         'profile_image': resolve_headshot_path(name_value),
@@ -943,25 +943,25 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
     # Build candidate data dictionary
     candidate_data = {
         'name': candidate_name,
-        'training_site': str(row.get('Training Site', row.get('Ops Account- Location', '—'))),
-        'location': str(row.get('Location', '—')),
+        'training_site': str(row.get('Training Site', row.get('Ops Account- Location', 'TBD'))),
+        'location': str(row.get('Location', 'TBD')),
         'week': week_value,
-        'expected_graduation_week': str(row.get('Expected Graduation Week', '—')),
+        'expected_graduation_week': str(row.get('Expected Graduation Week', 'TBD')),
         'salary': salary_value,
-        'status': str(row.get('Status', '—')),
-        'training_program': str(row.get('Training Program', '—')),
-        'mentor_name': str(row.get('Mentor Name', '—')),
-        'mentor_title': str(row.get('Title of Mentor', '—')),
+        'status': str(row.get('Status', 'TBD')),
+        'training_program': str(row.get('Training Program', 'TBD')),
+        'mentor_name': str(row.get('Mentor Name', 'TBD')),
+        'mentor_title': str(row.get('Title of Mentor', 'TBD')),
         'bio': get_bio_for_name(candidate_name),
         'scores': {k: convert_numpy_types(v) for k, v in real_scores.items()},
         'onboarding_progress': {k: convert_numpy_types(v) for k, v in onboarding_progress.items()},
         'business_lessons_progress': {k: convert_numpy_types(v) for k, v in business_lessons_progress.items()},
         'operation_details': {
-            'company_start_date': str(row.get('Company Start Date Original', '—')),  # Display original string
-            'training_start_date': str(row.get('Training Start Date', '—')),  # Display only
-            'title': str(row.get('Title', '—')),
-            'operation_location': str(row.get('Ops Account- Location', '—')),
-            'vertical': str(row.get('Vertical', '—'))
+            'company_start_date': str(row.get('Company Start Date Original', 'TBD')),  # Display original string
+            'training_start_date': str(row.get('Training Start Date', 'TBD')),  # Display only
+            'title': str(row.get('Title', 'TBD')),
+            'operation_location': str(row.get('Ops Account- Location', 'TBD')),
+            'vertical': str(row.get('Vertical', 'TBD'))
         },
         # Local file paths
         'resume_link': str(row.get('Resume', '')),
@@ -1443,3 +1443,134 @@ def get_mentor_dashboard_metrics() -> Dict[str, Any]:
         'strong_mentors': strong,
         'needs_improvement': needs_improvement
     }
+
+
+def get_active_training_mentors() -> Dict[str, Any]:
+    """
+    Get mentors who are actively training current MIT candidates
+    Only includes candidates with status 'In Training'
+    
+    Returns:
+        Dictionary with training mentor statistics and lists grouped by performance
+    """
+    try:
+        logger.info("Building active training mentors list")
+        candidates = merge_candidate_sources()
+        mentor_trainee_map = {}
+        
+        # Build mentor-trainee relationships for "In Training" candidates only
+        for candidate in candidates:
+            status = str(candidate.get('status', '')).strip().lower()
+            # Include both "training" and candidates in weeks 0-22
+            week = candidate.get('week', 0)
+            if status == 'training' or (week >= 0 and week < 22 and status not in ['offer_pending', 'ready']):
+                mentor_name = str(candidate.get('mentor_name', '')).strip()
+                # Filter out invalid mentor names
+                if mentor_name and mentor_name.lower() not in ['nan', 'none', '', 'n/a', 'tbd', '—']:
+                    if mentor_name not in mentor_trainee_map:
+                        mentor_trainee_map[mentor_name] = {
+                            'trainees': [],
+                            'mei_score': 0.0,
+                            'mentor_title': str(candidate.get('mentor_title', 'Mentor')).strip()
+                        }
+                    mentor_trainee_map[mentor_name]['trainees'].append({
+                        'name': candidate.get('name', ''),
+                        'week': candidate.get('week', 0)
+                    })
+        
+        logger.info(f"Found {len(mentor_trainee_map)} mentors with active trainees")
+        
+        # Get MEI scores for these mentors
+        mei_data = fetch_mentor_mei_summary()
+        for mentor_name in mentor_trainee_map:
+            normalized_name = normalize_name(mentor_name)
+            # Try to find MEI score by normalized name match
+            for mei_mentor_name, mei_info in mei_data.items():
+                if normalize_name(mei_mentor_name) == normalized_name:
+                    mentor_trainee_map[mentor_name]['mei_score'] = mei_info.get('average_mei', 0.0)
+                    break
+        
+        # Categorize mentors by performance
+        strong = []
+        needs_help = []
+        monitoring = []
+        
+        # Fetch mentor relationships to calculate accurate lifetime trainee counts
+        relationships = fetch_mentor_relationships_data()
+        
+        for mentor_name, data in mentor_trainee_map.items():
+            mei = data['mei_score']
+            
+            # Calculate lifetime trainee count and success rate from Relationships sheet
+            normalized_name = normalize_name(mentor_name)
+            lifetime_count = 0
+            completed_count = 0
+            unsuccessful_count = 0
+            in_progress_count = 0
+            
+            for rel in relationships:
+                rel_mentor = str(rel.get('mentor_name', '')).strip()
+                if rel_mentor and normalize_name(rel_mentor) == normalized_name:
+                    lifetime_count += 1
+                    completion_status = str(rel.get('completion_status', '')).strip().lower()
+                    
+                    # Count completed trainees
+                    if completion_status in ['completed', 'complete', 'successful', 'graduated']:
+                        completed_count += 1
+                    # Count unsuccessful trainees
+                    elif completion_status in ['unsuccessful', 'removed', 'incomplete', 'failed', 'resigned', 'terminated']:
+                        unsuccessful_count += 1
+                    # Everything else is in progress
+                    else:
+                        in_progress_count += 1
+            
+            # Calculate success rate - ONLY from finished trainees (exclude in-progress)
+            finished_count = completed_count + unsuccessful_count
+            success_rate = (completed_count / finished_count * 100) if finished_count > 0 else 0
+            
+            # Fallback to current active count if no relationships found
+            if lifetime_count == 0:
+                lifetime_count = len(data['trainees'])
+                success_rate = 0
+            
+            mentor_info = {
+                'name': mentor_name,
+                'trainees': data['trainees'],
+                'mei_score': mei,
+                'title': data['mentor_title'],
+                'trainee_count': lifetime_count,  # Lifetime total from Relationships sheet
+                'success_rate': success_rate  # Success rate percentage
+            }
+            
+            # Categorize based on MEI score
+            if mei >= 2.5:
+                strong.append(mentor_info)
+            elif mei < 2.0 and mei > 0:
+                needs_help.append(mentor_info)
+            else:
+                monitoring.append(mentor_info)
+        
+        # Sort each category by MEI score (descending)
+        strong.sort(key=lambda x: x['mei_score'], reverse=True)
+        needs_help.sort(key=lambda x: x['mei_score'])
+        monitoring.sort(key=lambda x: x['mei_score'], reverse=True)
+        
+        logger.info(f"Categorized: {len(strong)} strong, {len(needs_help)} needs help, {len(monitoring)} monitoring")
+        
+        return {
+            'total_training_mentors': len(mentor_trainee_map),
+            'strong_mentors': strong,
+            'needs_help_mentors': needs_help,
+            'monitoring_mentors': monitoring,
+            'total_trainees': sum(len(m['trainees']) for m in mentor_trainee_map.values())
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting active training mentors: {str(e)}")
+        return {
+            'total_training_mentors': 0,
+            'strong_mentors': [],
+            'needs_help_mentors': [],
+            'monitoring_mentors': [],
+            'total_trainees': 0
+        }
