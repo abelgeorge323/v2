@@ -29,6 +29,9 @@ FALLBACK_CANDIDATE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1
 MENTOR_RELATIONSHIPS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRH719lKRRdQV8Y4CEEl7Gk-lfrAGulMcOgu3sltQ7zupMRDlP3Rpgaa-sEJlRTNqrRsTuPNcOswlv9/pub?gid=1269990929&single=true&output=csv'
 MENTOR_MEI_SUMMARY_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRH719lKRRdQV8Y4CEEl7Gk-lfrAGulMcOgu3sltQ7zupMRDlP3Rpgaa-sEJlRTNqrRsTuPNcOswlv9/pub?gid=1759772785&single=true&output=csv'
 
+# MIT Alumni/Placed MITs Sheet (MIT graduates with placement information)
+PLACED_MITS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbdhuieyA-axzb4aLe8c7zdAYXBLPNrIxKRder6j1ZAlj2g4U1k0YzkZbm_dEcSwBik4CJ57FROJ/pub?gid=1835369405&single=true&output=csv'
+
 # =============================================================================
 # TRAINING PROGRAM CONFIGURATION
 # =============================================================================
