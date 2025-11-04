@@ -513,11 +513,7 @@
             font-size: 1.15rem;
             color: rgba(255,255,255,0.85);
             max-width: 900px;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            line-clamp: 3;
-            overflow: hidden;
+            line-height: 1.6;
         }
 
         .profile-content {
@@ -2114,6 +2110,18 @@
                     };
                 }
                 
+                // Fetch MIT alumni separately
+                try {
+                    const alumniResponse = await fetch(`${API_BASE_URL}/api/mit-alumni${CACHE_BUST}`);
+                    data.alumni_metrics = await alumniResponse.json();
+                } catch (err) {
+                    console.warn('Could not fetch MIT alumni:', err);
+                    data.alumni_metrics = {
+                        total_alumni: 0,
+                        alumni: []
+                    };
+                }
+                
                 renderMetrics(data);
                 
             } catch (error) {
@@ -2180,6 +2188,16 @@
                             <div class="mentor-metric-value" style="color: #ef4444;">${data.training_mentor_metrics?.needs_help_mentors?.length || 0}</div>
                         </div>
                     </div>
+                </div>
+                
+                <!-- MIT Alumni Tile with Gold Gradient -->
+                <div class="metric-card mit-alumni" onclick="showMITAlumni()" 
+                     style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); cursor: pointer; border: 2px solid #f59e0b; transition: all 0.3s ease;"
+                     onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(245, 158, 11, 0.4)';"
+                     onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';">
+                    <div class="metric-label" style="color: #fff; font-weight: 700;">🎓 MIT Alumni</div>
+                    <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${data.alumni_metrics?.total_alumni || 0}</div>
+                    <div class="metric-change" style="color: rgba(255,255,255,0.9);">Placed graduates</div>
                 </div>
             `;
         }
@@ -2992,6 +3010,7 @@
                     }
                     <div class="profile-info">
                         <h1>${candidate.name}
+                            ${candidate.is_alumni ? '<span class="data-quality-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; border: none;">🎓 MIT Alumni</span>' : ''}
                             ${candidate.data_quality === 'limited' ? '<span class="data-quality-badge warning">Limited Profile Data</span>' : ''}
                             ${candidate.data_quality === 'archive' ? '<span class="data-quality-badge info">Archive Data</span>' : ''}
                         </h1>
@@ -3029,7 +3048,7 @@
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Perf Eval</div>
-                                <div class="metric-value">${candidate.scores.perf_eval_score || 0}/100</div>
+                                <div class="metric-value">${candidate.scores.perf_eval_score || 0}/60</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Skill Ranking</div>
@@ -3127,7 +3146,8 @@
                     <div class="loading">Loading top job matches...</div>
                 </div>
 
-                <!-- Collapsible: Additional Details -->
+                <!-- Collapsible: Additional Details (hide for alumni - not relevant) -->
+                ${!candidate.is_alumni ? `
                 <div class="collapsible-section" style="margin-top: 30px;">
                     <div class="collapsible-header" onclick="toggleSection('additionalDetails')" style="cursor: pointer; background: rgba(255,255,255,0.08); padding: 15px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
                         <h3 style="margin: 0; font-size: 1.2rem;">📋 Additional Details</h3>
@@ -3135,37 +3155,40 @@
                     </div>
                     <div id="additionalDetails" style="display: none; margin-top: 15px;">
                         <div class="profile-content">
-                            ${candidate.onboarding_progress ? `
+                            \${candidate.onboarding_progress ? \`
                             <div class="onboarding-progress">
                                 <h3>📋 Onboarding Progress</h3>
                                 <div class="progress-container">
                                     <div class="progress-bar">
-                                        <div class="progress-fill" style="width: ${candidate.onboarding_progress.percentage}%"></div>
+                                        <div class="progress-fill" style="width: \${candidate.onboarding_progress.percentage}%"></div>
                                     </div>
-                                    <div class="progress-text">${candidate.onboarding_progress.completed}/${candidate.onboarding_progress.total} Complete (${candidate.onboarding_progress.percentage}%)</div>
+                                    <div class="progress-text">\${candidate.onboarding_progress.completed}/\${candidate.onboarding_progress.total} Complete (\${candidate.onboarding_progress.percentage}%)</div>
                                 </div>
                             </div>
-                            ` : ''}
+                            \` : ''}
                             
-                            ${candidate.business_lessons_progress ? `
+                            \${candidate.business_lessons_progress ? \`
                             <div class="business-lessons">
                                 <h3>📚 Business Lessons Progress</h3>
                                 <div class="progress-container">
                                     <div class="progress-bar">
-                                        <div class="progress-fill" style="width: ${candidate.business_lessons_progress.percentage}%"></div>
+                                        <div class="progress-fill" style="width: \${candidate.business_lessons_progress.percentage}%"></div>
                                     </div>
-                                    <div class="progress-text">${candidate.business_lessons_progress.completed}/${candidate.business_lessons_progress.total} Complete (${candidate.business_lessons_progress.percentage}%)</div>
+                                    <div class="progress-text">\${candidate.business_lessons_progress.completed}/\${candidate.business_lessons_progress.total} Complete (\${candidate.business_lessons_progress.percentage}%)</div>
                                 </div>
                             </div>
-                            ` : ''}
+                            \` : ''}
 
                         </div>
                     </div>
                 </div>
+                ` : ''}
             `;
             
-            // Load top job matches for this candidate
-            loadCandidateJobMatches(candidate.name);
+            // Load top job matches for this candidate (skip for alumni - they're already placed!)
+            if (!candidate.is_alumni) {
+                loadCandidateJobMatches(candidate.name);
+            }
         }
 
         // Navigation functions
@@ -3493,6 +3516,141 @@
             document.getElementById('candidatesList').innerHTML = html;
         }
 
+        // MIT Alumni Page
+        async function showMITAlumni() {
+            try {
+                hideAllPages();
+                document.getElementById('candidateList').classList.add('active');
+                const container = document.getElementById('candidatesList');
+                container.innerHTML = '<div class="loading">Loading MIT alumni...</div>';
+                document.querySelector('.candidates-container h2').textContent = '🎓 MIT Alumni';
+                previousPage = currentPage;
+                currentPage = 'mit_alumni';
+                
+                const response = await fetch(`${API_BASE_URL}/api/mit-alumni${CACHE_BUST}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                renderMITAlumni(data.alumni);
+                
+            } catch (error) {
+                console.error('Error loading MIT alumni:', error);
+                document.getElementById('candidatesList').innerHTML = 
+                    `<div class="error">Error loading MIT alumni: ${error.message}</div>`;
+            }
+        }
+        
+        function renderMITAlumni(alumni) {
+            // Override candidates-grid CSS and expand beyond container padding
+            let html = '<div style="display: block !important; width: calc(100% + 80px) !important; margin-left: -40px !important; margin-right: -40px !important; margin-top: -10px; padding: 0 40px; box-sizing: border-box !important;">';
+            
+            // Gold-themed banner
+            html += `
+                <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%); 
+                            padding: 20px 30px; border-radius: 12px; margin-bottom: 25px; 
+                            border: 2px solid rgba(245, 158, 11, 0.4);
+                            text-align: center;">
+                    <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #f59e0b; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        🎓 ${alumni.length} MIT Program Graduates Successfully Placed
+                    </h3>
+                </div>
+            `;
+            
+            // Display alumni in responsive grid (5 cards per row to fill screen)
+            if (alumni && alumni.length > 0) {
+                html += '<div style="display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 20px !important; margin-bottom: 30px; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;">';
+                
+                alumni.forEach(alum => {
+                    // Gold gradient for alumni cards - cleaner design
+                    const borderColor = '#f59e0b';
+                    const bgGradient = 'linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(45, 55, 72, 0.95) 100%)';
+                    const goldColor = '#f59e0b';
+                    
+                    html += `
+                        <div class="alumni-card" style="background: ${bgGradient}; 
+                                                         padding: 20px; border-radius: 12px; border: 2px solid ${borderColor}; 
+                                                         box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s ease;
+                                                         display: flex; flex-direction: column; gap: 12px; min-height: 300px;" 
+                             onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(245, 158, 11, 0.4)';" 
+                             onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
+                            
+                            <!-- Alumni Name (non-clickable display) -->
+                            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: ${goldColor}; text-align: center;">
+                                ${alum.name}
+                            </h3>
+                            
+                            <!-- Current Placement Section -->
+                            <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 8px; border-left: 4px solid ${goldColor};">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                    <span style="font-size: 1.1rem;">↑</span>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        CURRENT PLACEMENT
+                                    </div>
+                                </div>
+                                <div style="color: ${goldColor}; font-size: 1.1rem; font-weight: 700; margin-bottom: 6px;">
+                                    ${alum.placement_site}
+                                </div>
+                                <div style="color: rgba(255,255,255,0.85); font-size: 0.95rem; margin-bottom: 8px;">
+                                    ${alum.placement_title}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); font-size: 0.85rem;">
+                                    <span>📅</span>
+                                    <span>Started: ${alum.placement_start_date}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Training Background Section -->
+                            <div style="background: rgba(0,0,0,0.2); padding: 14px; border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                    <span style="font-size: 1.1rem;">📋</span>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        TRAINING BACKGROUND
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 0.9rem;">
+                                    <span style="color: rgba(255,255,255,0.6);">Site:</span>
+                                    <span style="color: ${goldColor}; font-weight: 600;">${alum.training_site}</span>
+                                    
+                                    <span style="color: rgba(255,255,255,0.6);">Vertical:</span>
+                                    <span style="color: ${goldColor}; font-weight: 600;">${alum.training_vertical}</span>
+                                    
+                                    <span style="color: rgba(255,255,255,0.6);">Duration:</span>
+                                    <span style="color: ${goldColor}; font-weight: 600;">${alum.weeks_in_program} weeks</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Trained By Section -->
+                            <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin-top: auto;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                    <span style="font-size: 1.1rem;">👤</span>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        TRAINED BY
+                                    </div>
+                                </div>
+                                <a href="#" onclick="showMentorProfile('${(alum.mentor_name || 'TBD').replace(/'/g, "\\'")}'); return false;" 
+                                   style="color: ${goldColor}; text-decoration: none; font-weight: 600; font-size: 1rem; transition: color 0.2s; cursor: pointer;"
+                                   onmouseenter="this.style.color='#fff'; this.style.textDecoration='underline';"
+                                   onmouseleave="this.style.color='${goldColor}'; this.style.textDecoration='none';">
+                                    ${alum.mentor_name || 'TBD'}
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';  // Close alumni grid
+            } else {
+                html += '<div class="no-data" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6);">No MIT alumni found</div>';
+            }
+            
+            html += '</div>';  // Close wrapper div
+            
+            document.getElementById('candidatesList').innerHTML = html;
+        }
+
         function filterMentorsByMEI(filterType) {
             currentMentorFilter = filterType;
             switch(filterType) {
@@ -3590,6 +3748,9 @@
                     ` : ''}
                     
                     <div class="bottom-nav">
+                        ${candidate.is_alumni ? `
+                        <button onclick="showMITAlumni()" class="back-button">← Back to MIT Alumni</button>
+                        ` : ''}
                         <button onclick="showDashboard()" class="back-button">← Back to Dashboard</button>
                     </div>
                 </div>
