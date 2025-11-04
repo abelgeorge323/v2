@@ -40,7 +40,8 @@ from utils import (
     normalize_name,
     parse_salary,
     build_mentor_profiles,
-    get_mentor_dashboard_metrics
+    get_mentor_dashboard_metrics,
+    get_active_training_mentors
 )
 
 # =============================================================================
@@ -574,6 +575,18 @@ def get_mentor_metrics():
     """Get mentor metrics for dashboard block"""
     metrics = get_mentor_dashboard_metrics()
     return jsonify(metrics), 200
+
+@app.route('/api/training-mentors', methods=['GET'])
+def get_training_mentors_endpoint():
+    """Get mentors actively training current MIT candidates"""
+    try:
+        mentors = get_active_training_mentors()
+        response = jsonify(mentors)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, 200
+    except Exception as e:
+        log_error("Error in training mentors endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 # =============================================================================
 # MAIN APPLICATION
