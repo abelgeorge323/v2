@@ -682,6 +682,85 @@ def fetch_fallback_candidate_data() -> pd.DataFrame:
         logger.error(f"Error fetching fallback candidate data: {e}")
         return pd.DataFrame(columns=['MIT Name'])
 
+def fetch_placed_mits_data() -> List[Dict[str, Any]]:
+    """
+    Fetch placed MIT graduates from the Placed MITs Google Sheet
+    
+    Data structure:
+    - Rows 1-3: Empty rows
+    - Row 4: Header row
+    - Rows 5+: "Placed MITS" data (starts after header)
+    - Later rows: "Dropped Out/Terminated" section (we stop before this)
+    
+    Returns:
+        List of dictionaries containing placed MIT graduate data
+    """
+    try:
+        logger.info("Fetching placed MITs data from Google Sheets")
+        
+        # Use pandas to read CSV
+        import io
+        import requests
+        response = requests.get(PLACED_MITS_URL)
+        response.raise_for_status()
+        
+        # Read CSV skipping first 4 rows (rows 1-4 are empty/metadata)
+        # Row 5 is the header row, so it becomes column names
+        df = pd.read_csv(io.StringIO(response.text), skiprows=4, dtype=str)
+        
+        # Drop the first column (empty Column A)
+        if len(df.columns) > 0:
+            logger.info(f"Columns before drop: {df.columns.tolist()}")
+            logger.info(f"First few rows of data:\n{df.head(3)}")
+            df = df.drop(df.columns[0], axis=1)
+            logger.info(f"Columns after drop: {df.columns.tolist()}")
+            logger.info(f"First few rows after drop:\n{df.head(3)}")
+        
+        placed_mits = []
+        
+        for idx, row in df.iterrows():
+            mit_name = str(row.get('MIT Name', '')).strip()
+            logger.info(f"Processing row {idx}: MIT Name = '{mit_name}'")
+            
+            # Stop at "Dropped Out/Terminated" section
+            if 'Dropped Out' in mit_name or 'Terminated' in mit_name:
+                logger.info(f"Reached 'Dropped Out/Terminated' section at row {idx}, stopping")
+                break
+            
+            # Skip empty rows and header-like rows
+            if not mit_name or mit_name.lower() in ['nan', 'none', '', 'mit name'] or 'Placed MITS' in mit_name:
+                logger.info(f"Skipping row {idx}: empty or header row")
+                continue
+            
+            # Extract placement data
+            placed_mit = {
+                'name': mit_name,
+                'weeks_in_program': str(row.get('Weeks in Program', 'TBD')).strip(),
+                'training_start_date': str(row.get('Start date', 'TBD')).strip(),
+                'training_vertical': str(row.get('VERT', 'TBD')).strip(),
+                'training_site': str(row.get('Training Site', 'TBD')).strip(),
+                'training_location': str(row.get('Location', 'TBD')).strip(),
+                'training_salary': str(row.get('Salary', 'TBD')).strip(),
+                'level': str(row.get('Level', 'TBD')).strip(),
+                'status': str(row.get('Status', 'TBD')).strip(),
+                'confidence': str(row.get('Confidence', 'TBD')).strip(),
+                'notes': str(row.get('Notes', '')).strip(),
+                # Placement information (NEW - not in other sheets)
+                'placement_site': str(row.get('Placement Site', 'TBD')).strip(),
+                'placement_title': str(row.get('Title', 'TBD')).strip(),
+                'placement_start_date': str(row.get('New Start Date', 'TBD')).strip(),
+            }
+            
+            logger.info(f"Found placed MIT: {mit_name}")
+            placed_mits.append(placed_mit)
+        
+        logger.info(f"Successfully fetched {len(placed_mits)} placed MIT graduates")
+        return placed_mits
+        
+    except Exception as e:
+        logger.error(f"Error fetching placed MITs data: {e}", exc_info=True)
+        return []
+
 def find_candidate_in_sheet(name: str, df: pd.DataFrame, hint_mentor: str = None) -> Optional[pd.Series]:
     """
     Find candidate by name using exact normalized match, then fuzzy fallback.
@@ -1573,4 +1652,116 @@ def get_active_training_mentors() -> Dict[str, Any]:
             'needs_help_mentors': [],
             'monitoring_mentors': [],
             'total_trainees': 0
+        }
+
+def get_mit_alumni() -> Dict[str, Any]:
+    """
+    Get MIT alumni with placement information
+    
+    Logic:
+    1. Fetch placed MITs sheet (master list - source of truth for who graduated)
+    2. For each MIT graduate, try to find them in Fallback sheet
+    3. Merge placement data (from Placed MITs) + training data (from Fallback)
+    4. Return list of alumni profiles with full information
+    
+    Returns:
+        Dictionary with total count and list of alumni profiles
+    """
+    try:
+        logger.info("Building MIT alumni list")
+        
+        # Step 1: Get placed MITs (master list)
+        placed_mits = fetch_placed_mits_data()
+        
+        if not placed_mits:
+            logger.warning("No placed MITs found")
+            return {'total_alumni': 0, 'alumni': []}
+        
+        # Step 2: Get fallback data for enrichment
+        fallback_df = fetch_fallback_candidate_data()
+        
+        # Step 3: Get current MIT tracking candidates (to exclude from alumni)
+        current_candidates = merge_candidate_sources()
+        current_names = {normalize_name(c['name']) for c in current_candidates}
+        
+        alumni_profiles = []
+        
+        for placed_mit in placed_mits:
+            name = placed_mit['name']
+            normalized_name = normalize_name(name)
+            
+            # EXCLUSION LOGIC: Skip if they're still in current MIT tracking
+            if normalized_name in current_names:
+                logger.info(f"Skipping {name} - still in active MIT tracking")
+                continue
+            
+            # Start with placement data from Placed MITs sheet
+            alumni_profile = {
+                'name': name,
+                # Placement information (priority - from Placed MITs sheet)
+                'placement_site': placed_mit.get('placement_site', 'TBD'),
+                'placement_title': placed_mit.get('placement_title', 'TBD'),
+                'placement_start_date': placed_mit.get('placement_start_date', 'TBD'),
+                'weeks_in_program': placed_mit.get('weeks_in_program', 'TBD'),
+                # Training information (from Placed MITs sheet)
+                'training_site': placed_mit.get('training_site', 'TBD'),
+                'training_location': placed_mit.get('training_location', 'TBD'),
+                'training_salary': placed_mit.get('training_salary', 'TBD'),
+                'training_vertical': placed_mit.get('training_vertical', 'TBD'),
+                'training_start_date': placed_mit.get('training_start_date', 'TBD'),
+                'level': placed_mit.get('level', 'TBD'),
+                'confidence': placed_mit.get('confidence', 'TBD'),
+                'notes': placed_mit.get('notes', ''),
+                # Defaults for enrichment data (will be overridden if found in Fallback)
+                'mentor_name': 'TBD',
+                'mei_score': 0.0,
+                'mock_qbr_score': 0.0,
+                'assessment_score': 0.0,
+                'perf_eval_score': 0.0,
+                'confidence_score': 0.0,
+                'skill_ranking': 'TBD',
+                'graduation_date': 'TBD',
+                'image': resolve_headshot_path(name),
+                'bio': get_bio_for_name(name)
+            }
+            
+            # Step 4: Try to enrich with data from Fallback sheet
+            fallback_row = find_candidate_in_sheet(name, fallback_df)
+            
+            if fallback_row is not None:
+                logger.info(f"Found enrichment data for {name} in Fallback sheet")
+                
+                # Add mentor information
+                alumni_profile['mentor_name'] = str(fallback_row.get('Mentor Name', 'TBD')).strip()
+                
+                # Add scores if available
+                alumni_profile['mock_qbr_score'] = float(pd.to_numeric(fallback_row.get('Mock QBR Score', 0), errors='coerce') or 0)
+                alumni_profile['assessment_score'] = float(pd.to_numeric(fallback_row.get('Assessment Score', 0), errors='coerce') or 0)
+                alumni_profile['perf_eval_score'] = float(pd.to_numeric(fallback_row.get('Perf Evaluation Score', 0), errors='coerce') or 0)
+                alumni_profile['confidence_score'] = float(pd.to_numeric(fallback_row.get('Confidence Score', 0), errors='coerce') or 0)
+                
+                skill_rank = str(fallback_row.get('Skill Ranking', 'TBD')).strip()
+                alumni_profile['skill_ranking'] = skill_rank if skill_rank.lower() not in ['nan', 'none', ''] else 'TBD'
+                
+                # Add graduation date if available
+                grad_date = str(fallback_row.get('Graduation Date', '')).strip()
+                if grad_date and grad_date.lower() not in ['nan', 'none', '']:
+                    alumni_profile['graduation_date'] = grad_date
+            else:
+                logger.info(f"No enrichment data found for {name} in Fallback sheet - using Placed MITs data only")
+            
+            alumni_profiles.append(alumni_profile)
+        
+        logger.info(f"Built {len(alumni_profiles)} MIT alumni profiles")
+        
+        return {
+            'total_alumni': len(alumni_profiles),
+            'alumni': alumni_profiles
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting MIT alumni: {str(e)}")
+        return {
+            'total_alumni': 0,
+            'alumni': []
         }
