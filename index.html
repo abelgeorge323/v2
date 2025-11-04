@@ -3051,30 +3051,30 @@
                             <div class="assessment-tile">
                                 <div class="tile-title">🎯 Core Competency</div>
                                 <div class="assessment-progress-bar">
-                                    <div class="assessment-progress-fill score-excellent" style="width: ${getProgressWidth(4.5)}%"></div>
+                                    <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">4.5/5</div>
+                                <div class="assessment-score-value">0/5</div>
                             </div>
                             <div class="assessment-tile">
                                 <div class="tile-title">👥 Leadership & Soft Skills</div>
                                 <div class="assessment-progress-bar">
-                                    <div class="assessment-progress-fill score-good" style="width: ${getProgressWidth(3.8)}%"></div>
+                                    <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">3.8/5</div>
+                                <div class="assessment-score-value">0/5</div>
                             </div>
                             <div class="assessment-tile">
                                 <div class="tile-title">⚡ Engagement & Aptitude</div>
                                 <div class="assessment-progress-bar">
-                                    <div class="assessment-progress-fill score-excellent" style="width: ${getProgressWidth(4.2)}%"></div>
+                                    <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">4.2/5</div>
+                                <div class="assessment-score-value">0/5</div>
                             </div>
                             <div class="assessment-tile">
                                 <div class="tile-title">✓ Readiness & Confidence</div>
                                 <div class="assessment-progress-bar">
-                                    <div class="assessment-progress-fill score-needs-improvement" style="width: ${getProgressWidth(2.8)}%"></div>
+                                    <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">2.8/5</div>
+                                <div class="assessment-score-value">0/5</div>
                             </div>
                         </div>
                     </div>
@@ -3466,7 +3466,7 @@
                             <!-- Mentee Names as Pills/Tags -->
                             <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto;">
                                 ${mentor.trainees.map(t => `
-                                    <a href="#" onclick="loadCandidateProfile('${t.name.replace(/'/g, "\\'")}'); return false;" 
+                                    <a href="#" onclick="showProfile('${t.name.replace(/'/g, "\\'")}'); return false;" 
                                        style="background: rgba(20, 184, 166, 0.2); 
                                               padding: 8px 14px; border-radius: 20px; 
                                               color: ${scoreColor}; text-decoration: none; font-weight: 600; font-size: 0.85rem;
