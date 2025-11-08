@@ -3394,7 +3394,7 @@
             }
         }
 
-        // Helper function to display scores with "Available Week 6" messaging
+        // Helper function to display scores with "Available Week 6" messaging (for Performance Snapshot)
         function getScoreDisplay(score, maxScore, candidateWeek, scoreWeekRequired = 6) {
             // If they have a score, show it normally
             if (score && score > 0) {
@@ -3408,6 +3408,17 @@
             
             // If they're at Week 6 or beyond but no score yet
             return `<span style="color: #f59e0b; font-size: 0.9em;">Pending</span>`;
+        }
+
+        // Helper function for Weekly Mentor Assessment (shows "Available soon" without week number)
+        function getMentorAssessmentDisplay(score, maxScore, candidateWeek) {
+            // If they have a score, show it normally
+            if (score && score > 0) {
+                return `${score}/${maxScore}`;
+            }
+            
+            // Show "Available soon" - no week number
+            return `<span style="color: #94a3b8; font-size: 0.85em;">Available soon</span>`;
         }
 
         // Render profile with real data
@@ -3531,28 +3542,28 @@
                                 <div class="assessment-progress-bar">
                                     <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">${getScoreDisplay(0, 5, candidate.week, 6)}</div>
+                                <div class="assessment-score-value">${getMentorAssessmentDisplay(0, 5, candidate.week)}</div>
                             </div>
                             <div class="assessment-tile">
                                 <div class="tile-title">👥 Leadership & Soft Skills</div>
                                 <div class="assessment-progress-bar">
                                     <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">${getScoreDisplay(0, 5, candidate.week, 6)}</div>
+                                <div class="assessment-score-value">${getMentorAssessmentDisplay(0, 5, candidate.week)}</div>
                             </div>
                             <div class="assessment-tile">
                                 <div class="tile-title">⚡ Engagement & Aptitude</div>
                                 <div class="assessment-progress-bar">
                                     <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">${getScoreDisplay(0, 5, candidate.week, 6)}</div>
+                                <div class="assessment-score-value">${getMentorAssessmentDisplay(0, 5, candidate.week)}</div>
                             </div>
                             <div class="assessment-tile">
                                 <div class="tile-title">✓ Readiness & Confidence</div>
                                 <div class="assessment-progress-bar">
                                     <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">${getScoreDisplay(0, 5, candidate.week, 6)}</div>
+                                <div class="assessment-score-value">${getMentorAssessmentDisplay(0, 5, candidate.week)}</div>
                             </div>
                         </div>
                     </div>
