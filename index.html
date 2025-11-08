@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>MIT Candidate Training Dashboard</title>
@@ -536,14 +537,18 @@
             grid-template-columns: 2fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
+            padding-right: 10px;
         }
 
         .mentor-info-small {
             background: rgba(255,255,255,0.05);
             border-radius: 16px;
             padding: 20px;
+            padding-right: 30px;
             border: 1px solid rgba(255,255,255,0.1);
             height: fit-content;
+            min-width: 0;
+            word-wrap: break-word;
         }
 
         .mentor-info-small h3 {
@@ -551,6 +556,7 @@
             font-weight: 600;
             margin-bottom: 15px;
             color: #ffffff;
+            overflow-wrap: break-word;
         }
 
         .mentor-info-small .info-grid {
@@ -647,18 +653,20 @@
 
         .metrics-grid-profile {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
             margin-bottom: 25px;
         }
 
         .metric-item {
             background: rgba(102, 126, 234, 0.15);
-            padding: 30px;
+            padding: 20px;
             border-radius: 16px;
             border: 1px solid rgba(102, 126, 234, 0.3);
             box-shadow: 0 6px 20px rgba(0,0,0,0.15);
             transition: transform 0.2s ease;
+            min-width: 0;
+            word-wrap: break-word;
         }
 
         .metric-item:hover {
@@ -671,11 +679,14 @@
 
         .metric-item .metric-label {
             color: #667eea;
-            font-size: 1rem;
+            font-size: 0.75rem;
             font-weight: 600;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .metric-item .metric-value {
@@ -934,10 +945,11 @@
         .assessment-tile {
             background: rgba(255,255,255,0.05);
             border-radius: 16px;
-            padding: 20px;
+            padding: 16px;
             border: 1px solid rgba(255,255,255,0.1);
             text-align: center;
             transition: transform 0.2s ease;
+            min-width: 0;
         }
 
         .assessment-tile:hover {
@@ -945,14 +957,16 @@
         }
 
         .assessment-tile .tile-title {
-            font-size: 1rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: #ffffff;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
+            line-height: 1.3;
+            min-height: 2.6em;
         }
 
         .assessment-progress-bar {
@@ -1483,6 +1497,15 @@
         padding: 20px;
         cursor: pointer;
         transition: all 0.3s ease;
+        min-width: 250px;
+        max-width: 100%;
+        word-wrap: break-word;
+    }
+    
+    .mentor-card .metric-label {
+        font-size: 0.7rem;
+        line-height: 1.2;
+        overflow-wrap: break-word;
     }
 
     .mentor-card.strong-mentor {
@@ -1818,6 +1841,321 @@
         font-weight: 700;
         color: #8b5cf6;
         }
+
+        /* Loading Spinner Animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Loading state for cards */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            color: #fff;
+            text-align: center;
+        }
+
+        /* ==========================================
+           COMPREHENSIVE MOBILE OPTIMIZATION
+           ========================================== */
+
+        /* Global overflow prevention */
+        body {
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        /* Better scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.7);
+        }
+
+        /* Make all touch targets at least 48px */
+        button, .nav-btn, .view-profile-btn, .metric-card {
+            min-height: 48px;
+            min-width: 48px;
+        }
+
+        /* Tablet and Mobile Styles */
+        @media (max-width: 768px) {
+            body {
+                font-size: 16px;
+            }
+            
+            .container {
+                padding: 12px;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.75rem;
+            }
+            
+            .header p {
+                font-size: 0.95rem;
+            }
+            
+            /* Stack navigation buttons vertically */
+            .nav {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .nav-btn {
+                width: 100%;
+                text-align: center;
+            }
+            
+            /* Single column metrics grid */
+            .metrics-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            /* Single column candidate cards */
+            .candidates-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .candidate-card {
+                padding: 16px;
+            }
+            
+            .candidate-details {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            /* Profile header - stack vertically */
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+                padding: 30px 20px;
+                gap: 20px;
+            }
+            
+            .profile-info h1 {
+                font-size: 2rem;
+            }
+            
+            /* Performance metrics - single column */
+            .metrics-grid-profile {
+                grid-template-columns: 1fr;
+            }
+            
+            /* Make mentor cards full width */
+            .mentor-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard, .candidates-container, .profile-container {
+                padding: 20px;
+            }
+            
+            /* Make images responsive */
+            .candidate-avatar-small {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .avatar {
+                width: 80px;
+                height: 80px;
+            }
+            
+            /* Assessment grid single column */
+            .assessment-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            /* Stack operation/mentor container */
+            .operation-mentor-container {
+                grid-template-columns: 1fr;
+            }
+            
+            /* Reduce metric card value size */
+            .metric-value {
+                font-size: 2rem;
+            }
+        }
+
+        /* Extra small phones */
+        @media (max-width: 374px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .metric-value {
+                font-size: 1.75rem;
+            }
+            
+            .candidate-card {
+                padding: 12px;
+            }
+            
+            .profile-header {
+                padding: 20px 15px;
+            }
+        }
+
+        /* Landscape mode on phones */
+        @media (max-width: 896px) and (orientation: landscape) {
+            .header {
+                padding: 20px;
+            }
+            
+            .profile-header {
+                padding: 20px;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Responsive mentor card adjustments */
+        @media (max-width: 1400px) {
+            .mentor-card {
+                min-width: 220px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .mentor-card {
+                min-width: 200px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .mentor-card {
+                min-width: 100%;
+            }
+        }
+
+        /* ==========================================
+           STICKY BACK BUTTON
+           ========================================== */
+        .sticky-back-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(30, 35, 41, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            margin: -40px -40px 20px -40px;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .sticky-back-nav .back-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .sticky-back-nav .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Section headers for dashboard grouping (desktop and mobile) */
+        .mobile-section-header {
+            display: block;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(139, 92, 246, 0.15));
+            color: #e0e7ff;
+            padding: 14px 24px;
+            margin: 30px 0 20px 0;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            text-align: left;
+            grid-column: 1 / -1; /* Span full width of grid */
+        }
+        
+        .mobile-section-header:first-child {
+            margin-top: 0;
+        }
+
+        @media (max-width: 768px) {
+            .sticky-back-nav {
+                margin: -20px -20px 15px -20px;
+                padding: 10px 15px;
+            }
+            
+            /* Compact profile layout on mobile - smaller bio text */
+            .profile-header {
+                padding: 20px 15px !important;
+                gap: 15px !important;
+            }
+            
+            .profile-info h1 {
+                font-size: 1.5rem !important;
+                margin-bottom: 6px !important;
+            }
+            
+            .profile-info p {
+                font-size: 0.8rem !important;
+                line-height: 1.3 !important;
+            }
+            
+            .avatar {
+                width: 60px !important;
+                height: 60px !important;
+                font-size: 1.5rem !important;
+            }
+            
+            .profile-info {
+                font-size: 0.85rem !important;
+            }
+            
+            /* Adjust section headers for mobile */
+            .mobile-section-header {
+                padding: 10px 15px;
+                margin: 15px 0 10px 0;
+                font-size: 0.85rem;
+                border-left: 3px solid #667eea;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1841,11 +2179,14 @@
         <!-- Candidate List Page -->
         <div class="page" id="candidateList">
             <div class="candidates-container">
+                <div class="sticky-back-nav">
+                    <button onclick="showDashboard()" class="back-btn">← Back to Dashboard</button>
+                </div>
                 <h2>🧩 Ready for Placement</h2>
                 <div id="candidatesList" class="candidates-grid">
                     <div class="loading">Loading candidates...</div>
                 </div>
-                <div style="text-align: center;">
+                <div style="text-align: center; margin-top: 20px;">
                     <button onclick="showDashboard()" class="back-btn">← Back to Dashboard</button>
                 </div>
             </div>
@@ -1854,10 +2195,14 @@
         <!-- Profile Page -->
         <div class="page" id="profilePage">
             <div class="profile-container">
+                <div class="sticky-back-nav" style="display: flex; gap: 10px;">
+                    <button onclick="goBackToList()" class="back-btn">← Back to List</button>
+                    <button onclick="showDashboard()" class="back-btn">← Dashboard</button>
+                </div>
                 <div id="profileContent">
                     <div class="loading">Loading profile...</div>
                 </div>
-                <div style="text-align: center;">
+                <div style="text-align: center; margin-top: 20px;">
                     <button onclick="goBackToList()" class="back-btn">← Back to List</button>
                     <button onclick="showDashboard()" class="back-btn secondary">← Back to Dashboard</button>
                 </div>
@@ -2010,9 +2355,9 @@
         let jobMatchesCache = {}; // Store matches by job ID
         let openPositionsCache = {}; // Store open positions data
         let candidatesCache = {}; // Store different candidate lists
-        const JOB_MATCHES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-        const OPEN_POSITIONS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
-        const CANDIDATES_CACHE_DURATION = 3 * 60 * 1000; // 3 minutes
+        const JOB_MATCHES_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (faster switching)
+        const OPEN_POSITIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (faster switching)
+        const CANDIDATES_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (faster switching)
         
         // Mentor state management
         let allMentors = [];
@@ -2134,47 +2479,21 @@
         function renderMetrics(data) {
             const metricsGrid = document.getElementById('metricsGrid');
             metricsGrid.innerHTML = `
+                <!-- MOBILE HEADER: Program Overview -->
+                <div class="mobile-section-header">📊 Program Overview</div>
+                
                 <!-- Row 1: Overview Metrics -->
                 <div class="metric-card total-candidates" onclick="showAllCandidates()">
-                    <div class="metric-label">Total Candidates</div>
+                    <div class="metric-label">Active MITs</div>
                     <div class="metric-value">${data.total_candidates}</div>
-                    <div class="metric-change">All registered candidates</div>
+                    <div class="metric-change">Currently in MIT training program</div>
                 </div>
                 <div class="metric-card open-positions" onclick="showOpenPositions()">
-                    <div class="metric-label">Open Positions</div>
+                    <div class="metric-label">Placement Roles</div>
                     <div class="metric-value">${data.open_positions}</div>
-                    <div class="metric-change">Available roles</div>
+                    <div class="metric-change">Available full-time roles for MITs</div>
                 </div>
-                <div class="metric-card week-8-plus" onclick="showWeeks8Plus()">
-                    <div class="metric-label">Weeks 8+</div>
-                    <div class="metric-value">${data.weeks_8_plus || 0}</div>
-                    <div class="metric-change">Ready for Placement</div>
-                </div>
-                <div class="metric-card offer-pending" onclick="showOfferPending()">
-                    <div class="metric-label">Offer Pending</div>
-                    <div class="metric-value">${data.offer_pending || 0}</div>
-                    <div class="metric-change">Awaiting confirmation</div>
-                </div>
-                
-                <!-- Row 2: Training Pipeline -->
-                <div class="metric-card week-0-3" onclick="showWeeks0to3()">
-                    <div class="metric-label">Weeks 0-2</div>
-                    <div class="metric-value">${data.weeks_0_3 || 0}</div>
-                    <div class="metric-change">Operational Overview</div>
-                </div>
-                <div class="metric-card week-4-6" onclick="showWeeks4to6()">
-                    <div class="metric-label">Weeks 3-7</div>
-                    <div class="metric-value">${data.weeks_4_6 || 0}</div>
-                    <div class="metric-change">Active Training</div>
-                </div>
-                <div class="metric-card week-7-priority" onclick="showWeek7Priority()">
-                    <div class="metric-label">Weeks 6-7 Priority</div>
-                    <div class="metric-value">${data.week_7_only || 0}</div>
-                    <div class="metric-change">Action Needed!</div>
-                </div>
-                
-                <!-- Row 3: Training Mentors (Focused View) -->
-                <div class="metric-card mentor-block" onclick="showTrainingMentors()">
+                <div class="metric-card mentors" onclick="showTrainingMentors()">
                     <div class="metric-label">Training Mentors</div>
                     <div class="metric-value">${data.training_mentor_metrics?.total_training_mentors || 0}</div>
                     <div class="metric-change">Active with trainees</div>
@@ -2189,15 +2508,49 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- MIT Alumni Tile with Gold Gradient -->
                 <div class="metric-card mit-alumni" onclick="showMITAlumni()" 
                      style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); cursor: pointer; border: 2px solid #f59e0b; transition: all 0.3s ease;"
                      onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(245, 158, 11, 0.4)';"
                      onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';">
                     <div class="metric-label" style="color: #fff; font-weight: 700;">🎓 MIT Alumni</div>
                     <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${data.alumni_metrics?.total_alumni || 0}</div>
-                    <div class="metric-change" style="color: rgba(255,255,255,0.9);">Placed graduates</div>
+                    <div class="metric-change" style="color: rgba(255,255,255,0.9);">Successfully placed</div>
+                </div>
+                
+                <!-- MOBILE HEADER: Training Pipeline -->
+                <div class="mobile-section-header">🎯 Training Pipeline</div>
+                
+                <!-- Row 2: Training Pipeline (Sequential) -->
+                <div class="metric-card week-0-3" onclick="showWeeks0to3()">
+                    <div class="metric-label">Weeks 0-2</div>
+                    <div class="metric-value">${data.weeks_0_3 || 0}</div>
+                    <div class="metric-change">Onboarding Phase</div>
+                </div>
+                <div class="metric-card week-4-6" onclick="showWeeks4to6()">
+                    <div class="metric-label">Weeks 3-5</div>
+                    <div class="metric-value">${data.weeks_4_6 || 0}</div>
+                    <div class="metric-change">Mid Training</div>
+                </div>
+                <div class="metric-card week-7-priority" onclick="showWeek7Priority()">
+                    <div class="metric-label">Weeks 6-7 ⚠️</div>
+                    <div class="metric-value">${data.week_7_only || 0}</div>
+                    <div class="metric-change">Critical Placement Window</div>
+                </div>
+                
+                <!-- MOBILE HEADER: Action Required -->
+                <div class="mobile-section-header">🚨 Action Required</div>
+                
+                <!-- Row 3: Urgent Action -->
+                <div class="metric-card week-8-plus" onclick="showWeeks8Plus()" 
+                     style="border: 2px solid #ef4444; background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.05));">
+                    <div class="metric-label">Weeks 8+ 🚨</div>
+                    <div class="metric-value" style="color: #ef4444;">${data.weeks_8_plus || 0}</div>
+                    <div class="metric-change" style="color: #fca5a5;">Place Immediately</div>
+                </div>
+                <div class="metric-card offer-pending" onclick="showOfferPending()">
+                    <div class="metric-label">Incoming MITs</div>
+                    <div class="metric-value">${data.offer_pending || 0}</div>
+                    <div class="metric-change">Offer pending</div>
                 </div>
             `;
         }
@@ -2215,6 +2568,14 @@
                     renderAllCandidates();
                     return;
                 }
+                
+                // ✅ Show loading state immediately
+                document.getElementById('candidatesList').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 20px;">Loading all candidates...</p>
+                    </div>
+                `;
                 
                 console.log('🔄 Fetching fresh all candidates');
                 const response = await fetch(`${API_BASE_URL}/api/all-candidates`);
@@ -2252,6 +2613,14 @@
                     renderInTrainingCandidates();
                     return;
                 }
+                
+                // ✅ Show loading state immediately
+                document.getElementById('candidatesList').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 20px;">Loading training candidates...</p>
+                    </div>
+                `;
                 
                 console.log('🔄 Fetching fresh in-training candidates');
                 const response = await fetch(`${API_BASE_URL}/api/in-training-candidates`);
@@ -2298,6 +2667,14 @@
         // Load weeks 0-2 candidates from API
         async function loadWeeks0to3() {
             try {
+                // ✅ Show loading state immediately
+                document.getElementById('candidatesList').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 20px;">Loading candidates...</p>
+                    </div>
+                `;
+                
                 const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-0-3`);
                 const data = await response.json();
                 
@@ -2317,6 +2694,14 @@
         // Load weeks 3-7 candidates from API
         async function loadWeeks4to6() {
             try {
+                // ✅ Show loading state immediately
+                document.getElementById('candidatesList').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 20px;">Loading candidates...</p>
+                    </div>
+                `;
+                
                 const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-4-6`);
                 const data = await response.json();
                 
@@ -2336,6 +2721,14 @@
         // Load weeks 6-7 priority candidates from API
         async function loadWeek7Priority() {
             try {
+                // ✅ Show loading state immediately
+                document.getElementById('candidatesList').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 20px;">Loading candidates...</p>
+                    </div>
+                `;
+                
                 const response = await fetch(`${API_BASE_URL}/api/candidates/week-7-priority`);
                 const data = await response.json();
                 
@@ -2355,6 +2748,14 @@
         // Load weeks 8+ candidates from API
         async function loadWeeks8Plus() {
             try {
+                // ✅ Show loading state immediately
+                document.getElementById('candidatesList').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 20px;">Loading candidates...</p>
+                    </div>
+                `;
+                
                 const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-8-plus`);
                 const data = await response.json();
                 
@@ -2373,6 +2774,14 @@
 
         async function loadOfferPending() {
             try {
+                // ✅ Show loading state immediately
+                document.getElementById('candidatesList').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 20px;">Loading offer pending candidates...</p>
+                    </div>
+                `;
+                
                 const response = await fetch(`${API_BASE_URL}/api/offer-pending-candidates`);
                 const data = await response.json();
                 
@@ -2402,6 +2811,14 @@
                     renderOpenPositions();
                     return;
                 }
+                
+                // ✅ Show loading state immediately
+                document.getElementById('candidatesList').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 20px;">Loading open positions...</p>
+                    </div>
+                `;
                 
                 console.log('🔄 Fetching fresh open positions');
                 const response = await fetch(`${API_BASE_URL}/api/open-positions`);
@@ -2533,7 +2950,7 @@
             
             // Cache the rendered content for instant back navigation
             cachedListContent = renderedContent;
-            cachedListTitle = '👥 All Candidates';
+            cachedListTitle = '👥 Active MITs (All Candidates)';
             cacheTimestamp = Date.now();
             console.log('💾 Cached list content with timestamp:', cacheTimestamp);
             
@@ -2609,12 +3026,13 @@
                 return;
             }
             
-            candidatesList.innerHTML = candidates.map(candidate => {
+            const renderedContent = candidates.map(candidate => {
+                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
                 return `
                 <div class="candidate-card">
                     <div class="candidate-info">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${candidate.profile_image ? 
+                            ${showImage ? 
                                 `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
                                 : ''
                             }
@@ -2623,7 +3041,8 @@
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${candidate.training_site}</div>
                             <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Level:</strong> ${candidate.level}</div>
+                            <div><strong>Status:</strong> Offer Pending 🤝</div>
+                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2635,7 +3054,7 @@
             
             // Cache the rendered content for instant back navigation
             cachedListContent = renderedContent;
-            cachedListTitle = '🤝 Offer Pending Candidates';
+            cachedListTitle = '🎯 Incoming MITs (Starting Soon)';
             cacheTimestamp = Date.now();
             console.log('💾 Cached list content with timestamp:', cacheTimestamp);
             
@@ -2654,25 +3073,28 @@
                     </div>
                 `;
                 cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '📋 Weeks 0-2 (Operational Overview)';
+                cachedListTitle = '📋 Weeks 0-2 (Onboarding Phase)';
                 cacheTimestamp = Date.now();
                 return;
             }
             
             const renderedContent = candidates.map(candidate => {
+                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
                 return `
                 <div class="candidate-card">
                     <div class="candidate-info">
-                        <div class="candidate-header">
-                            <div>
-                                <h3>${candidate.name}</h3>
-                                <div class="candidate-status">Week ${candidate.week}</div>
-                            </div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            ${showImage ? 
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
+                                : ''
+                            }
+                            <h3 style="margin: 0;">${candidate.name}</h3>
                         </div>
                         <div class="candidate-details">
-                            <div><strong>Training Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
-                            <div><strong>Mentor:</strong> ${cleanDisplayValue(candidate.mentor_name, 'TBD')}</div>
-                            <div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details?.vertical, 'TBD')}</div>
+                            <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
+                            <div><strong>Week:</strong> ${candidate.week}</div>
+                            <div><strong>Status:</strong> ${candidate.status || 'training'}</div>
+                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2682,7 +3104,7 @@
             
             candidatesList.innerHTML = renderedContent;
             cachedListContent = renderedContent;
-            cachedListTitle = '📋 Weeks 0-2 (Operational Overview)';
+            cachedListTitle = '📋 Weeks 0-2 (Onboarding Phase)';
             cacheTimestamp = Date.now();
             preloadCandidateProfiles(candidates);
         }
@@ -2698,25 +3120,28 @@
                     </div>
                 `;
                 cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '🏋️ Weeks 3-7 (Active Training)';
+                cachedListTitle = '🏋️ Weeks 3-5 (Mid Training)';
                 cacheTimestamp = Date.now();
                 return;
             }
             
             const renderedContent = candidates.map(candidate => {
+                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
                 return `
                 <div class="candidate-card">
                     <div class="candidate-info">
-                        <div class="candidate-header">
-                            <div>
-                                <h3>${candidate.name}</h3>
-                                <div class="candidate-status">Week ${candidate.week}</div>
-                            </div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            ${showImage ? 
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
+                                : ''
+                            }
+                            <h3 style="margin: 0;">${candidate.name}</h3>
                         </div>
                         <div class="candidate-details">
-                            <div><strong>Training Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
-                            <div><strong>Mentor:</strong> ${cleanDisplayValue(candidate.mentor_name, 'TBD')}</div>
-                            <div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details?.vertical, 'TBD')}</div>
+                            <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
+                            <div><strong>Week:</strong> ${candidate.week}</div>
+                            <div><strong>Status:</strong> ${candidate.status || 'training'}</div>
+                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2726,7 +3151,7 @@
             
             candidatesList.innerHTML = renderedContent;
             cachedListContent = renderedContent;
-            cachedListTitle = '🏋️ Weeks 3-7 (Active Training)';
+            cachedListTitle = '🏋️ Weeks 3-5 (Mid Training)';
             cacheTimestamp = Date.now();
             preloadCandidateProfiles(candidates);
         }
@@ -2742,25 +3167,28 @@
                     </div>
                 `;
                 cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '⚡ Weeks 6-7 Priority (Action Needed!)';
+                cachedListTitle = '⚠️ Weeks 6-7 (Critical Placement Window)';
                 cacheTimestamp = Date.now();
                 return;
             }
             
             const renderedContent = candidates.map(candidate => {
+                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
                 return `
                 <div class="candidate-card" style="border: 2px solid #f97316;">
                     <div class="candidate-info">
-                        <div class="candidate-header">
-                            <div>
-                                <h3>${candidate.name}</h3>
-                                <div class="candidate-status">Week 7 - Placement Priority</div>
-                            </div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            ${showImage ? 
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
+                                : ''
+                            }
+                            <h3 style="margin: 0;">${candidate.name}</h3>
                         </div>
                         <div class="candidate-details">
-                            <div><strong>Training Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
-                            <div><strong>Mentor:</strong> ${cleanDisplayValue(candidate.mentor_name, 'TBD')}</div>
-                            <div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details?.vertical, 'TBD')}</div>
+                            <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
+                            <div><strong>Week:</strong> ${candidate.week} - Placement Priority ⚡</div>
+                            <div><strong>Status:</strong> ${candidate.status || 'training'}</div>
+                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" style="background: #f97316;" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2770,7 +3198,7 @@
             
             candidatesList.innerHTML = renderedContent;
             cachedListContent = renderedContent;
-            cachedListTitle = '⚡ Weeks 6-7 Priority (Action Needed!)';
+            cachedListTitle = '⚠️ Weeks 6-7 (Critical Placement Window)';
             cacheTimestamp = Date.now();
             preloadCandidateProfiles(candidates);
         }
@@ -2786,25 +3214,28 @@
                     </div>
                 `;
                 cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '✅ Weeks 8+ (Ready for Placement)';
+                cachedListTitle = '🚨 Weeks 8+ (Place Immediately)';
                 cacheTimestamp = Date.now();
                 return;
             }
             
             const renderedContent = candidates.map(candidate => {
+                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
                 return `
                 <div class="candidate-card">
                     <div class="candidate-info">
-                        <div class="candidate-header">
-                            <div>
-                                <h3>${candidate.name}</h3>
-                                <div class="candidate-status">Week ${candidate.week} - Ready for Placement</div>
-                            </div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            ${showImage ? 
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
+                                : ''
+                            }
+                            <h3 style="margin: 0;">${candidate.name}</h3>
                         </div>
                         <div class="candidate-details">
-                            <div><strong>Training Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
-                            <div><strong>Mentor:</strong> ${cleanDisplayValue(candidate.mentor_name, 'TBD')}</div>
-                            <div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details?.vertical, 'TBD')}</div>
+                            <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
+                            <div><strong>Week:</strong> ${candidate.week} - Ready for Placement ✅</div>
+                            <div><strong>Status:</strong> ${candidate.status || 'ready'}</div>
+                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" style="background: #10b981;" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2814,7 +3245,7 @@
             
             candidatesList.innerHTML = renderedContent;
             cachedListContent = renderedContent;
-            cachedListTitle = '✅ Weeks 8+ (Ready for Placement)';
+            cachedListTitle = '🚨 Weeks 8+ (Place Immediately)';
             cacheTimestamp = Date.now();
             preloadCandidateProfiles(candidates);
         }
@@ -2835,19 +3266,22 @@
             }
             
             const renderedContent = candidates.map(candidate => {
+                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
                 return `
                 <div class="candidate-card">
                     <div class="candidate-info">
-                        <div class="candidate-header">
-                            <div>
-                                <h3>${candidate.name}</h3>
-                                <div class="candidate-status">Offer Pending</div>
-                            </div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            ${showImage ? 
+                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
+                                : ''
+                            }
+                            <h3 style="margin: 0;">${candidate.name}</h3>
                         </div>
                         <div class="candidate-details">
-                            <div><strong>Training Site:</strong> ${candidate.training_site || '—'}</div>
-                            <div><strong>Location:</strong> ${candidate.location || '—'}</div>
-                            <div><strong>Vertical:</strong> ${candidate.operation_details?.vertical || '—'}</div>
+                            <div><strong>Site:</strong> ${candidate.training_site || 'TBD'}</div>
+                            <div><strong>Week:</strong> ${candidate.week || 'N/A'}</div>
+                            <div><strong>Status:</strong> Offer Pending 🤝</div>
+                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
                         </div>
                     </div>
                     <div class="view-profile-btn" style="background: #34d399;" onclick="showProfile('${candidate.name}')">View Profile →</div>
@@ -2857,7 +3291,7 @@
             
             candidatesList.innerHTML = renderedContent;
             cachedListContent = renderedContent;
-            cachedListTitle = '⏳ Offer Pending Candidates';
+            cachedListTitle = '🎯 Incoming MITs (Starting Soon)';
             cacheTimestamp = Date.now();
             preloadCandidateProfiles(candidates);
         }
@@ -2915,6 +3349,15 @@
                 console.log(`Cache contents:`, candidateCache);
                 console.log(`Cache has ${name}:`, candidateCache.hasOwnProperty(name));
                 
+                // ✅ CLEAR OLD PROFILE IMMEDIATELY - Show loading state
+                const profileContent = document.getElementById('profileContent');
+                profileContent.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; color: #fff;">
+                        <div class="loading-spinner" style="width: 60px; height: 60px;"></div>
+                        <p style="margin-top: 20px; font-size: 1.1rem; color: #a0a0a0;">Loading ${name}...</p>
+                    </div>
+                `;
+                
                 // Check cache first for instant loading
                 if (candidateCache[name]) {
                     console.log(`✅ Loading ${name} from cache (instant)`);
@@ -2949,6 +3392,22 @@
                 document.getElementById('profileContent').innerHTML = 
                     `<div class="error">Error loading profile: ${error.message}</div>`;
             }
+        }
+
+        // Helper function to display scores with "Available Week 6" messaging
+        function getScoreDisplay(score, maxScore, candidateWeek, scoreWeekRequired = 6) {
+            // If they have a score, show it normally
+            if (score && score > 0) {
+                return `${score}/${maxScore}`;
+            }
+            
+            // If candidate hasn't reached Week 6 yet, tell them when it's coming
+            if (candidateWeek < scoreWeekRequired) {
+                return `<span style="color: #94a3b8; font-size: 0.85em;">Available Week ${scoreWeekRequired}</span>`;
+            }
+            
+            // If they're at Week 6 or beyond but no score yet
+            return `<span style="color: #f59e0b; font-size: 0.9em;">Pending</span>`;
         }
 
         // Render profile with real data
@@ -3040,23 +3499,23 @@
                         <div class="metrics-grid-profile">
                             <div class="metric-item">
                                 <div class="metric-label">Assessment</div>
-                                <div class="metric-value">${candidate.scores.assessment_score || 0}/100</div>
+                                <div class="metric-value">${getScoreDisplay(candidate.scores.assessment_score, 100, candidate.week, 6)}</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Confidence</div>
-                                <div class="metric-value">${candidate.scores.confidence_score || 0}/100</div>
+                                <div class="metric-value">${getScoreDisplay(candidate.scores.confidence_score, 100, candidate.week, 6)}</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Perf Eval</div>
-                                <div class="metric-value">${candidate.scores.perf_eval_score || 0}/60</div>
+                                <div class="metric-value">${getScoreDisplay(candidate.scores.perf_eval_score, 60, candidate.week, 6)}</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Skill Ranking</div>
-                                <div class="metric-value">${candidate.scores.skill_ranking || 'TBD'}</div>
+                                <div class="metric-value">${candidate.scores.skill_ranking || `<span style="color: #94a3b8; font-size: 0.85em;">Available Week 6</span>`}</div>
                             </div>
                             <div class="metric-item">
                                 <div class="metric-label">Mock QBR</div>
-                                <div class="metric-value">${candidate.scores.mock_qbr_score || 0}/4</div>
+                                <div class="metric-value">${getScoreDisplay(candidate.scores.mock_qbr_score, 4, candidate.week, 6)}</div>
                             </div>
                         </div>
                     </div>
@@ -3072,28 +3531,28 @@
                                 <div class="assessment-progress-bar">
                                     <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">0/5</div>
+                                <div class="assessment-score-value">${getScoreDisplay(0, 5, candidate.week, 6)}</div>
                             </div>
                             <div class="assessment-tile">
                                 <div class="tile-title">👥 Leadership & Soft Skills</div>
                                 <div class="assessment-progress-bar">
                                     <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">0/5</div>
+                                <div class="assessment-score-value">${getScoreDisplay(0, 5, candidate.week, 6)}</div>
                             </div>
                             <div class="assessment-tile">
                                 <div class="tile-title">⚡ Engagement & Aptitude</div>
                                 <div class="assessment-progress-bar">
                                     <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">0/5</div>
+                                <div class="assessment-score-value">${getScoreDisplay(0, 5, candidate.week, 6)}</div>
                             </div>
                             <div class="assessment-tile">
                                 <div class="tile-title">✓ Readiness & Confidence</div>
                                 <div class="assessment-progress-bar">
                                     <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
                                 </div>
-                                <div class="assessment-score-value">0/5</div>
+                                <div class="assessment-score-value">${getScoreDisplay(0, 5, candidate.week, 6)}</div>
                             </div>
                         </div>
                     </div>
@@ -3155,29 +3614,29 @@
                     </div>
                     <div id="additionalDetails" style="display: none; margin-top: 15px;">
                         <div class="profile-content">
-                            \${candidate.onboarding_progress ? \`
+                            ${candidate.onboarding_progress ? `
                             <div class="onboarding-progress">
                                 <h3>📋 Onboarding Progress</h3>
                                 <div class="progress-container">
                                     <div class="progress-bar">
-                                        <div class="progress-fill" style="width: \${candidate.onboarding_progress.percentage}%"></div>
+                                        <div class="progress-fill" style="width: ${candidate.onboarding_progress.percentage}%"></div>
                                     </div>
-                                    <div class="progress-text">\${candidate.onboarding_progress.completed}/\${candidate.onboarding_progress.total} Complete (\${candidate.onboarding_progress.percentage}%)</div>
+                                    <div class="progress-text">${candidate.onboarding_progress.completed}/${candidate.onboarding_progress.total} Complete (${candidate.onboarding_progress.percentage}%)</div>
                                 </div>
                             </div>
-                            \` : ''}
+                            ` : ''}
                             
-                            \${candidate.business_lessons_progress ? \`
+                            ${candidate.business_lessons_progress ? `
                             <div class="business-lessons">
                                 <h3>📚 Business Lessons Progress</h3>
                                 <div class="progress-container">
                                     <div class="progress-bar">
-                                        <div class="progress-fill" style="width: \${candidate.business_lessons_progress.percentage}%"></div>
+                                        <div class="progress-fill" style="width: ${candidate.business_lessons_progress.percentage}%"></div>
                                     </div>
-                                    <div class="progress-text">\${candidate.business_lessons_progress.completed}/\${candidate.business_lessons_progress.total} Complete (\${candidate.business_lessons_progress.percentage}%)</div>
+                                    <div class="progress-text">${candidate.business_lessons_progress.completed}/${candidate.business_lessons_progress.total} Complete (${candidate.business_lessons_progress.percentage}%)</div>
                                 </div>
                             </div>
-                            \` : ''}
+                            ` : ''}
 
                         </div>
                     </div>
@@ -3202,21 +3661,38 @@
         function showAllCandidates() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            ensureStickyBackButton(); // ✅ Ensure sticky button is present
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '👥 All Candidates';
+            document.querySelector('.candidates-container h2').textContent = '👥 Active MITs (All Candidates)';
             previousPage = currentPage;
             currentPage = 'all_candidates';
             // Then fetch data asynchronously
             loadAllCandidates();
         }
 
+        // Helper function to ensure sticky back button exists
+        function ensureStickyBackButton() {
+            const container = document.querySelector('.candidates-container');
+            if (!container) return;
+            
+            const existingStickyNav = container.querySelector('.sticky-back-nav');
+            if (!existingStickyNav) {
+                // Insert sticky button at the beginning of container
+                const stickyNav = document.createElement('div');
+                stickyNav.className = 'sticky-back-nav';
+                stickyNav.innerHTML = '<button onclick="showDashboard()" class="back-btn">← Back to Dashboard</button>';
+                container.insertBefore(stickyNav, container.firstChild);
+            }
+        }
+
         function showOpenPositions() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            ensureStickyBackButton(); // ✅ Ensure sticky button is present
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading positions...</div>';
-            document.querySelector('.candidates-container h2').textContent = '💼 Open Positions';
+            document.querySelector('.candidates-container h2').textContent = '💼 Placement Roles';
             currentPage = 'open_positions';
             // Then fetch data asynchronously
             loadOpenPositions();
@@ -3225,9 +3701,10 @@
         function showInTraining() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            ensureStickyBackButton(); // ✅ Ensure sticky button is present
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🏋️ In Training Candidates';
+            document.querySelector('.candidates-container h2').textContent = '🏋️ Active Training (All Weeks)';
             previousPage = currentPage;
             currentPage = 'in_training';
             // Then fetch data asynchronously
@@ -3237,9 +3714,10 @@
         function showOfferPending() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            ensureStickyBackButton(); // ✅ Ensure sticky button is present
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🤝 Offer Pending Candidates';
+            document.querySelector('.candidates-container h2').textContent = '🎯 Incoming MITs (Starting Soon)';
             previousPage = currentPage;
             currentPage = 'offer_pending';
             // Then fetch data asynchronously
@@ -3249,8 +3727,9 @@
         function showWeeks0to3() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            ensureStickyBackButton(); // ✅ Ensure sticky button is present
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '📋 Weeks 0-2 (Operational Overview)';
+            document.querySelector('.candidates-container h2').textContent = '📋 Weeks 0-2 (Onboarding Phase)';
             previousPage = currentPage;
             currentPage = 'weeks_0_3';
             loadWeeks0to3();
@@ -3259,8 +3738,9 @@
         function showWeeks4to6() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            ensureStickyBackButton(); // ✅ Ensure sticky button is present
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🏋️ Weeks 3-7 (Active Training)';
+            document.querySelector('.candidates-container h2').textContent = '🏋️ Weeks 3-5 (Mid Training)';
             previousPage = currentPage;
             currentPage = 'weeks_4_6';
             loadWeeks4to6();
@@ -3269,8 +3749,9 @@
         function showWeek7Priority() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            ensureStickyBackButton(); // ✅ Ensure sticky button is present
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '⚡ Weeks 6-7 Priority (Action Needed!)';
+            document.querySelector('.candidates-container h2').textContent = '⚠️ Weeks 6-7 (Critical Placement Window)';
             previousPage = currentPage;
             currentPage = 'week_7_priority';
             loadWeek7Priority();
@@ -3279,8 +3760,9 @@
         function showWeeks8Plus() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            ensureStickyBackButton(); // ✅ Ensure sticky button is present
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '✅ Weeks 8+ (Ready for Placement)';
+            document.querySelector('.candidates-container h2').textContent = '🚨 Weeks 8+ (Place Immediately)';
             previousPage = currentPage;
             currentPage = 'weeks_8_plus';
             loadWeeks8Plus();
@@ -3289,8 +3771,9 @@
         function showOfferPending() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
+            ensureStickyBackButton(); // ✅ Ensure sticky button is present
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '⏳ Offer Pending Candidates';
+            document.querySelector('.candidates-container h2').textContent = '🎯 Incoming MITs (Starting Soon)';
             previousPage = currentPage;
             currentPage = 'offer_pending';
             loadOfferPending();
@@ -3425,9 +3908,9 @@
                 </div>
             `;
             
-            // Display mentors in a 3x3 grid
+            // Display mentors in a responsive grid
             if (mentors && mentors.length > 0) {
-                html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-bottom: 30px; width: 100%;">';
+                html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; width: 100%;">';
                 
                 mentors.forEach(mentor => {
                     // Use teal-green color scheme for all cards (matching first image style)
@@ -3453,35 +3936,35 @@
                                 </a>
                             </h3>
                             
-                            <!-- Performance Metrics (3 boxes in a row): MEI | Lifetime Trainees | Current Trainee Week -->
+                            <!-- Performance Metrics (3 boxes in a row): MEI | Lifetime Trainees | Success Rate -->
                             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
                                 <!-- MEI Score (color-coded by performance) -->
-                                <div style="background: rgba(20, 184, 166, 0.15); padding: 16px 12px; border-radius: 10px; text-align: center; border: 2px solid ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'};">
-                                    <div style="font-size: 2rem; font-weight: 800; color: ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'}; margin-bottom: 4px;">
-                                        ${mentor.mei_score.toFixed(1)}
-                                    </div>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; border: 2px solid ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'}; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
                                         MEI
+                                    </div>
+                                    <div style="font-size: 1.8rem; font-weight: 800; color: ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'};">
+                                        ${mentor.mei_score.toFixed(1)}
                                     </div>
                                 </div>
                                 
                                 <!-- Lifetime Trainees -->
-                                <div style="background: rgba(20, 184, 166, 0.15); padding: 16px 12px; border-radius: 10px; text-align: center;">
-                                    <div style="font-size: 2rem; font-weight: 800; color: #14b8a6; margin-bottom: 4px;">
-                                        ${mentor.trainee_count}
-                                    </div>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">
                                         LIFETIME<br>TRAINEES
+                                    </div>
+                                    <div style="font-size: 1.8rem; font-weight: 800; color: #14b8a6;">
+                                        ${mentor.trainee_count}
                                     </div>
                                 </div>
                                 
                                 <!-- Success Rate % (color-coded by performance) -->
-                                <div style="background: rgba(20, 184, 166, 0.15); padding: 16px 12px; border-radius: 10px; text-align: center; border: 2px solid ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'};">
-                                    <div style="font-size: 2rem; font-weight: 800; color: ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'}; margin-bottom: 4px;">
-                                        ${(mentor.success_rate || 0).toFixed(0)}%
-                                    </div>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; border: 2px solid ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'}; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">
                                         SUCCESS<br>RATE
+                                    </div>
+                                    <div style="font-size: 1.8rem; font-weight: 800; color: ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'};">
+                                        ${(mentor.success_rate || 0).toFixed(0)}%
                                     </div>
                                 </div>
                             </div>
@@ -3559,9 +4042,9 @@
                 </div>
             `;
             
-            // Display alumni in responsive grid (5 cards per row to fill screen)
+            // Display alumni in responsive grid
             if (alumni && alumni.length > 0) {
-                html += '<div style="display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 20px !important; margin-bottom: 30px; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;">';
+                html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; width: 100%; max-width: 100%; box-sizing: border-box;">';
                 
                 alumni.forEach(alum => {
                     // Gold gradient for alumni cards - cleaner design
