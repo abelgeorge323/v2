@@ -506,6 +506,16 @@ def serve_headshot(filename):
     except FileNotFoundError:
         return jsonify({'error': 'Image not found'}), 404
 
+@app.route('/data/<path:filename>')
+def serve_data_file(filename):
+    """Serve data files from the data directory (JSON, etc)."""
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(base_dir, 'data')
+        return send_from_directory(data_dir, filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'Data file not found'}), 404
+
 # =============================================================================
 # DEBUG ENDPOINT
 # =============================================================================
@@ -669,6 +679,7 @@ if __name__ == '__main__':
     print("   - GET /api/mentor/<name> - Individual mentor profile")
     print("   - GET /api/mentor-metrics - Mentor dashboard metrics")
     print("   - GET /headshots/<filename> - Serve headshot images")
+    print("   - GET /data/<filename> - Serve data files (JSON)")
     print("   - GET /api/health - Health check")
     print()
     print(f"API Server running on: http://localhost:{port}")
