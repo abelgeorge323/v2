@@ -437,7 +437,7 @@ def derive_status(row: pd.Series) -> str:
         row: Pandas Series containing candidate data
         
     Returns:
-        str: Candidate status ('training', 'ready', 'offer_pending', etc.)
+        str: Candidate status ('training', 'ready', 'pending start', etc.)
     """
     week = row.get('Week', 0)
     completion_status = row.get('Completion Status', '')
@@ -452,8 +452,8 @@ def derive_status(row: pd.Series) -> str:
     else:
         # Use completion status if available and valid
         status_str = str(completion_status).lower().strip()
-        if 'offer pending' in status_str:
-            return "offer_pending"
+        if 'pending' in status_str:
+            return "pending start"
         elif 'offer accepted' in status_str or 'completed' in status_str:
             return "ready"
         else:
@@ -640,13 +640,13 @@ def fetch_mit_tracking_data() -> pd.DataFrame:
         df_data = df_data[df_data['MIT Name'].astype(str).str.strip() != 'New Candidate Name']  # Remove header row from second section
         
         # Handle the two sections
-        # Mark candidates from second section as offer pending
+        # Mark candidates from second section as pending start
         if 'JV' in df_data.columns:
-            df_data.loc[df_data['JV'].notna(), 'Status'] = 'Offer Pending'
+            df_data.loc[df_data['JV'].notna(), 'Status'] = 'Pending Start'
         
-        # Also mark rows where Status is empty as Offer Pending (for second section)
+        # Also mark rows where Status is empty as Pending Start (for second section)
         df_data['Status'] = df_data['Status'].fillna('')
-        df_data.loc[(df_data['Status'] == '') & (df_data['MIT Name'].notna()), 'Status'] = 'Offer Pending'
+        df_data.loc[(df_data['Status'] == '') & (df_data['MIT Name'].notna()), 'Status'] = 'Pending Start'
         
         # ========================================
         # DETECT INCOMING MITS (Future Start Dates)
@@ -672,9 +672,9 @@ def fetch_mit_tracking_data() -> pd.DataFrame:
                     (df_data['Start date parsed'] > current_date) &
                     df_data['MIT Name'].notna()
                 )
-                df_data.loc[future_start_mask, 'Status'] = 'Offer Pending'
+                df_data.loc[future_start_mask, 'Status'] = 'Pending Start'
                 
-                logger.info(f"Marked {future_start_mask.sum()} candidates with future start dates as Offer Pending (using column '{start_date_col}')")
+                logger.info(f"Marked {future_start_mask.sum()} candidates with future start dates as Pending Start (using column '{start_date_col}')")
                 
             except Exception as e:
                 logger.warning(f"Could not parse start dates for incoming MIT detection: {e}")
@@ -688,10 +688,10 @@ def fetch_mit_tracking_data() -> pd.DataFrame:
                 df_data['Start date parsed'].notna() &
                 (df_data['Start date parsed'] > current_date)  # ONLY if future start date
             )
-            df_data.loc[backup_mask, 'Status'] = 'Offer Pending'
-            logger.info(f"Backup check marked {backup_mask.sum()} additional candidates as Offer Pending")
+            df_data.loc[backup_mask, 'Status'] = 'Pending Start'
+            logger.info(f"Backup check marked {backup_mask.sum()} additional candidates as Pending Start")
         
-        logger.info(f"Total candidates marked as Offer Pending: {(df_data['Status'] == 'Offer Pending').sum()}")
+        logger.info(f"Total candidates marked as Pending Start: {(df_data['Status'] == 'Pending Start').sum()}")
         
         # Normalize Week to numeric
         if 'Week' in df_data.columns:
@@ -860,7 +860,7 @@ def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
         'week': int(pd.to_numeric(tracking_row.get('Week', 0), errors='coerce') or 0),
         'expected_graduation_week': 'TBD',
         'salary': parse_salary(tracking_row.get('Salary', 0)),
-        'status': str(tracking_row.get('Status', 'offer_pending')).lower(),
+        'status': str(tracking_row.get('Status', 'pending start')).lower(),
         'training_program': 'MIT',
         'mentor_name': str(tracking_row.get('Mentor', 'TBD')),
         'mentor_title': 'TBD',
@@ -1012,7 +1012,7 @@ def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict
     
     Returns:
         Dict with keys: 'weeks_0_3' (0-2), 'weeks_4_6' (3-5), 'week_7_only' (6-7), 
-                       'weeks_8_plus' (8+), 'offer_pending', 'total_candidates', 'total_training'
+                       'weeks_8_plus' (8+), 'offer_pending' (pending start/future dates), 'total_candidates', 'total_training'
     """
     weeks_0_3 = []
     weeks_4_6 = []
@@ -1024,8 +1024,8 @@ def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict
         status = candidate.get('status', '').lower()
         week = candidate.get('week', 0)
         
-        # Offer pending takes priority
-        if 'offer' in status or 'pending' in status:
+        # Pending start takes priority (incoming MITs with future start dates)
+        if 'pending' in status:
             offer_pending.append(candidate)
         elif 0 <= week <= 2:
             weeks_0_3.append(candidate)
@@ -1041,7 +1041,7 @@ def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict
         'weeks_4_6': weeks_4_6,  # Active Training (Weeks 3-5)
         'week_7_only': week_7_only,  # Weeks 6-7 Priority
         'weeks_8_plus': weeks_8_plus,  # Ready for Placement (Weeks 8+)
-        'offer_pending': offer_pending,  # Offer Pending
+        'offer_pending': offer_pending,  # Pending Start (incoming MITs)
         'total_candidates': len(candidates),
         'total_training': len([c for c in candidates if c.get('week', 0) > 0])
     }
@@ -1349,8 +1349,8 @@ def get_top_matches(job_id: int, limit: int = 6) -> List[Dict[str, Any]]:
         # Get all candidates from three-tier integration
         candidates = merge_candidate_sources()
         
-        # Exclude offer pending candidates from matching
-        candidates = [c for c in candidates if c.get('status', '').lower() != 'offer_pending']
+        # Exclude pending start candidates from matching (incoming MITs who haven't started)
+        candidates = [c for c in candidates if 'pending' not in c.get('status', '').lower()]
         
         # Calculate match scores
         matches = []
@@ -1616,7 +1616,7 @@ def get_active_training_mentors() -> Dict[str, Any]:
             status = str(candidate.get('status', '')).strip().lower()
             # Include both "training" and candidates in weeks 0-22
             week = candidate.get('week', 0)
-            if status == 'training' or (week >= 0 and week < 22 and status not in ['offer_pending', 'ready']):
+            if status == 'training' or (week >= 0 and week < 22 and status not in ['pending start', 'ready'] and 'pending' not in status):
                 mentor_name = str(candidate.get('mentor_name', '')).strip()
                 # Filter out invalid mentor names
                 if mentor_name and mentor_name.lower() not in ['nan', 'none', '', 'n/a', 'tbd', '—']:
