@@ -1,5347 +1,698 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>MIT Candidate Training Dashboard</title>
+"""
+MIT Dashboard API Server - Final Optimized Version
+=================================================
+
+A Flask-based API server that fetches data from Google Sheets and serves it to the MIT Dashboard.
+This is the final, production-ready version with modular design and comprehensive error handling.
+
+Key Features:
+- Modular design with separate configuration and utility modules
+- Efficient data caching and processing
+- Comprehensive error handling and logging
+- Date-based business lesson completion tracking
+- Real-time Google Sheets integration
+- Production-ready with proper documentation
+
+Author: AI Assistant
+Date: October 2025
+"""
+
+from flask import Flask, jsonify, request, send_file, send_from_directory
+from flask_cors import CORS
+from datetime import datetime, timedelta
+import logging
+import pandas as pd
+import os
+from typing import Dict, List, Any, Optional
+
+# Import our custom modules
+from config import *
+from utils import (
+    fetch_google_sheets_data, 
+    fetch_open_positions_data,
+    process_candidate_data, 
+    get_top_matches,
+    get_candidate_top_matches,
+    categorize_candidates_by_week,
+    log_debug, 
+    log_error,
+    merge_candidate_sources,
+    normalize_name,
+    parse_salary,
+    build_mentor_profiles,
+    get_mentor_dashboard_metrics,
+    get_active_training_mentors,
+    get_mit_alumni
+)
+
+# =============================================================================
+# FLASK APP SETUP
+# =============================================================================
+
+app = Flask(__name__)
+CORS(app)
+
+# Configure JSON encoding for proper UTF-8 support
+app.config['JSON_AS_ASCII'] = False
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO if DEBUG_MODE else logging.WARNING,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# DATA CACHING
+# =============================================================================
+
+class DataCache:
+    """
+    Simple in-memory cache for Google Sheets data
     
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    This cache stores the processed Google Sheets data in memory to avoid
+    repeated API calls and improve performance.
+    """
     
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #2d3748 100%);
-            color: #ffffff;
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px;
-        }
-
-        /* Header */
-        .header {
-            text-align: center;
-            margin-bottom: 48px;
-            color: #ffffff;
-            background: linear-gradient(145deg, #1e2329, #2a2f37);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .header h1 {
-            font-size: 2.75rem;
-            margin-bottom: 12px;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-        }
-
-        .header p {
-            font-size: 1.125rem;
-            color: #60a5fa;
-            font-weight: 400;
-        }
-
-        /* Navigation */
-        .nav {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin-bottom: 40px;
-            flex-wrap: wrap;
-        }
-
-        .nav-btn {
-            background: #ffffff;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-            padding: 12px 20px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .nav-btn:hover {
-            background: #f1f5f9;
-            border-color: #cbd5e1;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .nav-btn.active {
-            background: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-        }
-
-        /* Pages */
-        .page {
-            display: none;
-        }
-
-        .page.active {
-            display: block;
-        }
-
-        /* Dashboard */
-        .dashboard {
-            background: linear-gradient(145deg, #1e2329, #2a2f37);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-bottom: 40px;
-        }
-
-        .metric-card {
-            background: linear-gradient(145deg, #1e2329, #2a2f37);
-            padding: 24px;
-            border-radius: 12px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        }
-
-        .metric-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
-            border-color: rgba(102, 126, 234, 0.3);
-        }
-
-        /* Professional color-coded metric cards */
-        .metric-card.week-0-3 {
-            border-left: 3px solid #5b8def;
-            background: linear-gradient(135deg, rgba(91, 141, 239, 0.08), rgba(91, 141, 239, 0.03));
-        }
+    def __init__(self, cache_duration_minutes: int = CACHE_DURATION_MINUTES):
+        """
+        Initialize the cache
         
-        .metric-card.week-4-6 {
-            border-left: 3px solid #9b87f5;
-            background: linear-gradient(135deg, rgba(155, 135, 245, 0.08), rgba(155, 135, 245, 0.03));
-        }
-        
-        .metric-card.week-7-priority {
-            border-left: 3px solid #ef8354;
-            background: linear-gradient(135deg, rgba(239, 131, 84, 0.12), rgba(239, 131, 84, 0.05));
-            animation: pulse-subtle 3s infinite;
-        }
-        
-        .metric-card.week-8-plus {
-            border-left: 3px solid #2dd4bf;
-            background: linear-gradient(135deg, rgba(45, 212, 191, 0.08), rgba(45, 212, 191, 0.03));
-        }
-        
-        .metric-card.offer-pending {
-            border-left: 3px solid #34d399;
-            background: linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(52, 211, 153, 0.03));
-        }
-        
-        .metric-card.mentors {
-            border-left: 3px solid #a78bfa;
-            background: linear-gradient(135deg, rgba(167, 139, 250, 0.08), rgba(167, 139, 250, 0.03));
-        }
-        
-        .metric-card.total-candidates {
-            border-left: 3px solid #60a5fa;
-            background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(96, 165, 250, 0.03));
-        }
-        
-        .metric-card.open-positions {
-            border-left: 3px solid #818cf8;
-            background: linear-gradient(135deg, rgba(129, 140, 248, 0.08), rgba(129, 140, 248, 0.03));
-        }
-        
-        @keyframes pulse-subtle {
-            0%, 100% { box-shadow: 0 4px 20px rgba(239, 131, 84, 0.1); }
-            50% { box-shadow: 0 4px 25px rgba(239, 131, 84, 0.2); }
-        }
-        
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 4px 20px rgba(249, 115, 22, 0.3); }
-            50% { box-shadow: 0 4px 30px rgba(249, 115, 22, 0.6); }
-        }
-
-        .metric-label {
-            font-size: 0.875rem;
-            color: #a0a0a0;
-            margin-bottom: 8px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .metric-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #60a5fa;
-            margin-bottom: 4px;
-            letter-spacing: -0.025em;
-            text-shadow: 0 0 20px rgba(96, 165, 250, 0.3);
-        }
-
-        .metric-change {
-            font-size: 0.75rem;
-            color: #a0a0a0;
-            font-weight: 400;
-        }
-
-        /* Performance Analytics */
-        .performance-section {
-            background: linear-gradient(145deg, #1e2329, #2a2f37);
-            border-radius: 12px;
-            padding: 24px;
-            margin-top: 24px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .performance-section h2 {
-            color: #ffffff;
-            margin-bottom: 20px;
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .performance-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-
-        .performance-card {
-            background: linear-gradient(145deg, #1e2329, #2a2f37);
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .performance-label {
-            font-size: 0.75rem;
-            color: #a0a0a0;
-            margin-bottom: 8px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .performance-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #60a5fa;
-        }
-
-        /* Candidates List */
-        .candidates-container {
-            background: linear-gradient(145deg, #1e2329, #2a2f37);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .candidates-container h2 {
-            font-size: 2rem;
-            font-weight: 300;
-            margin-bottom: 30px;
-            text-align: center;
-            color: #ffffff;
-        }
-
-        .candidates-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .candidate-card {
-            background: linear-gradient(145deg, #1e2329, #2a2f37);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 6px 24px rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .candidate-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #475569, #334155);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .candidate-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.3);
-            border-color: rgba(102, 126, 234, 0.5);
-        }
-
-        .candidate-card:hover::before {
-            opacity: 1;
-        }
-
-        .candidate-info h3 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 6px;
-            color: #ffffff;
-            letter-spacing: -0.02em;
-        }
-
-        .candidate-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
-            margin-bottom: 12px;
-        }
-
-        .candidate-header h3 {
-            margin: 0;
-            margin-bottom: 4px;
-        }
-
-        .candidate-status {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            background: rgba(102, 126, 234, 0.15);
-            color: #a5b4fc;
-            border: 1px solid rgba(102, 126, 234, 0.3);
-        }
-
-        .candidate-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px 12px;
-            font-size: 0.875rem;
-            color: #d1d5db;
-            line-height: 1.5;
-            margin-top: 8px;
-        }
-
-        .candidate-details strong {
-            color: #a5b4fc;
-            font-weight: 600;
-            display: inline-block;
-            min-width: 90px;
-        }
-
-        .view-profile-btn {
-            background: linear-gradient(135deg, #475569, #334155);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            text-align: center;
-            min-width: 100px;
-            transition: all 0.3s ease;
-        }
-
-        .view-profile-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        /* Job Matches Display */
-        .match-score-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .match-score-badge.excellent {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-        }
-
-        .match-score-badge.good {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            color: white;
-        }
-
-        .match-score-badge.fair {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-        }
-
-        .match-score-badge.poor {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-        }
-
-        .match-score {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #60a5fa;
-            margin-bottom: 8px;
-        }
-
-        .score-breakdown {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-top: 12px;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .score-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.8rem;
-        }
-
-        .score-item .label {
-            color: #a0a0a0;
-        }
-
-        .score-item .value {
-            color: #60a5fa;
-            font-weight: 600;
-        }
-
-        .match-candidate-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #ffffff;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: color 0.2s ease;
-        }
-
-        .match-candidate-name:hover {
-            color: #60a5fa;
-        }
-
-        /* Profile Page */
-        .profile-container {
-            background: linear-gradient(145deg, #1e2329, #2a2f37);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .profile-header {
-            background: linear-gradient(135deg, #475569 0%, #334155 100%);
-            border-radius: 24px;
-            padding: 50px;
-            margin-bottom: 40px;
-            display: flex;
-            align-items: center;
-            gap: 40px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
-        }
-
-        .avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.8rem;
-            font-weight: 700;
-            backdrop-filter: blur(10px);
-            border: 4px solid rgba(255,255,255,0.4);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        }
-
-        .profile-info h1 {
-            font-size: 3.2rem;
-            font-weight: 800;
-            margin-bottom: 12px;
-            color: white;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-
-        .profile-info p {
-            font-size: 1.3rem;
-            opacity: 0.95;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: white;
-        }
-
-        .profile-bio {
-            margin-top: 6px;
-            font-size: 1.15rem;
-            color: rgba(255,255,255,0.85);
-            max-width: 900px;
-            line-height: 1.6;
-        }
-
-        .profile-content {
-            display: grid;
-            grid-template-columns: 35% 65%;
-            gap: 40px;
-        }
-
-        .contact-info, .performance-metrics, .mentor-info, .onboarding-progress, .business-lessons, .operation-details {
-            background: rgba(255,255,255,0.08);
-            border-radius: 20px;
-            padding: 35px;
-            border: 1px solid rgba(255,255,255,0.15);
-            margin-bottom: 25px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-        }
-
-        .operation-mentor-container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-            padding-right: 10px;
-        }
-
-        .mentor-info-small {
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 20px;
-            padding-right: 30px;
-            border: 1px solid rgba(255,255,255,0.1);
-            height: fit-content;
-            min-width: 0;
-            word-wrap: break-word;
-        }
-
-        .mentor-info-small h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #ffffff;
-            overflow-wrap: break-word;
-        }
-
-        .mentor-info-small .info-grid {
-            color: #e0e0e0;
-            font-size: 0.95rem;
-            line-height: 1.6;
-        }
-
-        .mentor-info-small .info-grid > div {
-            margin-bottom: 12px;
-        }
-
-        .mentor-info-small .info-grid strong {
-            color: #60a5fa;
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        .mentor-info-small .mentor-name {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #ffffff;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .contact-info h3, .performance-metrics h3, .mentor-info h3, .onboarding-progress h3, .business-lessons h3, .operation-details h3 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 25px;
-            color: #ffffff;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-
-        .status-badge {
-            background: linear-gradient(135deg, #475569 0%, #334155 100%);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 25px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-top: 15px;
-            display: inline-block;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-
-        .progress-container {
-            margin-top: 20px;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 16px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 12px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
-            transition: width 0.3s ease;
-            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
-        }
-
-        .progress-text {
-            color: #ffffff;
-            font-size: 1.1rem;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .info-grid {
-            color: #e8e8e8;
-            font-size: 1.1rem;
-            line-height: 1.8;
-        }
-
-        .info-grid > div {
-            margin-bottom: 16px;
-        }
-
-        .info-grid strong {
-            color: #60a5fa;
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            font-size: 1.05rem;
-        }
-
-        .metrics-grid-profile {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 25px;
-        }
-
-        .metric-item {
-            background: rgba(102, 126, 234, 0.15);
-            padding: 20px;
-            border-radius: 16px;
-            border: 1px solid rgba(102, 126, 234, 0.3);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-            transition: transform 0.2s ease;
-            min-width: 0;
-            word-wrap: break-word;
-        }
-
-        .metric-item:hover {
-            transform: translateY(-2px);
-        }
-
-        .metric-item.full-width {
-            grid-column: 1 / -1;
-        }
-
-        .metric-item .metric-label {
-            color: #60a5fa;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .metric-item .metric-value {
-            color: #ffffff;
-            font-size: 2.2rem;
-            font-weight: 800;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-
-        .metric-item.full-width .metric-value {
-            font-size: 1.8rem;
-            font-weight: 700;
-        }
-
-        /* Buttons */
-        .back-btn {
-            background: linear-gradient(135deg, #475569, #334155);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 10px;
-        }
-
-        .back-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .back-btn.secondary {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        /* Error and Loading States */
-        .error {
-            background: #fef2f2;
-            color: #dc2626;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid #fecaca;
-        }
-
-        .loading {
-            text-align: center;
-            color: #60a5fa;
-            font-size: 1rem;
-            padding: 40px;
-        }
-
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #374151;
-            border-top: 4px solid #8b5cf6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .no-candidates {
-            text-align: center;
-            color: #60a5fa;
-            padding: 40px;
-        }
-
-        .no-candidates h3 {
-            font-size: 1.25rem;
-            margin-bottom: 8px;
-            color: #374151;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .container {
-                padding: 16px;
-            }
-
-            .header h1 {
-                font-size: 2rem;
-            }
-
-            .nav {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .metrics-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .candidates-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .candidate-card {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .view-profile-btn {
-                margin-top: 12px;
-                align-self: stretch;
-                text-align: center;
-            }
-
-            .profile-content {
-                grid-template-columns: 1fr;
-            }
-            
-            .candidate-card {
-                flex-direction: column;
-                text-align: center;
-                gap: 15px;
-            }
-
-            .operation-mentor-container {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-            
-            .assessment-grid {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-            
-            .mentor-assessment-section {
-                padding: 25px;
-            }
-            
-            .assessment-tile {
-                padding: 15px;
-            }
-        }
-
-        /* Resume Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-        }
-
-        .modal-content {
-            background: linear-gradient(145deg, #1e2329, #2a2f37);
-            margin: 2% auto;
-            padding: 0;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 1200px;
-            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 30px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .modal-header h2 {
-            color: #ffffff;
-            margin: 0;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: #ffffff;
-            font-size: 2rem;
-            cursor: pointer;
-            padding: 0;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: background 0.2s;
-        }
-
-        .modal-close:hover {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .modal-body {
-            padding: 20px 30px 30px;
-        }
-
-        .modal-actions {
-            margin-top: 20px;
-            text-align: center;
-        }
-
-        /* Avatar Image Styles */
-        .avatar-image {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid rgba(255,255,255,0.4);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-            /* Fast fallback for missing images */
-            background: rgba(255,255,255,0.1);
-        }
-
-        .candidate-avatar-small {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid rgba(102, 126, 234, 0.3);
-        }
-
-        /* Removed candidate-avatar-initial - no longer using initials */
-
-        /* Mentor Assessment Section Styles */
-        .mentor-assessment-section {
-            background: rgba(255,255,255,0.08);
-            border-radius: 20px;
-            padding: 35px;
-            border: 1px solid rgba(255,255,255,0.15);
-            margin-bottom: 25px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-        }
-
-        .mentor-assessment-section h3 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 25px;
-            color: #ffffff;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-
-        .assessment-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .assessment-tile {
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 16px;
-            border: 1px solid rgba(255,255,255,0.1);
-            text-align: center;
-            transition: transform 0.2s ease;
-            min-width: 0;
-        }
-
-        .assessment-tile:hover {
-            transform: translateY(-2px);
-        }
-
-        .assessment-tile .tile-title {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #ffffff;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            line-height: 1.3;
-            min-height: 2.6em;
-        }
-
-        .assessment-progress-bar {
-            width: 100%;
-            height: 12px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 6px;
-            overflow: hidden;
-            margin-bottom: 12px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .assessment-progress-fill {
-            height: 100%;
-            border-radius: 6px;
-            transition: width 0.3s ease;
-            position: relative;
-        }
-
-
-        .score-excellent {
-            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
-        }
-
-        .score-good {
-            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
-            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
-        }
-
-        .score-needs-improvement {
-            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
-        }
-
-        .assessment-score-value {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #ffffff;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-        
-        /* OIG Task List Styles */
-        .oig-task-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-height: 60vh;
-            overflow-y: auto;
-            padding: 10px 0;
-        }
-        
-        .oig-task-item {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 15px 20px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.2s ease;
-        }
-        
-        .oig-task-item:hover {
-            background: rgba(255,255,255,0.08);
-            transform: translateX(5px);
-        }
-        
-        .oig-task-icon {
-            font-size: 1.5rem;
-            font-weight: 700;
-            min-width: 30px;
-            text-align: center;
-        }
-        
-        .oig-task-item .oig-task-icon:first-child {
-            color: #10b981; /* Green checkmark */
-        }
-        
-        .oig-task-item:has(.oig-task-name:not(.completed)) .oig-task-icon {
-            color: #ef4444; /* Red X */
-        }
-        
-        .oig-task-name {
-            font-size: 1rem;
-            color: #e5e7eb;
-            flex: 1;
-        }
-        
-        .oig-task-name.completed {
-            color: #9ca3af;
-            text-decoration: line-through;
-        }
-        
-        .oig-task-tile {
-            cursor: pointer;
-        }
-        
-        .oig-task-tile:hover {
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.2);
-        }
-        
-        .oig-progress-section:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-            background: rgba(16, 185, 129, 0.15) !important;
-        }
-        
-    /* Data quality badges for source provenance */
-    .data-quality-badge { display:inline-block; padding:4px 12px; border-radius:12px; font-size:0.85em; font-weight:500; margin-left:8px; }
-    .data-quality-badge.warning { background: rgba(251,191,36,0.15); color:#f59e0b; border:1px solid rgba(251,191,36,0.3); }
-    .data-quality-badge.info { background: rgba(59,130,246,0.15); color:#3b82f6; border:1px solid rgba(59,130,246,0.3); }
-
-    /* Job Details Header */
-    .job-details-header {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(20, 184, 166, 0.08));
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 24px;
-        max-width: 100%;
-        overflow: hidden;
-    }
-
-    .job-title-section {
-        margin-bottom: 24px;
-    }
-
-    .job-title {
-        font-size: 1.8em;
-        font-weight: 700;
-        color: #f3f4f6;
-        margin-bottom: 8px;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-    }
-
-    .job-company {
-        font-size: 1.1em;
-        color: #9ca3af;
-        font-weight: 500;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-    }
-
-    .job-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 20px;
-        max-width: 100%;
-    }
-
-    .job-info-item {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        min-width: 0;
-    }
-
-    .info-label {
-        font-size: 0.8em;
-        color: #9ca3af;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
-    }
-
-    .info-value {
-        font-size: 1em;
-        color: #f3f4f6;
-        font-weight: 600;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-    }
-
-    /* Detailed Match Cards */
-    .match-card-detailed {
-        background: rgba(31, 41, 55, 0.6);
-        border: 1px solid rgba(75, 85, 99, 0.4);
-        border-radius: 16px;
-        padding: 28px;
-        margin-bottom: 24px;
-        transition: all 0.3s ease;
-    }
-
-    .match-card-detailed:hover {
-        border-color: rgba(16, 185, 129, 0.6);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    }
-
-    .match-header {
-        margin-bottom: 24px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid rgba(75, 85, 99, 0.3);
-    }
-
-    .match-rank {
-        font-size: 1.2em;
-        font-weight: 800;
-        color: white;
-        background: linear-gradient(135deg, #10b981, #14b8a6);
-        width: 48px;
-        height: 48px;
-            border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-        margin-bottom: 16px;
-    }
-
-    .match-candidate-info {
-        margin-top: 8px;
-    }
-
-    .match-candidate-info h3 {
-        font-size: 1.4em;
-        font-weight: 700;
-        color: #f3f4f6;
-        margin-bottom: 8px;
-        cursor: pointer;
-        transition: color 0.2s ease;
-    }
-
-    .match-candidate-info h3:hover {
-        color: #10b981;
-    }
-
-    .candidate-meta-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 12px;
-        margin-top: 8px;
-    }
-
-    .meta-item {
-            display: flex;
-            align-items: center;
-        gap: 8px;
-        background: rgba(55, 65, 81, 0.4);
-        padding: 8px 12px;
-        border-radius: 8px;
-    }
-
-    .meta-icon {
-        font-size: 1.1em;
-    }
-
-    .meta-text {
-        color: #d1d5db;
-        font-size: 0.9em;
-        font-weight: 500;
-    }
-
-    /* Candidate Total Score */
-    .candidate-total-score {
-        margin-top: 16px;
-        text-align: center;
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(20, 184, 166, 0.1));
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        border-radius: 8px;
-        padding: 12px 16px;
-    }
-
-    .candidate-score-number {
-        font-size: 1.8em;
-        font-weight: 800;
-        color: #10b981;
-        line-height: 1;
-    }
-
-    .candidate-score-label {
-        font-size: 0.75em;
-        color: #9ca3af;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-top: 4px;
-        font-weight: 600;
-    }
-
-    .match-total-score {
-        text-align: center;
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(20, 184, 166, 0.15));
-        border: 2px solid rgba(16, 185, 129, 0.5);
-        border-radius: 12px;
-        padding: 16px 24px;
-    }
-
-    .score-number {
-        font-size: 2.2em;
-        font-weight: 800;
-        color: #10b981;
-        line-height: 1;
-    }
-
-    .score-label {
-        font-size: 0.75em;
-        color: #9ca3af;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-top: 4px;
-    }
-
-    .score-breakdown-visual {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        margin-bottom: 24px;
-    }
-
-    .breakdown-header {
-        font-size: 0.95em;
-        font-weight: 700;
-        color: #10b981;
-        margin-bottom: 16px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .score-item {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .score-item-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .score-name {
-            font-weight: 600;
-        color: #e5e7eb;
-        font-size: 0.95em;
-    }
-
-    .score-value {
-        font-weight: 700;
-        color: #10b981;
-        font-size: 0.9em;
-    }
-
-    .score-bar-container {
-        width: 100%;
-        height: 12px;
-        background: rgba(31, 41, 55, 0.6);
-        border-radius: 6px;
-        overflow: hidden;
-        border: 1px solid rgba(75, 85, 99, 0.3);
-    }
-
-    .score-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #10b981, #14b8a6);
-        border-radius: 6px;
-        transition: width 0.6s ease;
-    }
-
-    /* Dynamic score bar colors */
-    .score-bar.high-score {
-        background: linear-gradient(90deg, #22c55e, #10b981);
-    }
-
-    .score-bar.medium-score {
-        background: linear-gradient(90deg, #f59e0b, #fb923c);
-    }
-
-    .score-bar.low-score {
-        background: linear-gradient(90deg, #ef4444, #f87171);
-    }
-
-    .score-explanation {
-        font-size: 0.85em;
-        color: #9ca3af;
-        font-style: italic;
-    }
-
-    .match-actions {
-        display: flex;
-            justify-content: center;
-        padding-top: 16px;
-        border-top: 1px solid rgba(75, 85, 99, 0.3);
-    }
-
-    .view-profile-btn {
-        background: linear-gradient(135deg, #10b981, #14b8a6);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-            font-weight: 600;
-        font-size: 0.95em;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        width: 100%;
-    }
-
-    .view-profile-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-    }
-
-    /* Responsive adjustments for job matches */
-    @media (max-width: 768px) {
-        .job-details-header {
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-        
-        .job-title {
-            font-size: 1.5em;
-        }
-        
-        .job-company {
-            font-size: 1em;
-        }
-        
-        .job-info-grid {
-            grid-template-columns: 1fr;
-            gap: 16px;
-        }
-        
-        .match-header {
-            text-align: center;
-        }
-        
-        .candidate-meta-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-    .loading {
-        text-align: center;
-        padding: 60px 20px;
-        color: #9ca3af;
-        font-size: 1.1em;
-        animation: pulse 1.5s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% { opacity: 0.6; }
-        50% { opacity: 1; }
-        }
-
-    /* =============================================================================
-       MENTOR EFFECTIVENESS STYLES
-       ============================================================================= */
-
-    /* Mentor Block Styling */
-    .stat-card.mentor-block {
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.05));
-        border: 1px solid rgba(139, 92, 246, 0.3);
-    }
-
-    .mentor-metrics {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-top: 12px;
-    }
-
-    .mentor-metric-item {
-        text-align: center;
-        padding: 8px;
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 8px;
-    }
-
-    .mentor-metric-label {
-        font-size: 0.75em;
-        color: #9ca3af;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 4px;
-    }
-
-    .mentor-metric-value {
-        font-size: 1.4em;
-        font-weight: 700;
-        color: #8b5cf6;
-    }
-
-    /* Mentor List Styles */
-    .mentor-list-container {
-        padding: 24px;
-    }
-
-    .mentor-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-        margin-top: 20px;
-    }
-
-    @media (max-width: 1200px) {
-        .mentor-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @media (max-width: 768px) {
-        .mentor-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+        Args:
+            cache_duration_minutes: How long to keep data cached (in minutes)
+        """
+        self.cache_duration = timedelta(minutes=cache_duration_minutes)
+        self.cached_data = None
+        self.cache_timestamp = None
     
-    /* Training Mentors Grid - Responsive Design */
-    @media (max-width: 1400px) {
-        /* 2 columns on medium screens */
-        #candidatesList > div[style*="grid-template-columns: repeat(3, 1fr)"] {
-            grid-template-columns: repeat(2, 1fr) !important;
-        }
-    }
+    def get_data(self) -> Optional[pd.DataFrame]:
+        """
+        Get cached data if still valid
+        
+        Returns:
+            pd.DataFrame if cache is valid, None otherwise
+        """
+        if (self.cached_data is not None and 
+            self.cache_timestamp is not None and 
+            datetime.now() - self.cache_timestamp < self.cache_duration):
+            log_debug("Using cached data")
+            return self.cached_data
+        return None
     
-    @media (max-width: 900px) {
-        /* 1 column on small screens */
-        #candidatesList > div[style*="grid-template-columns"] {
-            grid-template-columns: 1fr !important;
-        }
-    }
+    def set_data(self, data: pd.DataFrame) -> None:
+        """
+        Cache the data with current timestamp
+        
+        Args:
+            data: DataFrame to cache
+        """
+        self.cached_data = data
+        self.cache_timestamp = datetime.now()
+        log_debug("Data cached successfully")
 
-    .mentor-card {
-        background: #1f2937;
-        border: 2px solid #374151;
-        border-radius: 12px;
-        padding: 20px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        min-width: 250px;
-        max-width: 100%;
-        word-wrap: break-word;
-    }
+# Global cache instance
+data_cache = DataCache()
+
+# =============================================================================
+# DATA FETCHING WITH CACHING
+# =============================================================================
+
+def get_cached_data() -> pd.DataFrame:
+    """
+    Get data from cache or fetch fresh data if cache is expired
     
-    .mentor-card .metric-label {
-        font-size: 0.7rem;
-        line-height: 1.2;
-        overflow-wrap: break-word;
-    }
-
-    .mentor-card.strong-mentor {
-        border-color: #10b981;
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), #1f2937);
-    }
-
-    .mentor-card.in-progress-mentor {
-        border-color: #f59e0b;
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), #1f2937);
-    }
-
-    .mentor-card.needs-improvement-mentor {
-        border-color: #ef4444;
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), #1f2937);
-    }
-
-    .mentor-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    }
-
-    .mentor-card.strong-mentor:hover {
-        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
-    }
-
-    .mentor-card.in-progress-mentor:hover {
-        box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
-    }
-
-    .mentor-card.needs-improvement-mentor:hover {
-        box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
-    }
-
-    .mentor-card-header {
-        display: flex;
-        justify-content: flex-start;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-
-    .mentor-name {
-        font-size: 1.3em;
-        font-weight: 700;
-        color: #f3f4f6;
-    }
-
-    .mentor-mei-badge {
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.9em;
-        font-weight: 700;
-    }
-
-    .mentor-mei-badge.green {
-        background: rgba(16, 185, 129, 0.2);
-        color: #10b981;
-        border: 1px solid #10b981;
-    }
-
-    .mentor-mei-badge.yellow {
-        background: rgba(245, 158, 11, 0.2);
-        color: #f59e0b;
-        border: 1px solid #f59e0b;
-    }
-
-    .mentor-mei-badge.red {
-        background: rgba(239, 68, 68, 0.2);
-        color: #ef4444;
-        border: 1px solid #ef4444;
-    }
-
-    .mentor-stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-
-    .mentor-stat {
-        text-align: center;
-        padding: 10px;
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 8px;
-    }
-
-    .mentor-stat-value {
-        font-size: 1.5em;
-        font-weight: 700;
-        color: #8b5cf6;
-    }
-
-    .mentor-stat-label {
-        font-size: 0.75em;
-        color: #9ca3af;
-        text-transform: uppercase;
-        margin-top: 4px;
-    }
-
-    .mentor-tier-summary {
-        font-size: 0.9em;
-        color: #9ca3af;
-        text-align: center;
-    }
-
-    /* Mentor Filter Styles */
-    .mentor-filter-container {
-        margin-bottom: 24px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .mentor-filter-label {
-        font-size: 0.95em;
-        color: #9ca3af;
-        font-weight: 500;
-    }
-
-    .mentor-filter-select {
-        padding: 10px 16px;
-        background: #1f2937;
-        border: 1px solid #374151;
-        border-radius: 8px;
-        color: #f3f4f6;
-        font-size: 0.95em;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        min-width: 200px;
-    }
-
-    .mentor-filter-select:hover {
-        border-color: #8b5cf6;
-    }
-
-    .mentor-filter-select:focus {
-        outline: none;
-        border-color: #8b5cf6;
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-    }
-
-    /* Pagination Styles */
-    .pagination-controls {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 8px;
-        margin-top: 32px;
-        flex-wrap: wrap;
-    }
-
-    .pagination-button {
-        padding: 8px 16px;
-        background: #1f2937;
-        border: 1px solid #374151;
-        border-radius: 8px;
-        color: #f3f4f6;
-        font-size: 0.9em;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        min-width: 40px;
-        text-align: center;
-    }
-
-    .pagination-button:hover:not(:disabled) {
-        background: #374151;
-        border-color: #8b5cf6;
-    }
-
-    .pagination-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .pagination-button.active {
-        background: #8b5cf6;
-        border-color: #8b5cf6;
-        color: #ffffff;
-        font-weight: 600;
-    }
-
-    .pagination-info {
-        margin: 0 16px;
-        color: #9ca3af;
-        font-size: 0.9em;
-    }
-
-    /* Navigation Buttons */
-    .bottom-nav {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 12px;
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .back-button {
-        padding: 12px 24px;
-        background: linear-gradient(135deg, #475569, #334155);
-        border: none;
-        border-radius: 8px;
-        color: #ffffff;
-        font-size: 0.95em;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .back-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-
-    .back-button:active {
-        transform: translateY(0);
-    }
-
-    /* Mentor Profile Page */
-    .mentor-profile-container {
-        padding: 24px;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-
-    .mentor-profile-content {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 24px;
-        margin-bottom: 24px;
-    }
-
-    @media (max-width: 1024px) {
-        .mentor-profile-content {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .mentor-profile-header {
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.08));
-        border: 1px solid rgba(139, 92, 246, 0.3);
-        border-radius: 16px;
-        padding: 32px;
-    }
-
-    .mentor-profile-title {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-
-    .mentor-profile-name {
-        font-size: 2.2em;
-        font-weight: 700;
-        color: #f3f4f6;
-    }
-
-    .mentor-overview-stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-    }
-
-    .mentor-trainee-list {
-        background: #1f2937;
-        border: 1px solid #374151;
-        border-radius: 12px;
-        padding: 24px;
-    }
-
-    .trainee-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 16px;
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 8px;
-        margin-bottom: 12px;
-        border: 1px solid transparent;
-        transition: all 0.2s ease;
-    }
-
-    .trainee-item:hover {
-        border-color: #8b5cf6;
-        background: rgba(139, 92, 246, 0.05);
-    }
-
-    .trainee-info {
-        flex: 1;
-    }
-
-    .trainee-name {
-        font-size: 1.1em;
-        font-weight: 600;
-        color: #f3f4f6;
-        margin-bottom: 4px;
-    }
-
-    .trainee-program {
-        font-size: 0.85em;
-        color: #9ca3af;
-    }
-
-    .trainee-status {
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.85em;
-        font-weight: 600;
-    }
-
-    .trainee-status.complete {
-        background: rgba(16, 185, 129, 0.2);
-        color: #10b981;
-    }
-
-    .trainee-status.in-progress {
-        background: rgba(245, 158, 11, 0.2);
-        color: #f59e0b;
-    }
-
-    .trainee-status.unsuccessful {
-        background: rgba(239, 68, 68, 0.2);
-        color: #ef4444;
-    }
-
-    .trainee-score {
-        margin-left: 16px;
-        font-size: 1.2em;
-        font-weight: 700;
-        color: #8b5cf6;
-        }
-
-        /* Loading Spinner Animation */
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top-color: #60a5fa;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        /* Loading state for cards */
-        .loading-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 300px;
-            color: #fff;
-            text-align: center;
-        }
-
-        /* ==========================================
-           COMPREHENSIVE MOBILE OPTIMIZATION
-           ========================================== */
-
-        /* Global overflow prevention */
-        body {
-            overflow-x: hidden;
-            overflow-y: auto;
-        }
-
-        /* Better scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 12px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: rgba(0,0,0,0.1);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(102, 126, 234, 0.5);
-            border-radius: 6px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(102, 126, 234, 0.7);
-        }
-
-        /* Make all touch targets at least 48px */
-        button, .nav-btn, .view-profile-btn, .metric-card {
-            min-height: 48px;
-            min-width: 48px;
-        }
-
-        /* Tablet and Mobile Styles */
-        @media (max-width: 768px) {
-            body {
-                font-size: 16px;
-            }
-            
-            .container {
-                padding: 12px;
-            }
-            
-            .header {
-                padding: 30px 20px;
-            }
-            
-            .header h1 {
-                font-size: 1.75rem;
-            }
-            
-            .header p {
-                font-size: 0.95rem;
-            }
-            
-            /* Stack navigation buttons vertically */
-            .nav {
-                flex-direction: column;
-                gap: 8px;
-            }
-            
-            .nav-btn {
-                width: 100%;
-                text-align: center;
-            }
-            
-            /* Single column metrics grid */
-            .metrics-grid {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-            
-            /* Single column candidate cards */
-            .candidates-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .candidate-card {
-                padding: 16px;
-            }
-            
-            .candidate-details {
-                grid-template-columns: 1fr;
-                gap: 8px;
-            }
-            
-            /* Profile header - stack vertically */
-            .profile-header {
-                flex-direction: column;
-                text-align: center;
-                padding: 30px 20px;
-                gap: 20px;
-            }
-            
-            .profile-info h1 {
-                font-size: 2rem;
-            }
-            
-            /* Performance metrics - single column */
-            .metrics-grid-profile {
-                grid-template-columns: 1fr;
-            }
-            
-            /* Make mentor cards full width */
-            .mentor-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .dashboard, .candidates-container, .profile-container {
-                padding: 20px;
-            }
-            
-            /* Make images responsive */
-            .candidate-avatar-small {
-                width: 40px;
-                height: 40px;
-            }
-            
-            .avatar {
-                width: 80px;
-                height: 80px;
-            }
-            
-            /* Assessment grid single column */
-            .assessment-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            /* Stack operation/mentor container */
-            .operation-mentor-container {
-                grid-template-columns: 1fr;
-            }
-            
-            /* Reduce metric card value size */
-            .metric-value {
-                font-size: 2rem;
-            }
-        }
-
-        /* Extra small phones */
-        @media (max-width: 374px) {
-            .header h1 {
-                font-size: 1.5rem;
-            }
-            
-            .metric-value {
-                font-size: 1.75rem;
-            }
-            
-            .candidate-card {
-                padding: 12px;
-            }
-            
-            .profile-header {
-                padding: 20px 15px;
-            }
-        }
-
-        /* Landscape mode on phones */
-        @media (max-width: 896px) and (orientation: landscape) {
-            .header {
-                padding: 20px;
-            }
-            
-            .profile-header {
-                padding: 20px;
-            }
-            
-            .metrics-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        /* Responsive mentor card adjustments */
-        @media (max-width: 1400px) {
-            .mentor-card {
-                min-width: 220px;
-            }
-        }
-
-        @media (max-width: 1024px) {
-            .mentor-card {
-                min-width: 200px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .mentor-card {
-                min-width: 100%;
-            }
-        }
-
-        /* ==========================================
-           STICKY BACK BUTTON
-           ========================================== */
-        .sticky-back-nav {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(30, 35, 41, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 12px 20px;
-            margin: -40px -40px 20px -40px;
-            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .sticky-back-nav .back-btn {
-            background: linear-gradient(135deg, #475569, #334155);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.95rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            flex-shrink: 0;
-        }
-
-        .sticky-back-nav .back-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        /* Filter Pills */
-        .filter-pills {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .filter-select {
-            background: rgba(102, 126, 234, 0.15);
-            color: #e0e7ff;
-            border: 1px solid rgba(102, 126, 234, 0.3);
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            outline: none;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        .filter-select:hover {
-            background: rgba(102, 126, 234, 0.25);
-            border-color: rgba(102, 126, 234, 0.5);
-        }
-
-        .filter-select:focus {
-            border-color: #60a5fa;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        }
-
-        /* Style the dropdown options */
-        .filter-select option {
-            background: #1e2329;
-            color: #e0e7ff;
-            padding: 8px;
-        }
-
-        /* Section headers for dashboard grouping (desktop and mobile) */
-        .mobile-section-header {
-            display: block;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(139, 92, 246, 0.15));
-            color: #e0e7ff;
-            padding: 14px 24px;
-            margin: 30px 0 20px 0;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            border-left: 4px solid #60a5fa;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            text-align: left;
-            grid-column: 1 / -1; /* Span full width of grid */
+    Returns:
+        pd.DataFrame: Processed data from Google Sheets
+    """
+    # Check cache first
+    cached_data = data_cache.get_data()
+    if cached_data is not None:
+        return cached_data
+    
+    # Fetch fresh data
+    log_debug("Cache expired, fetching fresh data")
+    fresh_data = fetch_google_sheets_data()
+    data_cache.set_data(fresh_data)
+    return fresh_data
+
+# =============================================================================
+# API ROUTES
+# =============================================================================
+
+@app.route('/')
+def serve_dashboard():
+    """
+    Serve the main dashboard HTML file
+    
+    This endpoint serves the index.html file for the MIT Dashboard.
+    This is essential for Heroku deployment where the frontend needs to be served by Flask.
+    
+    Returns:
+        HTML file: The main dashboard interface
+    """
+    try:
+        return send_file('index.html')
+    except Exception as e:
+        log_error("Error serving dashboard", e)
+        return jsonify({'error': 'Dashboard not available'}), 500
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """
+    Health check endpoint
+    
+    Returns:
+        JSON response with server status and version information
+    """
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'version': API_VERSION,
+        'debug_mode': DEBUG_MODE
+    })
+
+@app.route('/api/dashboard-data', methods=['GET'])
+def get_dashboard_data():
+    """
+    Get dashboard metrics and statistics
+    
+    This endpoint provides high-level statistics for the dashboard overview,
+    including total candidates, status breakdowns, average salary, and open positions.
+    
+    Returns:
+        JSON response with dashboard metrics
+    """
+    try:
+        # Use unified candidate list from three-tier integration
+        candidates = merge_candidate_sources()
+        
+        # Calculate week-based categories first
+        categorized = categorize_candidates_by_week(candidates)
+        
+        # Calculate dashboard metrics (exclude offer pending from total)
+        offer_pending_candidates = categorized['offer_pending']
+        offer_pending = len(offer_pending_candidates)
+        total_candidates = len(candidates) - offer_pending  # Exclude offer pending from total
+        in_training = len([c for c in candidates if str(c.get('status','')).lower() == 'training'])
+        ready_for_placement = len([c for c in candidates if str(c.get('status','')).lower() == 'ready'])
+        
+        # Calculate average salary
+        salaries = [float(c.get('salary', 0) or 0) for c in candidates]
+        valid_salaries = [s for s in salaries if s and s > 0]
+        avg_salary = sum(valid_salaries) / len(valid_salaries) if valid_salaries else 0
+        
+        # Get open positions count
+        open_positions = fetch_open_positions_data()
+        open_positions_count = len(open_positions)
+        
+        # Get mentor metrics
+        mentor_metrics = get_mentor_dashboard_metrics()
+        
+        dashboard_data = {
+            'total_candidates': total_candidates,
+            'in_training': in_training,
+            'ready_for_placement': ready_for_placement,
+            'offer_pending': offer_pending,
+            'weeks_0_3': len(categorized['weeks_0_3']),  # Operational Overview
+            'weeks_4_6': len(categorized['weeks_4_6']),  # Active Training
+            'week_7_only': len(categorized['week_7_only']),  # Week 7 Priority
+            'weeks_8_plus': len(categorized['weeks_8_plus']),  # Ready for Placement
+            'open_positions': open_positions_count,
+            'average_salary': round(avg_salary, 2),
+            'mentor_metrics': mentor_metrics
         }
         
-        .mobile-section-header:first-child {
-            margin-top: 0;
-        }
+        response = jsonify(dashboard_data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error("Error in dashboard data endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
-        @media (max-width: 768px) {
-            .sticky-back-nav {
-                margin: -20px -20px 15px -20px;
-                padding: 10px 15px;
-                flex-direction: column;
-                align-items: stretch;
-                gap: 10px;
-            }
+@app.route('/api/candidates', methods=['GET'])
+def get_candidates():
+    """
+    Get candidates ready for placement
+    
+    Returns:
+        JSON response with list of candidates ready for placement
+    """
+    try:
+        unified = merge_candidate_sources()
+        ready_list = [c for c in unified if str(c.get('status','')).lower() == 'ready']
+        response = jsonify(ready_list)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error("Error in candidates endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
-            .filter-pills {
-                width: 100%;
-                justify-content: space-between;
-            }
+@app.route('/api/all-candidates', methods=['GET'])
+def get_all_candidates():
+    """
+    Get all ACTIVE candidates (excludes offer pending/incoming MITs who haven't started)
+    
+    Returns:
+        JSON response with active candidates only
+    """
+    try:
+        all_candidates = merge_candidate_sources()
+        # Filter out pending start (incoming MITs who haven't started yet)
+        active_only = [c for c in all_candidates if 'pending' not in str(c.get('status', '')).lower()]
+        response = jsonify(active_only)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error("Error in all candidates endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
-            .filter-select {
-                flex: 1;
-                min-width: 0;
-                font-size: 0.8rem;
-                padding: 8px 10px;
-            }
-            
-            /* Compact profile layout on mobile - smaller bio text */
-            .profile-header {
-                padding: 20px 15px !important;
-                gap: 15px !important;
-            }
-            
-            .profile-info h1 {
-                font-size: 1.5rem !important;
-                margin-bottom: 6px !important;
-            }
-            
-            .profile-info p {
-                font-size: 0.8rem !important;
-                line-height: 1.3 !important;
-            }
-            
-            .avatar {
-                width: 60px !important;
-                height: 60px !important;
-                font-size: 1.5rem !important;
-            }
-            
-            .profile-info {
-                font-size: 0.85rem !important;
-            }
-            
-            /* Adjust section headers for mobile */
-            .mobile-section-header {
-                padding: 10px 15px;
-                margin: 15px 0 10px 0;
-                font-size: 0.85rem;
-                border-left: 3px solid #60a5fa;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <h1>🎓 MIT Candidate Training Dashboard</h1>
-            <p>Real-time candidate tracking and performance analytics</p>
-            <button onclick="forceRefresh()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-size: 0.9rem;">🔄 Force Refresh</button>
-        </header>
+@app.route('/api/in-training-candidates', methods=['GET'])
+def get_in_training_candidates():
+    """
+    Get candidates currently in training
+    
+    Returns:
+        JSON response with in-training candidates
+    """
+    try:
+        unified = merge_candidate_sources()
+        training_list = [c for c in unified if str(c.get('status','')).lower() == 'training']
+        response = jsonify(training_list)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error("Error in in-training candidates endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
-        <!-- Dashboard Page -->
-        <main class="page active" id="dashboard">
-            <div class="dashboard">
-                <div class="metrics-grid" id="metricsGrid">
-                    <div class="loading">Loading metrics...</div>
-                </div>
-            </div>
-        </main>
+@app.route('/api/offer-pending-candidates', methods=['GET'])
+def get_offer_pending_candidates():
+    """
+    Get candidates with pending start dates (incoming MITs who haven't started yet)
+    
+    Returns:
+        JSON response with pending start candidates
+    """
+    try:
+        unified = merge_candidate_sources()
+        # Changed from 'offer' to 'pending' to match new "Pending Start" status
+        offer_list = [c for c in unified if 'pending' in str(c.get('status','')).lower()]
+        response = jsonify(offer_list)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error("Error in offer-pending candidates endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
-        <!-- Candidate List Page -->
-        <div class="page" id="candidateList">
-            <div class="candidates-container">
-                <div class="sticky-back-nav">
-                    <button onclick="showDashboard()" class="back-btn">← Back to Dashboard</button>
-                </div>
-                <h2>🧩 Ready for Placement</h2>
-                <div id="candidatesList" class="candidates-grid">
-                    <div class="loading">Loading candidates...</div>
-                </div>
-                <div style="text-align: center; margin-top: 20px;">
-                    <button onclick="showDashboard()" class="back-btn">← Back to Dashboard</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Profile Page -->
-        <div class="page" id="profilePage">
-            <div class="profile-container">
-                <div class="sticky-back-nav" style="display: flex; gap: 10px;">
-                    <button onclick="goBackToList()" class="back-btn">← Back to List</button>
-                    <button onclick="showDashboard()" class="back-btn">← Dashboard</button>
-                </div>
-                <div id="profileContent">
-                    <div class="loading">Loading profile...</div>
-                </div>
-                <div style="text-align: center; margin-top: 20px;">
-                    <button onclick="goBackToList()" class="back-btn">← Back to List</button>
-                    <button onclick="showDashboard()" class="back-btn secondary">← Back to Dashboard</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Job Matches Page -->
-        <div class="page" id="jobMatches">
-            <div class="candidates-container">
-                <h2 id="jobMatchesTitle">🔍 Top Matches</h2>
-                <div id="jobHeaderContainer"></div>
-                <div id="matchesList" class="candidates-grid">
-                    <div class="loading">Loading matches...</div>
-                </div>
-                <div style="text-align: center;">
-                    <button onclick="showOpenPositions()" class="back-btn">← Back to Open Positions</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Resume Modal -->
-        <div id="resumeModal" class="modal" onclick="closeResume()">
-            <div class="modal-content" onclick="event.stopPropagation()">
-                <div class="modal-header">
-                    <h2 id="resumeTitle">Resume</h2>
-                    <button class="modal-close" onclick="closeResume()">×</button>
-                </div>
-                <div class="modal-body">
-                    <iframe id="resumeIframe" style="width: 100%; height: 70vh; border: none;"></iframe>
-                    <div class="modal-actions">
-                        <button class="back-btn" onclick="window.open(document.getElementById('resumeIframe').src, '_blank')">Open in New Tab</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+@app.route('/api/candidate/<name>', methods=['GET'])
+def get_candidate_profile(name: str):
+    """
+    Get detailed profile for a specific candidate or alumni
+    
+    Args:
+        name: Candidate name (URL encoded)
         
-        <!-- OIG Task Modal -->
-        <div id="oigTaskModal" class="modal" onclick="closeOIGTaskModal()">
-            <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 600px;">
-                <div class="modal-header">
-                    <h2 id="oigTaskTitle">OIG Task Checklist</h2>
-                    <button class="modal-close" onclick="closeOIGTaskModal()">×</button>
-                </div>
-                <div class="modal-body">
-                    <div id="oigTaskList" class="oig-task-list"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // API Base URL - automatically use current origin in production, localhost in development
-        const API_BASE_URL = (() => {
-            const hostname = window.location.hostname;
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return 'http://localhost:5000';
-            }
-            if (hostname.includes('github.io')) {
-                return 'https://mit-training-dashboard.herokuapp.com';
-            }
-            return window.location.origin;
-        })();
+    Returns:
+        JSON response with detailed candidate profile
+    """
+    try:
+        # Step 1: Check current MIT candidates
+        unified = merge_candidate_sources()
+        target_norm = normalize_name(name)
+        candidate_data = None
         
-        // Ultra-aggressive cache-busting parameter to force fresh data
-        const CACHE_BUST = `?t=${Date.now()}&v=${Math.random()}&fresh=${Math.floor(Math.random() * 10000)}`;
+        for c in unified:
+            if normalize_name(c.get('name','')) == target_norm:
+                candidate_data = c
+                break
         
-        // Image cache to prevent repeated failed requests
-        const imageCache = new Set();
-        
-        // Smart image cache - only check once per session
-        const imageExistsCache = new Map();
-        
-        // Helper function to get score color class based on value
-        function getScoreColor(score) {
-            if (score >= 4.0) return 'score-excellent';
-            if (score >= 3.0) return 'score-good';
-            return 'score-needs-improvement';
-        }
-        
-        // Helper function to calculate progress bar width (score out of 5)
-        function getProgressWidth(score) {
-            return (score / 5) * 100;
-        }
-        
-        // Helper function to get OIG progress color based on percentage
-        function getOIGProgressColor(percentage) {
-            if (percentage >= 70) return 'score-excellent'; // Green
-            if (percentage >= 40) return 'score-good'; // Orange
-            return 'score-needs-improvement'; // Red
-        }
-        
-        // Helper function to clean up display values (replace nan, null, —, etc. with TBD)
-        // This is for TEXT fields like dates, names, titles - NOT for numeric scores
-        function cleanDisplayValue(value, defaultValue = 'TBD') {
-            if (value === null || value === undefined || value === '' || 
-                String(value).toLowerCase() === 'nan' || 
-                String(value).toLowerCase() === 'null' ||
-                value === '—') {
-                return defaultValue;
-            }
-            return value;
-        }
-        
-        function checkImageExists(src) {
-            if (!src) return false;
-            if (imageExistsCache.has(src)) return imageExistsCache.get(src);
-            // Try to load image; default to true so <img> attempts to render
-            const img = new Image();
-            img.src = src;
-            let exists = true;
-            img.onerror = () => imageExistsCache.set(src, false);
-            img.onload = () => imageExistsCache.set(src, true);
-            imageExistsCache.set(src, exists);
-            return exists;
-        }
-        
-        // Force refresh function to clear all caches and reload
-        function forceRefresh() {
-            // Clear all caches
-            imageCache.clear();
-            imageExistsCache.clear();
-            candidateCache = {};
+        # Step 2: If not found in current candidates, check MIT alumni
+        if not candidate_data:
+            log_debug(f"Candidate '{name}' not found in current roster, checking alumni...")
+            alumni_data = get_mit_alumni()
             
-            // Clear localStorage cache
-            try {
-                localStorage.removeItem('mit_candidate_cache');
-                console.log('🗑️ Cleared localStorage cache');
-            } catch (error) {
-                console.warn('Failed to clear localStorage:', error);
-            }
-            
-            // Force reload with cache bypass
-            window.location.reload(true);
-        }
-
-        // Global state
-        let currentPage = 'dashboard';
-        let previousPage = 'dashboard'; // Track the previous page for back navigation
-        let candidates = [];
-        let positions = [];
-        
-        // Store original unfiltered data for filtering
-        let originalCandidates = [];
-        let originalPositions = [];
-        
-        // Store rendered content for instant back navigation
-        let cachedListContent = '';
-        let cachedListTitle = '';
-        let cacheTimestamp = 0; // Track when cache was created
-        
-        // API Response Cache for faster page loads
-        const apiCache = new Map();
-        const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes in milliseconds
-        
-        // Cached fetch function to reduce API calls
-        async function cachedFetch(url, cacheKey) {
-            const now = Date.now();
-            const cached = apiCache.get(cacheKey);
-            
-            // Return cached data if it's fresh
-            if (cached && (now - cached.timestamp < CACHE_DURATION)) {
-                console.log(`✅ Using cached data for ${cacheKey}`);
-                return cached.data;
-            }
-            
-            // Fetch fresh data
-            console.log(`🔄 Fetching fresh data for ${cacheKey}`);
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            // Cache it
-            apiCache.set(cacheKey, { data, timestamp: now });
-            
-            return data;
-        }
-        
-        // Mentor Assessment Data Cache
-        let mentorAssessments = {};
-        
-        async function loadMentorAssessments() {
-            try {
-                const response = await fetch('/data/mentor_assessments.json');
-                mentorAssessments = await response.json();
-                console.log('✅ Loaded mentor assessments for', Object.keys(mentorAssessments).length, 'candidates');
-                console.log('📋 Assessment keys:', Object.keys(mentorAssessments));
-            } catch (error) {
-                console.warn('⚠️ Could not load mentor assessments:', error);
-                mentorAssessments = {};
-            }
-        }
-        
-        // Call on page load
-        window.addEventListener('DOMContentLoaded', loadMentorAssessments);
-        
-        // Helper function to auto-calculate average from questions
-        function calculateSectionAverage(section) {
-            if (!section || !section.questions) return 0;
-            const scores = Object.values(section.questions).filter(s => typeof s === 'number' && s > 0);
-            if (scores.length === 0) return 0;
-            return scores.reduce((a, b) => a + b, 0) / scores.length;
-        }
-        
-        // Client-side cache for candidate profiles (for instant profile switching)
-        let candidateCache = {};
-        
-        // Job matches cache
-        let jobMatchesCache = {}; // Store matches by job ID
-        let openPositionsCache = {}; // Store open positions data
-        let candidatesCache = {}; // Store different candidate lists
-        const JOB_MATCHES_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (faster switching)
-        const OPEN_POSITIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (faster switching)
-        const CANDIDATES_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes (faster switching)
-        
-        // Mentor state management
-        let allMentors = [];
-        let filteredMentors = [];
-        let currentMentorPage = 1;
-        const mentorsPerPage = 8;
-        let currentMentorFilter = 'all';
-        
-        // Load cache from localStorage on page load
-        function loadCacheFromStorage() {
-            try {
-                const stored = localStorage.getItem('mit_candidate_cache');
-                if (stored) {
-                    candidateCache = JSON.parse(stored);
-                    console.log('📦 Loaded candidate cache from localStorage:', Object.keys(candidateCache).length, 'profiles');
-                }
-            } catch (error) {
-                console.warn('Failed to load cache from localStorage:', error);
-                candidateCache = {};
-            }
-        }
-        
-        // Save cache to localStorage
-        function saveCacheToStorage() {
-            try {
-                localStorage.setItem('mit_candidate_cache', JSON.stringify(candidateCache));
-                console.log('💾 Saved candidate cache to localStorage');
-            } catch (error) {
-                console.warn('Failed to save cache to localStorage:', error);
-            }
-        }
-        
-        // Preload candidate profiles for instant access
-        async function preloadCandidateProfiles(candidates) {
-            console.log('🚀 Preloading profiles for', candidates.length, 'candidates...');
-            
-            // Preload profiles in batches to avoid overwhelming the server
-            const batchSize = 3;
-            for (let i = 0; i < candidates.length; i += batchSize) {
-                const batch = candidates.slice(i, i + batchSize);
-                
-                // Process batch in parallel
-                const promises = batch.map(async (candidate) => {
-                    if (!candidateCache[candidate.name]) {
-                        try {
-                            const response = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(candidate.name)}`);
-                            const profile = await response.json();
-                            
-                            if (!profile.error) {
-                                candidateCache[candidate.name] = profile;
-                                console.log(`✅ Preloaded: ${candidate.name}`);
-                            }
-                        } catch (error) {
-                            console.warn(`⚠️ Failed to preload ${candidate.name}:`, error);
-                        }
-                    } else {
-                        console.log(`⚡ Already cached: ${candidate.name}`);
+            for alum in alumni_data.get('alumni', []):
+                if normalize_name(alum.get('name','')) == target_norm:
+                    candidate_data = alum
+                    # Mark as alumni and add required fields for profile rendering
+                    candidate_data['is_alumni'] = True
+                    candidate_data['status'] = 'Alumni - Placed'
+                    candidate_data['week'] = int(alum.get('weeks_in_program', 0) or 0)
+                    # Use placement location instead of training location for alumni
+                    candidate_data['location'] = alum.get('placement_site', 'TBD')
+                    # Include salary from Placed MITs sheet
+                    candidate_data['salary'] = alum.get('training_salary', 'TBD')
+                    # Organize scores into expected structure
+                    candidate_data['scores'] = {
+                        'mock_qbr_score': alum.get('mock_qbr_score', 0),
+                        'assessment_score': alum.get('assessment_score', 0),
+                        'perf_eval_score': alum.get('perf_eval_score', 0),
+                        'confidence_score': alum.get('confidence_score', 0),
+                        'skill_ranking': alum.get('skill_ranking', 'TBD')
                     }
-                });
-                
-                await Promise.all(promises);
-                
-                // Small delay between batches
-                if (i + batchSize < candidates.length) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-            }
-            
-            // Save updated cache to localStorage
-            saveCacheToStorage();
-            console.log('🎉 Profile preloading complete!');
-        }
-
-        // Load dashboard data from API
-        async function loadDashboardData() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/dashboard-data${CACHE_BUST}`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                // Fetch training mentors separately
-                try {
-                    const trainingMentorsResponse = await fetch(`${API_BASE_URL}/api/training-mentors${CACHE_BUST}`);
-                    data.training_mentor_metrics = await trainingMentorsResponse.json();
-                } catch (err) {
-                    console.warn('Could not fetch training mentors:', err);
-                    data.training_mentor_metrics = {
-                        total_training_mentors: 0,
-                        strong_mentors: [],
-                        needs_help_mentors: [],
-                        monitoring_mentors: []
-                    };
-                }
-                
-                // Fetch MIT alumni separately
-                try {
-                    const alumniResponse = await fetch(`${API_BASE_URL}/api/mit-alumni${CACHE_BUST}`);
-                    data.alumni_metrics = await alumniResponse.json();
-                } catch (err) {
-                    console.warn('Could not fetch MIT alumni:', err);
-                    data.alumni_metrics = {
-                        total_alumni: 0,
-                        alumni: []
-                    };
-                }
-                
-                renderMetrics(data);
-                
-            } catch (error) {
-                document.getElementById('metricsGrid').innerHTML = 
-                    `<div class="error">Error loading data: ${error.message}</div>`;
-            }
-        }
-
-        // Render metrics with real data and clickable cards
-        function renderMetrics(data) {
-            const metricsGrid = document.getElementById('metricsGrid');
-            metricsGrid.innerHTML = `
-                <!-- MOBILE HEADER: Program Overview -->
-                <div class="mobile-section-header">📊 Program Overview</div>
-                
-                <!-- Row 1: Overview Metrics -->
-                <div class="metric-card total-candidates" onclick="showAllCandidates()">
-                    <div class="metric-label">Active MITs</div>
-                    <div class="metric-value">${data.total_candidates}</div>
-                    <div class="metric-change">Currently in MIT training program</div>
-                </div>
-                <div class="metric-card open-positions" onclick="showOpenPositions()">
-                    <div class="metric-label">Placement Roles</div>
-                    <div class="metric-value">${data.open_positions}</div>
-                    <div class="metric-change">Available full-time roles for MITs</div>
-                </div>
-                <div class="metric-card mentors" onclick="showTrainingMentors()">
-                    <div class="metric-label">Training Mentors</div>
-                    <div class="metric-value">${data.training_mentor_metrics?.total_training_mentors || 0}</div>
-                    <div class="metric-change">Active with trainees</div>
-                    <div class="mentor-metrics">
-                        <div class="mentor-metric-item">
-                            <div class="mentor-metric-label">Strong</div>
-                            <div class="mentor-metric-value" style="color: #10b981;">${data.training_mentor_metrics?.strong_mentors?.length || 0}</div>
-                        </div>
-                        <div class="mentor-metric-item">
-                            <div class="mentor-metric-label">Needs Support</div>
-                            <div class="mentor-metric-value" style="color: #ef4444;">${data.training_mentor_metrics?.needs_help_mentors?.length || 0}</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="metric-card mit-alumni" onclick="showMITAlumni()" 
-                     style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); cursor: pointer; border: 2px solid #f59e0b; transition: all 0.3s ease;"
-                     onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(245, 158, 11, 0.4)';"
-                     onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';">
-                    <div class="metric-label" style="color: #fff; font-weight: 700;">🎓 MIT Alumni</div>
-                    <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${data.alumni_metrics?.total_alumni || 0}</div>
-                    <div class="metric-change" style="color: rgba(255,255,255,0.9);">Successfully placed</div>
-                </div>
-                
-                <!-- MOBILE HEADER: Training Pipeline -->
-                <div class="mobile-section-header">🎯 Training Pipeline</div>
-                
-                <!-- Row 2: Training Pipeline (Sequential) -->
-                <div class="metric-card week-0-3" onclick="showWeeks0to3()">
-                    <div class="metric-label">Weeks 0-2</div>
-                    <div class="metric-value">${data.weeks_0_3 || 0}</div>
-                    <div class="metric-change">Onboarding Phase</div>
-                </div>
-                <div class="metric-card week-4-6" onclick="showWeeks4to6()">
-                    <div class="metric-label">Weeks 3-5</div>
-                    <div class="metric-value">${data.weeks_4_6 || 0}</div>
-                    <div class="metric-change">Mid Training</div>
-                </div>
-                <div class="metric-card week-7-priority" onclick="showWeek7Priority()">
-                    <div class="metric-label">Weeks 6-7 ⚠️</div>
-                    <div class="metric-value">${data.week_7_only || 0}</div>
-                    <div class="metric-change">Critical Placement Window</div>
-                </div>
-                
-                <!-- MOBILE HEADER: Action Required -->
-                <div class="mobile-section-header">🚨 Action Required</div>
-                
-                <!-- Row 3: Urgent Action -->
-                <div class="metric-card week-8-plus" onclick="showWeeks8Plus()" 
-                     style="border: 2px solid #ef4444; background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.05));">
-                    <div class="metric-label">Weeks 8+ 🚨</div>
-                    <div class="metric-value" style="color: #ef4444;">${data.weeks_8_plus || 0}</div>
-                    <div class="metric-change" style="color: #fca5a5;">Place Immediately</div>
-                </div>
-                <div class="metric-card offer-pending" onclick="showOfferPending()">
-                    <div class="metric-label">Incoming MITs</div>
-                    <div class="metric-value">${data.offer_pending || 0}</div>
-                    <div class="metric-change">Pending Start</div>
-                </div>
-            `;
-        }
-
-        // Load all candidates data from API
-        async function loadAllCandidates() {
-            try {
-                // Check cache first
-                const cached = candidatesCache.all;
-                const now = Date.now();
-                
-                if (cached && (now - cached.timestamp) < CANDIDATES_CACHE_DURATION) {
-                    console.log('✅ Using cached all candidates');
-                    candidates = cached.data;
-                    originalCandidates = [...cached.data]; // Store original unfiltered data
-                    renderAllCandidates();
-                    return;
-                }
-                
-                // ✅ Show loading state immediately
-                document.getElementById('candidatesList').innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p style="margin-top: 20px;">Loading all candidates...</p>
-                    </div>
-                `;
-                
-                console.log('🔄 Fetching fresh all candidates');
-                const response = await fetch(`${API_BASE_URL}/api/all-candidates`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                // Cache the results
-                candidatesCache.all = {
-                    data: data,
-                    timestamp: Date.now()
-                };
-                
-                candidates = data;
-                originalCandidates = [...data]; // Store original unfiltered data
-                renderAllCandidates();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading candidates: ${error.message}</div>`;
-            }
-        }
-
-        // Load in training candidates from API
-        async function loadInTrainingCandidates() {
-            try {
-                // Check cache first
-                const cached = candidatesCache.in_training;
-                const now = Date.now();
-                
-                if (cached && (now - cached.timestamp) < CANDIDATES_CACHE_DURATION) {
-                    console.log('✅ Using cached in-training candidates');
-                    candidates = cached.data;
-                    originalCandidates = [...cached.data]; // Store original unfiltered data
-                    renderInTrainingCandidates();
-                    return;
-                }
-                
-                // ✅ Show loading state immediately
-                document.getElementById('candidatesList').innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p style="margin-top: 20px;">Loading training candidates...</p>
-                    </div>
-                `;
-                
-                console.log('🔄 Fetching fresh in-training candidates');
-                const response = await fetch(`${API_BASE_URL}/api/in-training-candidates`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                // Cache the results
-                candidatesCache.in_training = {
-                    data: data,
-                    timestamp: Date.now()
-                };
-                
-                candidates = data;
-                originalCandidates = [...data]; // Store original unfiltered data
-                renderInTrainingCandidates();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading candidates: ${error.message}</div>`;
-            }
-        }
-
-        // Load offer pending candidates from API
-        async function loadOfferPendingCandidates() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/offer-pending-candidates`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                candidates = data;
-                renderOfferPendingCandidates();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading candidates: ${error.message}</div>`;
-            }
-        }
-
-        // Load weeks 0-2 candidates from API
-        async function loadWeeks0to3() {
-            try {
-                // ✅ Show loading state immediately
-                document.getElementById('candidatesList').innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p style="margin-top: 20px;">Loading candidates...</p>
-                    </div>
-                `;
-                
-                const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-0-3`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                candidates = data;
-                renderWeeks0to3();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading candidates: ${error.message}</div>`;
-            }
-        }
-
-        // Load weeks 3-7 candidates from API
-        async function loadWeeks4to6() {
-            try {
-                // ✅ Show loading state immediately
-                document.getElementById('candidatesList').innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p style="margin-top: 20px;">Loading candidates...</p>
-                    </div>
-                `;
-                
-                const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-4-6`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                candidates = data;
-                renderWeeks4to6();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading candidates: ${error.message}</div>`;
-            }
-        }
-
-        // Load weeks 6-7 priority candidates from API
-        async function loadWeek7Priority() {
-            try {
-                // ✅ Show loading state immediately
-                document.getElementById('candidatesList').innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p style="margin-top: 20px;">Loading candidates...</p>
-                    </div>
-                `;
-                
-                const response = await fetch(`${API_BASE_URL}/api/candidates/week-7-priority`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                candidates = data;
-                renderWeek7Priority();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading candidates: ${error.message}</div>`;
-            }
-        }
-
-        // Load weeks 8+ candidates from API
-        async function loadWeeks8Plus() {
-            try {
-                // ✅ Show loading state immediately
-                document.getElementById('candidatesList').innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p style="margin-top: 20px;">Loading candidates...</p>
-                    </div>
-                `;
-                
-                const response = await fetch(`${API_BASE_URL}/api/candidates/weeks-8-plus`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                candidates = data;
-                renderWeeks8Plus();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading candidates: ${error.message}</div>`;
-            }
-        }
-
-        async function loadOfferPending() {
-            try {
-                // ✅ Show loading state immediately
-                document.getElementById('candidatesList').innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p style="margin-top: 20px;">Loading incoming MITs...</p>
-                    </div>
-                `;
-                
-                const response = await fetch(`${API_BASE_URL}/api/offer-pending-candidates`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                candidates = data;
-                renderOfferPending();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading candidates: ${error.message}</div>`;
-            }
-        }
-
-        // Load open positions from API
-        async function loadOpenPositions() {
-            try {
-                // Check cache first
-                const cached = openPositionsCache.data;
-                const now = Date.now();
-                
-                if (cached && (now - cached.timestamp) < OPEN_POSITIONS_CACHE_DURATION) {
-                    console.log('✅ Using cached open positions');
-                    positions = cached.data;
-                    originalPositions = [...cached.data]; // Store original unfiltered data
-                    renderOpenPositions();
-                    return;
-                }
-                
-                // ✅ Show loading state immediately
-                document.getElementById('candidatesList').innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p style="margin-top: 20px;">Loading open positions...</p>
-                    </div>
-                `;
-                
-                console.log('🔄 Fetching fresh open positions');
-                const response = await fetch(`${API_BASE_URL}/api/open-positions`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                // Cache the results
-                openPositionsCache.data = {
-                    data: data,
-                    timestamp: Date.now()
-                };
-                
-                positions = data;
-                originalPositions = [...data]; // Store original unfiltered data
-                renderOpenPositions();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading positions: ${error.message}</div>`;
-            }
-        }
-
-        // Load candidates data from API
-        async function loadCandidates() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/candidates`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                candidates = data;
-                renderCandidates();
-                
-            } catch (error) {
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading candidates: ${error.message}</div>`;
-            }
-        }
-
-        // Render candidates with real data
-        function renderCandidates() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (candidates.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No candidates currently ready for placement</h3>
-                        <p>All candidates are either in training or already placed.</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            const renderedContent = candidates.map(candidate => `
-                <div class="candidate-card" onclick="showProfile('${candidate.name}')">
-                    <div class="candidate-info">
-                        <h3>${candidate.name}</h3>
-                        <div class="candidate-details">
-                            <div><strong>Site:</strong> ${candidate.training_site}</div>
-                            <div><strong>Week:</strong> ${candidate.week}</div>
-                        </div>
-                    </div>
-                    <div class="view-profile-btn">View Profile →</div>
-                </div>
-            `).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            
-            // Cache the rendered content for instant back navigation
-            cachedListContent = renderedContent;
-            cachedListTitle = '🧩 Ready for Placement';
-            cacheTimestamp = Date.now(); // Record when cache was created
-            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
-            
-            // Preload profiles for instant access
-            preloadCandidateProfiles(candidates);
-        }
-
-        // Render all candidates
-        function renderAllCandidates() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (candidates.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No candidates found</h3>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Process candidates with instant image checks
-            const processedCandidates = candidates.map(candidate => {
-                let showImage = false;
-                
-                if (candidate.profile_image) {
-                    showImage = checkImageExists(candidate.profile_image);
-                }
-                
-                return { ...candidate, showImage };
-            });
-            
-            const renderedContent = processedCandidates.map(candidate => `
-                <div class="candidate-card">
-                    <div class="candidate-info">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${candidate.showImage ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
-                                : ''
-                            }
-                            <h3 style="margin: 0;">${candidate.name}</h3>
-                        </div>
-                            <div class="candidate-details">
-                                <div><strong>Site:</strong> ${candidate.training_site}</div>
-                                <div><strong>Week:</strong> ${candidate.week}</div>
-                                <div><strong>Status:</strong> ${candidate.status}</div>
-                                <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week}</div>
-                            </div>
-                    </div>
-                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
-                </div>
-            `).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            
-            // Cache the rendered content for instant back navigation
-            cachedListContent = renderedContent;
-            cachedListTitle = '👥 Active MITs (All Candidates)';
-            cacheTimestamp = Date.now();
-            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
-            
-            // Preload profiles for instant access
-            preloadCandidateProfiles(candidates);
-        }
-
-        // Render in training candidates
-        function renderInTrainingCandidates() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (candidates.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No candidates currently in training</h3>
-                    </div>
-                `;
-                cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '🏋️ In Training Candidates';
-                cacheTimestamp = Date.now();
-                console.log('💾 Cached empty list content with timestamp:', cacheTimestamp);
-                return;
-            }
-            
-            const renderedContent = candidates.map(candidate => {
-                return `
-                <div class="candidate-card">
-                    <div class="candidate-info">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${candidate.profile_image ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
-                                : ''
-                            }
-                            <h3 style="margin: 0;">${candidate.name}</h3>
-                        </div>
-                        <div class="candidate-details">
-                            <div><strong>Site:</strong> ${candidate.training_site}</div>
-                            <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Level:</strong> ${candidate.level}</div>
-                        </div>
-                    </div>
-                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
-                </div>
-            `;
-            }).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            
-            // Cache the rendered content for instant back navigation
-            cachedListContent = renderedContent;
-            cachedListTitle = '🏋️ In Training Candidates';
-            cacheTimestamp = Date.now();
-            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
-            
-            // Preload profiles for instant access
-            preloadCandidateProfiles(candidates);
-        }
-
-        // Render offer pending candidates
-        function renderOfferPendingCandidates() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (candidates.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No incoming MITs with pending start dates</h3>
-                    </div>
-                `;
-                cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '🎯 Incoming MITs (Starting Soon)';
-                cacheTimestamp = Date.now();
-                console.log('💾 Cached empty list content with timestamp:', cacheTimestamp);
-                return;
-            }
-            
-            const renderedContent = candidates.map(candidate => {
-                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
-                return `
-                <div class="candidate-card">
-                    <div class="candidate-info">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${showImage ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
-                                : ''
-                            }
-                            <h3 style="margin: 0;">${candidate.name}</h3>
-                        </div>
-                        <div class="candidate-details">
-                            <div><strong>Site:</strong> ${candidate.training_site}</div>
-                            <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Status:</strong> Pending Start 🎯</div>
-                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
-                        </div>
-                    </div>
-                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
-                </div>
-            `;
-            }).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            
-            // Cache the rendered content for instant back navigation
-            cachedListContent = renderedContent;
-            cachedListTitle = '🎯 Incoming MITs (Starting Soon)';
-            cacheTimestamp = Date.now();
-            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
-            
-            // Preload profiles for instant access
-            preloadCandidateProfiles(candidates);
-        }
-
-        // Render weeks 0-3 candidates
-        function renderWeeks0to3() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (candidates.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No candidates in weeks 0-2</h3>
-                    </div>
-                `;
-                cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '📋 Weeks 0-2 (Onboarding Phase)';
-                cacheTimestamp = Date.now();
-                return;
-            }
-            
-            const renderedContent = candidates.map(candidate => {
-                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
-                return `
-                <div class="candidate-card">
-                    <div class="candidate-info">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${showImage ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
-                                : ''
-                            }
-                            <h3 style="margin: 0;">${candidate.name}</h3>
-                        </div>
-                        <div class="candidate-details">
-                            <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
-                            <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Status:</strong> ${candidate.status || 'training'}</div>
-                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
-                        </div>
-                    </div>
-                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
-                </div>
-            `;
-            }).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            cachedListContent = renderedContent;
-            cachedListTitle = '📋 Weeks 0-2 (Onboarding Phase)';
-            cacheTimestamp = Date.now();
-            preloadCandidateProfiles(candidates);
-        }
-
-        // Render weeks 3-7 candidates
-        function renderWeeks4to6() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (candidates.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No candidates in weeks 3-7</h3>
-                    </div>
-                `;
-                cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '🏋️ Weeks 3-5 (Mid Training)';
-                cacheTimestamp = Date.now();
-                return;
-            }
-            
-            const renderedContent = candidates.map(candidate => {
-                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
-                return `
-                <div class="candidate-card">
-                    <div class="candidate-info">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${showImage ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
-                                : ''
-                            }
-                            <h3 style="margin: 0;">${candidate.name}</h3>
-                        </div>
-                        <div class="candidate-details">
-                            <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
-                            <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Status:</strong> ${candidate.status || 'training'}</div>
-                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
-                        </div>
-                    </div>
-                    <div class="view-profile-btn" onclick="showProfile('${candidate.name}')">View Profile →</div>
-                </div>
-            `;
-            }).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            cachedListContent = renderedContent;
-            cachedListTitle = '🏋️ Weeks 3-5 (Mid Training)';
-            cacheTimestamp = Date.now();
-            preloadCandidateProfiles(candidates);
-        }
-
-        // Render weeks 6-7 priority candidates
-        function renderWeek7Priority() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (candidates.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No candidates in weeks 6-7 priority</h3>
-                    </div>
-                `;
-                cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '⚠️ Weeks 6-7 (Critical Placement Window)';
-                cacheTimestamp = Date.now();
-                return;
-            }
-            
-            const renderedContent = candidates.map(candidate => {
-                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
-                return `
-                <div class="candidate-card" style="border: 2px solid #f97316;">
-                    <div class="candidate-info">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${showImage ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
-                                : ''
-                            }
-                            <h3 style="margin: 0;">${candidate.name}</h3>
-                        </div>
-                        <div class="candidate-details">
-                            <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
-                            <div><strong>Week:</strong> ${candidate.week} - Placement Priority ⚡</div>
-                            <div><strong>Status:</strong> ${candidate.status || 'training'}</div>
-                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
-                        </div>
-                    </div>
-                    <div class="view-profile-btn" style="background: #f97316;" onclick="showProfile('${candidate.name}')">View Profile →</div>
-                </div>
-            `;
-            }).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            cachedListContent = renderedContent;
-            cachedListTitle = '⚠️ Weeks 6-7 (Critical Placement Window)';
-            cacheTimestamp = Date.now();
-            preloadCandidateProfiles(candidates);
-        }
-
-        // Render weeks 8+ candidates
-        function renderWeeks8Plus() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (candidates.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No candidates ready for placement</h3>
-                    </div>
-                `;
-                cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '🚨 Weeks 8+ (Place Immediately)';
-                cacheTimestamp = Date.now();
-                return;
-            }
-            
-            const renderedContent = candidates.map(candidate => {
-                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
-                return `
-                <div class="candidate-card">
-                    <div class="candidate-info">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${showImage ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
-                                : ''
-                            }
-                            <h3 style="margin: 0;">${candidate.name}</h3>
-                        </div>
-                        <div class="candidate-details">
-                            <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
-                            <div><strong>Week:</strong> ${candidate.week} - Ready for Placement ✅</div>
-                            <div><strong>Status:</strong> ${candidate.status || 'ready'}</div>
-                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
-                        </div>
-                    </div>
-                    <div class="view-profile-btn" style="background: #10b981;" onclick="showProfile('${candidate.name}')">View Profile →</div>
-                </div>
-            `;
-            }).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            cachedListContent = renderedContent;
-            cachedListTitle = '🚨 Weeks 8+ (Place Immediately)';
-            cacheTimestamp = Date.now();
-            preloadCandidateProfiles(candidates);
-        }
-
-        function renderOfferPending() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (candidates.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No incoming MITs with pending start dates</h3>
-                    </div>
-                `;
-                cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '🎯 Incoming MITs (Starting Soon)';
-                cacheTimestamp = Date.now();
-                return;
-            }
-            
-            const renderedContent = candidates.map(candidate => {
-                const showImage = candidate.profile_image && checkImageExists(candidate.profile_image);
-                return `
-                <div class="candidate-card">
-                    <div class="candidate-info">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            ${showImage ? 
-                                `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
-                                : ''
-                            }
-                            <h3 style="margin: 0;">${candidate.name}</h3>
-                        </div>
-                        <div class="candidate-details">
-                            <div><strong>Site:</strong> ${candidate.training_site || 'TBD'}</div>
-                            <div><strong>Week:</strong> ${candidate.week || 'N/A'}</div>
-                            <div><strong>Status:</strong> Pending Start 🎯</div>
-                            <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
-                        </div>
-                    </div>
-                    <div class="view-profile-btn" style="background: #34d399;" onclick="showProfile('${candidate.name}')">View Profile →</div>
-                </div>
-            `;
-            }).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            cachedListContent = renderedContent;
-            cachedListTitle = '🎯 Incoming MITs (Starting Soon)';
-            cacheTimestamp = Date.now();
-            preloadCandidateProfiles(candidates);
-        }
-
-        // Render open positions
-        function renderOpenPositions() {
-            const candidatesList = document.getElementById('candidatesList');
-            
-            if (positions.length === 0) {
-                candidatesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No open positions available</h3>
-                    </div>
-                `;
-                cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '💼 Open Positions';
-                cacheTimestamp = Date.now();
-                console.log('💾 Cached empty list content with timestamp:', cacheTimestamp);
-                return;
-            }
-            
-            const renderedContent = positions.map(position => `
-                <div class="candidate-card">
-                    <div class="candidate-info">
-                        <h3>${position.title}</h3>
-                        <div class="candidate-details">
-                            <div><strong>Account:</strong> ${position.account}</div>
-                            <div><strong>Location:</strong> ${position.city}, ${position.state}</div>
-                            <div><strong>Vertical:</strong> ${position.vertical}</div>
-                            <div><strong>Salary:</strong> ${position.salary}</div>
-                        </div>
-                    </div>
-                    <div class="view-profile-btn" onclick="showJobMatches(${position.id})">🔍 View Top Matches</div>
-                </div>
-            `).join('');
-            
-            candidatesList.innerHTML = renderedContent;
-            
-            // Cache the rendered content for instant back navigation
-            cachedListContent = renderedContent;
-            cachedListTitle = '💼 Open Positions';
-            cacheTimestamp = Date.now();
-            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
-            
-            // Preload job matches in background after rendering
-            setTimeout(() => {
-                preloadJobMatches(positions);
-            }, 500);
-        }
-
-        // ==========================================
-        // FILTER FUNCTIONS
-        // ==========================================
-
-        // Filter positions by vertical and salary
-        function applyPositionFilters() {
-            const verticalFilter = document.getElementById('verticalFilter');
-            const salaryFilter = document.getElementById('salaryFilter');
-            
-            if (!verticalFilter || !salaryFilter) return;
-            
-            const vertical = verticalFilter.value;
-            const salaryRange = salaryFilter.value;
-            
-            // Start with original unfiltered data
-            let filtered = [...originalPositions];
-            
-            // Filter by vertical
-            if (vertical !== 'all') {
-                filtered = filtered.filter(p => p.vertical.toLowerCase() === vertical.toLowerCase());
-            }
-            
-            // Filter by salary
-            if (salaryRange !== 'all') {
-                if (salaryRange === '80') {
-                    filtered = filtered.filter(p => p.salary >= 80000);
-                } else {
-                    const [min, max] = salaryRange.split('-').map(v => parseInt(v) * 1000);
-                    filtered = filtered.filter(p => p.salary >= min && p.salary < max);
-                }
-            }
-            
-            // Update positions array and re-render
-            positions = filtered;
-            renderOpenPositions();
-            
-            console.log(`🔍 Filtered positions: ${filtered.length} of ${originalPositions.length} total`);
-        }
-
-        // Filter candidates by week
-        function applyCandidateFilters() {
-            const weekFilter = document.getElementById('weekFilter');
-            
-            if (!weekFilter) return;
-            
-            const weekRange = weekFilter.value;
-            
-            // Start with original unfiltered data
-            let filtered = [...originalCandidates];
-            
-            // Filter by week range
-            if (weekRange !== 'all') {
-                if (weekRange === '8') {
-                    filtered = filtered.filter(c => c.week >= 8);
-                } else {
-                    const [min, max] = weekRange.split('-').map(v => parseInt(v));
-                    filtered = filtered.filter(c => c.week >= min && c.week <= max);
-                }
-            }
-            
-            // Update candidates array and re-render
-            candidates = filtered;
-            
-            // Re-render based on current page
-            if (currentPage === 'all_candidates') {
-                renderAllCandidates();
-            } else if (currentPage === 'in_training') {
-                renderInTrainingCandidates();
-            }
-            
-            console.log(`🔍 Filtered candidates: ${filtered.length} of ${originalCandidates.length} total`);
-        }
-
-        // Load candidate profile from API with client-side caching
-        async function loadCandidateProfile(name) {
-            try {
-                console.log(`=== PROFILE LOADING DEBUG FOR ${name} ===`);
-                console.log(`Cache contents:`, candidateCache);
-                console.log(`Cache has ${name}:`, candidateCache.hasOwnProperty(name));
-                
-                // ✅ CLEAR OLD PROFILE IMMEDIATELY - Show loading state
-                const profileContent = document.getElementById('profileContent');
-                profileContent.innerHTML = `
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; color: #fff;">
-                        <div class="loading-spinner" style="width: 60px; height: 60px;"></div>
-                        <p style="margin-top: 20px; font-size: 1.1rem; color: #a0a0a0;">Loading ${name}...</p>
-                    </div>
-                `;
-                
-                // Check cache first for instant loading
-                if (candidateCache[name]) {
-                    console.log(`✅ Loading ${name} from cache (instant)`);
-                    renderProfile(candidateCache[name]);
-                    return;
-                }
-                
-                // If not cached, fetch from API
-                console.log(`⏳ Fetching ${name} from API...`);
-                const startTime = Date.now();
-                const response = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(name)}`);
-                const candidate = await response.json();
-                const endTime = Date.now();
-                console.log(`⏱️ API fetch took ${endTime - startTime}ms`);
-                
-                if (candidate.error) {
-                    throw new Error(candidate.error);
-                }
-                
-                // Store in cache for future instant access
-                candidateCache[name] = candidate;
-                console.log(`💾 Stored ${name} in cache`);
-                console.log(`Updated cache contents:`, candidateCache);
-                
-                // Save to localStorage for persistence
-                saveCacheToStorage();
-                
-                renderProfile(candidate);
-                
-            } catch (error) {
-                console.error(`❌ Error loading profile for ${name}:`, error);
-                document.getElementById('profileContent').innerHTML = 
-                    `<div class="error">Error loading profile: ${error.message}</div>`;
-            }
-        }
-
-        // Helper function to display scores with "Available Week 6" messaging (for Performance Snapshot)
-        function getScoreDisplay(score, maxScore, candidateWeek, scoreWeekRequired = 6) {
-            // If they have a score, show it normally
-            if (score && score > 0) {
-                return `${score}/${maxScore}`;
-            }
-            
-            // If candidate hasn't reached Week 6 yet, tell them when it's coming
-            if (candidateWeek < scoreWeekRequired) {
-                return `<span style="color: #94a3b8; font-size: 0.85em;">Available Week ${scoreWeekRequired}</span>`;
-            }
-            
-            // If they're at Week 6 or beyond but no score yet
-            return `<span style="color: #f59e0b; font-size: 0.9em;">Pending</span>`;
-        }
-
-        // Helper function for Weekly Mentor Assessment (shows "Available soon" without week number)
-        function getMentorAssessmentDisplay(score, maxScore, candidateWeek) {
-            // If they have a score, show it normally
-            if (score && score > 0) {
-                return `${score}/${maxScore}`;
-            }
-            
-            // Show "Available soon" - no week number
-            return `<span style="color: #94a3b8; font-size: 0.85em;">Available soon</span>`;
-        }
-
-        // Render profile with real data
-        async function renderProfile(candidate) {
-            const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
-            console.log('🖼️ Rendering profile for:', candidate.name);
-            console.log('🖼️ Profile image URL:', candidate.profile_image);
-            // If cached profile lacks bio, fetch fresh profile
-            if (!candidate.bio) {
-                try {
-                    const resp = await fetch(`${API_BASE_URL}/api/candidate/${encodeURIComponent(candidate.name)}`);
-                    const fresh = await resp.json();
-                    if (!fresh.error) {
-                        candidate = fresh;
+                    # Add operation details
+                    candidate_data['operation_details'] = {
+                        'vertical': alum.get('training_vertical', 'TBD')
                     }
-                } catch (e) {
-                    console.warn('Could not refresh profile, using cached.', e);
-                }
-            }
-            
-            // Add mock OIG progress data based on week (will be replaced with real data from Google Sheets)
-            if (!candidate.oig_progress) {
-                const total = 13;
-                let completed;
-                
-                // Week 4+: All tasks complete
-                // Week 0-3: Progressive completion based on week
-                const week = parseInt(candidate.week) || 0;
-                
-                if (week >= 4) {
-                    completed = 13; // 100% complete for week 4+
-                } else if (week === 3) {
-                    completed = 10; // ~77% complete
-                } else if (week === 2) {
-                    completed = 7; // ~54% complete
-                } else if (week === 1) {
-                    completed = 4; // ~31% complete
-                } else {
-                    completed = 2; // ~15% complete for week 0
-                }
-                
-                candidate.oig_progress = {
-                    completed: completed,
-                    total: total,
-                    percentage: Math.round((completed / total) * 100)
-                };
-            }
-            
-            // Render image directly; onerror falls back to initials
-            const showImage = !!candidate.profile_image;
-            
-            document.getElementById('profileContent').innerHTML = `
-                <div class="profile-header">
-                    ${showImage ? 
-                        `<img src="${candidate.profile_image}" alt="${candidate.name}" class="avatar-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-                         <div class="avatar" style="display: none;">${initials}</div>` 
-                        : 
-                        `<div class="avatar">${initials}</div>`
-                    }
-                    <div class="profile-info">
-                        <h1>${candidate.name}
-                            ${candidate.is_alumni ? '<span class="data-quality-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; border: none;">🎓 MIT Alumni</span>' : ''}
-                            ${candidate.data_quality === 'limited' ? '<span class="data-quality-badge warning">Limited Profile Data</span>' : ''}
-                            ${candidate.data_quality === 'archive' ? '<span class="data-quality-badge info">Archive Data</span>' : ''}
-                        </h1>
-                        <p class="profile-bio">${candidate.bio || ''}</p>
-                        <p>${candidate.training_site} • ${candidate.location}</p>
-                        <p class="status-badge">${candidate.status} • ${candidate.training_program}</p>
-                    </div>
-                </div>
-                
-                <!-- Executive View: Row 1 - Readiness & Performance -->
-                <div class="profile-content">
-                    <div class="contact-info">
-                        <h3>🎯 Readiness Summary</h3>
-                        <div class="info-grid">
-                            <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Expected Graduation:</strong> ${cleanDisplayValue(candidate.expected_graduation_week, 'TBD')}</div>
-                            <div><strong>Status:</strong> ${candidate.status}</div>
-                            <div><strong>Salary:</strong> ${candidate.salary > 0 ? '$' + candidate.salary.toLocaleString() : 'TBD'}</div>
-                            ${candidate.operation_details && candidate.operation_details.company_start_date && candidate.operation_details.company_start_date !== '—' ? `<div><strong>Company Start:</strong> ${cleanDisplayValue(candidate.operation_details.company_start_date, 'TBD')}</div>` : ''}
-                            ${candidate.operation_details && candidate.operation_details.training_start_date && candidate.operation_details.training_start_date !== '—' ? `<div><strong>Training Start:</strong> ${cleanDisplayValue(candidate.operation_details.training_start_date, 'TBD')}</div>` : ''}
-                            ${candidate.resume_link ? `<div><strong>Resume:</strong> <a href="#" onclick="showResume('${candidate.resume_link}', '${candidate.name}'); return false;" style="color: #60a5fa; text-decoration: underline; cursor: pointer;">View Resume</a></div>` : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="performance-metrics">
-                        <h3>📊 Performance Snapshot</h3>
-                        <div class="metrics-grid-profile">
-                            <div class="metric-item">
-                                <div class="metric-label">Assessment</div>
-                                <div class="metric-value">${getScoreDisplay(candidate.scores.assessment_score, 100, candidate.week, 6)}</div>
-                            </div>
-                            <div class="metric-item">
-                                <div class="metric-label">Confidence</div>
-                                <div class="metric-value">${getScoreDisplay(candidate.scores.confidence_score, 100, candidate.week, 6)}</div>
-                            </div>
-                            <div class="metric-item">
-                                <div class="metric-label">Perf Eval</div>
-                                <div class="metric-value">${getScoreDisplay(candidate.scores.perf_eval_score, 60, candidate.week, 6)}</div>
-                            </div>
-                            <div class="metric-item">
-                                <div class="metric-label">Skill Ranking</div>
-                                <div class="metric-value">${candidate.scores.skill_ranking || `<span style="color: #94a3b8; font-size: 0.85em;">Available Week 6</span>`}</div>
-                            </div>
-                            <div class="metric-item">
-                                <div class="metric-label">Mock QBR</div>
-                                <div class="metric-value">${getScoreDisplay(candidate.scores.mock_qbr_score, 4, candidate.week, 6)}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    log_debug(f"Found '{name}' in alumni list")
+                    break
+        
+        # Step 3: Return 404 if still not found
+        if not candidate_data:
+            return jsonify({'error': ERROR_MESSAGES['candidate_not_found']}), 404
+        
+        response = jsonify(candidate_data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error("Error in candidate profile endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
-                <!-- Executive View: Row 2 - Mentor Assessment & Operation Context -->
-                <div class="profile-content">
-                    <div class="mentor-assessment-section">
-                        ${(() => {
-                            // Get assessment data for this candidate
-                            const normalizedName = candidate.name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
-                            console.log(`🔍 Looking for assessment: "${candidate.name}" → normalized: "${normalizedName}"`);
-                            const assessmentData = mentorAssessments[normalizedName];
-                            console.log(`📊 Assessment found:`, !!assessmentData);
-                            const latestAssessment = assessmentData?.assessments?.[0]; // Most recent assessment
-                            
-                            // Calculate progress percentages (auto-calculate from questions)
-                            const coreCompetencyAvg = latestAssessment ? calculateSectionAverage(latestAssessment.section_1_core_competencies) : 0;
-                            const softSkillsAvg = latestAssessment ? calculateSectionAverage(latestAssessment.section_2_soft_skills_leadership) : 0;
-                            const engagementAvg = latestAssessment ? calculateSectionAverage(latestAssessment.section_3_engagement_aptitude) : 0;
-                            const readinessScore = latestAssessment?.section_4_readiness_confidence?.confidence_level || 0;
-                            
-                            const coreCompetencyPercent = (coreCompetencyAvg / 5 * 100);
-                            const softSkillsPercent = (softSkillsAvg / 5 * 100);
-                            const engagementPercent = (engagementAvg / 5 * 100);
-                            const readinessPercent = (readinessScore / 5 * 100);
-                            
-                            const hasAssessment = !!latestAssessment && coreCompetencyAvg > 0;
-                            
-                            return `
-                                <h3>⭐ Weekly Mentor Assessment</h3>
-                                <div class="assessment-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px;">
-                                    <!-- Core Competency -->
-                                    <div class="assessment-tile" style="background: rgba(239, 68, 68, 0.1); padding: 16px; border-radius: 10px; border-left: 4px solid #ef4444;">
-                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                            <span style="font-size: 1.5rem;">🎯</span>
-                                            <div style="font-weight: 600; color: #f3f4f6; font-size: 0.95rem;">Core Competency</div>
-                                        </div>
-                                        <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
-                                            <div style="background: ${hasAssessment ? '#ef4444' : '#4b5563'}; height: 100%; width: ${coreCompetencyPercent}%; transition: width 0.3s;"></div>
-                                        </div>
-                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
-                                            ${hasAssessment ? coreCompetencyAvg.toFixed(1) + '/5.0' : 'Available soon'}
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Leadership & Soft Skills -->
-                                    <div class="assessment-tile" style="background: rgba(139, 92, 246, 0.1); padding: 16px; border-radius: 10px; border-left: 4px solid #8b5cf6;">
-                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                            <span style="font-size: 1.5rem;">👥</span>
-                                            <div style="font-weight: 600; color: #f3f4f6; font-size: 0.95rem;">Leadership & Soft Skills</div>
-                                        </div>
-                                        <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
-                                            <div style="background: ${hasAssessment ? '#8b5cf6' : '#4b5563'}; height: 100%; width: ${softSkillsPercent}%; transition: width 0.3s;"></div>
-                                        </div>
-                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
-                                            ${hasAssessment ? softSkillsAvg.toFixed(1) + '/5.0' : 'Available soon'}
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Readiness & Confidence -->
-                                    <div class="assessment-tile" style="background: rgba(16, 185, 129, 0.1); padding: 16px; border-radius: 10px; border-left: 4px solid #10b981;">
-                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                            <span style="font-size: 1.5rem;">✅</span>
-                                            <div style="font-weight: 600; color: #f3f4f6; font-size: 0.95rem;">Readiness & Confidence</div>
-                                        </div>
-                                        <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
-                                            <div style="background: ${hasAssessment ? '#10b981' : '#4b5563'}; height: 100%; width: ${readinessPercent}%; transition: width 0.3s;"></div>
-                                        </div>
-                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
-                                            ${hasAssessment ? readinessScore + '/5' : 'Available soon'}
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Engagement & Aptitude -->
-                                    <div class="assessment-tile" style="background: rgba(245, 158, 11, 0.1); padding: 16px; border-radius: 10px; border-left: 4px solid #f59e0b;">
-                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                            <span style="font-size: 1.5rem;">⚡</span>
-                                            <div style="font-weight: 600; color: #f3f4f6; font-size: 0.95rem;">Engagement & Aptitude</div>
-                                        </div>
-                                        <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
-                                            <div style="background: ${hasAssessment ? '#f59e0b' : '#4b5563'}; height: 100%; width: ${engagementPercent}%; transition: width 0.3s;"></div>
-                                        </div>
-                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
-                                            ${hasAssessment ? engagementAvg.toFixed(1) + '/5.0' : 'Available soon'}
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Mentor Feedback Button -->
-                                <button onclick="showMentorFeedback('${candidate.name.replace(/'/g, "\\'")}')" 
-                                        class="view-details-btn" 
-                                        style="width: 100%; padding: 14px; background: linear-gradient(135deg, #475569, #334155); 
-                                               color: white; border: none; border-radius: 10px; font-weight: 600; 
-                                               cursor: pointer; transition: all 0.3s; font-size: 1rem;
-                                               box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);"
-                                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';"
-                                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)';">
-                                    ${hasAssessment ? '📋 View Detailed Mentor Feedback' : '📋 No Feedback Available Yet'}
-                                </button>
-                            `;
-                        })()}
-                    </div>
+@app.route('/api/open-positions', methods=['GET'])
+def get_open_positions():
+    """
+    Get open job positions from Google Sheets
+    
+    Returns:
+        JSON response with open positions data
+    """
+    try:
+        open_positions = fetch_open_positions_data()
+        
+        response = jsonify(open_positions)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error("Error in open positions endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
-                    <div class="operation-mentor-container">
-                        ${candidate.operation_details ? `
-                        <div class="operation-details">
-                            <h3>🏢 Role Context</h3>
-                            <div class="info-grid">
-                                ${candidate.operation_details.title !== '—' && candidate.operation_details.title ? `<div><strong>Title:</strong> ${cleanDisplayValue(candidate.operation_details.title, 'TBD')}</div>` : ''}
-                                ${candidate.operation_details.vertical !== '—' && candidate.operation_details.vertical ? `<div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details.vertical, 'TBD')}</div>` : ''}
-                            </div>
-                            
-                            <!-- OIG Task Completion Section -->
-                            <div class="oig-progress-section" onclick="showOIGTaskModal('${candidate.name}')" style="cursor: pointer; margin-top: 20px; padding: 20px; background: rgba(16, 185, 129, 0.1); border: 2px solid ${candidate.oig_progress?.percentage >= 70 ? 'rgba(16, 185, 129, 0.5)' : candidate.oig_progress?.percentage >= 40 ? 'rgba(245, 158, 11, 0.5)' : 'rgba(239, 68, 68, 0.5)'}; border-radius: 12px; transition: all 0.2s ease;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                    <h4 style="margin: 0; font-size: 1.1rem; color: #ffffff; font-weight: 600;">📋 On-Site Integration (OIG) Task Completion</h4>
-                                    <span style="font-size: 1.2rem; font-weight: 700; color: ${candidate.oig_progress?.percentage >= 70 ? '#10b981' : candidate.oig_progress?.percentage >= 40 ? '#f59e0b' : '#ef4444'};">${candidate.oig_progress?.percentage || 0}%</span>
-                                </div>
-                                <div class="assessment-progress-bar" style="height: 16px; margin-bottom: 10px;">
-                                    <div class="assessment-progress-fill ${getOIGProgressColor(candidate.oig_progress?.percentage || 0)}" style="width: ${candidate.oig_progress?.percentage || 0}%"></div>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="color: #9ca3af; font-size: 0.95rem;">${candidate.oig_progress?.completed || 0} of ${candidate.oig_progress?.total || 13} tasks completed</span>
-                                    <span style="color: #8b5cf6; font-size: 0.9rem; text-decoration: underline;">View Details →</span>
-                                </div>
-                            </div>
-                        </div>
-                        ` : ''}
-                        
-                        ${candidate.mentor_name && candidate.mentor_name !== '—' ? `
-                        <div class="mentor-info-small">
-                            <h3>👨‍🏫 Mentor</h3>
-                            <div class="info-grid">
-                                <div><strong>Name:</strong> 
-                                    <span class="mentor-name" style="color: #8b5cf6; text-decoration: underline; cursor: pointer;" 
-                                          onclick="event.preventDefault(); showMentorProfile('${candidate.mentor_name}');">
-                                        ${candidate.mentor_name}
-                                    </span>
-                                </div>
-                                <div><strong>Title:</strong> ${cleanDisplayValue(candidate.mentor_title, 'TBD')}</div>
-                            </div>
-                        </div>
-                        ` : ''}
-                    </div>
-                </div>
-
-                <!-- Executive View: Row 3 - Top Job Matches (NEW) -->
-                <div id="candidateJobMatches" class="job-matches-section" style="margin-top: 30px;">
-                    <div class="loading">Loading top job matches...</div>
-                </div>
-
-                <!-- Collapsible: Additional Details (hide for alumni - not relevant) -->
-                ${!candidate.is_alumni ? `
-                <div class="collapsible-section" style="margin-top: 30px;">
-                    <div class="collapsible-header" onclick="toggleSection('additionalDetails')" style="cursor: pointer; background: rgba(255,255,255,0.08); padding: 15px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <h3 style="margin: 0; font-size: 1.2rem;">📋 Additional Details</h3>
-                        <span id="additionalDetails-icon" style="font-size: 1.2rem;">▼</span>
-                    </div>
-                    <div id="additionalDetails" style="display: none; margin-top: 15px;">
-                        <div class="profile-content">
-                            ${candidate.onboarding_progress ? `
-                            <div class="onboarding-progress">
-                                <h3>📋 Onboarding Progress</h3>
-                                <div class="progress-container">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: ${candidate.onboarding_progress.percentage}%"></div>
-                                    </div>
-                                    <div class="progress-text">${candidate.onboarding_progress.completed}/${candidate.onboarding_progress.total} Complete (${candidate.onboarding_progress.percentage}%)</div>
-                                </div>
-                            </div>
-                            ` : ''}
-                            
-                            ${candidate.business_lessons_progress ? `
-                            <div class="business-lessons">
-                                <h3>📚 Business Lessons Progress</h3>
-                                <div class="progress-container">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: ${candidate.business_lessons_progress.percentage}%"></div>
-                                    </div>
-                                    <div class="progress-text">${candidate.business_lessons_progress.completed}/${candidate.business_lessons_progress.total} Complete (${candidate.business_lessons_progress.percentage}%)</div>
-                                </div>
-                            </div>
-                            ` : ''}
-
-                        </div>
-                    </div>
-                </div>
-                ` : ''}
-            `;
-            
-            // Load top job matches for this candidate (skip for alumni - they're already placed!)
-            if (!candidate.is_alumni) {
-                loadCandidateJobMatches(candidate.name);
-            }
-        }
-
-        // Navigation functions
-        function showDashboard() {
-            hideAllPages();
-            document.getElementById('dashboard').classList.add('active');
-            previousPage = currentPage;
-            currentPage = 'dashboard';
-        }
-
-        function showAllCandidates() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton('candidates'); // ✅ Add week filter for candidates
-            // Immediately clear old content and show loading
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '👥 Active MITs (All Candidates)';
-            previousPage = currentPage;
-            currentPage = 'all_candidates';
-            // Then fetch data asynchronously
-            loadAllCandidates();
-        }
-
-        // Helper function to ensure sticky back button exists
-        function ensureStickyBackButton(filterType = null) {
-            const container = document.querySelector('.candidates-container');
-            if (!container) return;
-            
-            let stickyNav = container.querySelector('.sticky-back-nav');
-            
-            // Build filters HTML based on page type
-            let filtersHTML = '';
-            if (filterType === 'positions') {
-                filtersHTML = `
-                    <div class="filter-pills">
-                        <select class="filter-select" id="verticalFilter" onchange="applyPositionFilters()">
-                            <option value="all">All Verticals</option>
-                            <option value="distribution">Distribution</option>
-                            <option value="tech">Tech</option>
-                            <option value="aviation">Aviation</option>
-                            <option value="manufacturing">Manufacturing</option>
-                            <option value="auto">Auto</option>
-                            <option value="life science">Life Science</option>
-                            <option value="finance">Finance</option>
-                        </select>
-                        <select class="filter-select" id="salaryFilter" onchange="applyPositionFilters()">
-                            <option value="all">All Salaries</option>
-                            <option value="50-60">$50-60K</option>
-                            <option value="60-70">$60-70K</option>
-                            <option value="70-80">$70-80K</option>
-                            <option value="80">$80K+</option>
-                        </select>
-                    </div>
-                `;
-            } else if (filterType === 'candidates') {
-                filtersHTML = `
-                    <div class="filter-pills">
-                        <select class="filter-select" id="weekFilter" onchange="applyCandidateFilters()">
-                            <option value="all">All Weeks</option>
-                            <option value="0-2">Weeks 0-2</option>
-                            <option value="3-5">Weeks 3-5</option>
-                            <option value="6-7">Weeks 6-7</option>
-                            <option value="8">Week 8+</option>
-                        </select>
-                    </div>
-                `;
-            }
-            
-            // Create or update sticky nav
-            if (!stickyNav) {
-                // Create new sticky nav if it doesn't exist
-                stickyNav = document.createElement('div');
-                stickyNav.className = 'sticky-back-nav';
-                container.insertBefore(stickyNav, container.firstChild);
-            }
-            
-            // Always update the content (to add/remove filters)
-            stickyNav.innerHTML = `
-                <button onclick="showDashboard()" class="back-btn">← Back to Dashboard</button>
-                ${filtersHTML}
-            `;
-        }
-
-        function showOpenPositions() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton('positions'); // ✅ Add filters for positions
-            // Immediately clear old content and show loading
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading positions...</div>';
-            document.querySelector('.candidates-container h2').textContent = '💼 Placement Roles';
-            currentPage = 'open_positions';
-            // Then fetch data asynchronously
-            loadOpenPositions();
-        }
-
-        function showInTraining() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton('candidates'); // ✅ Add week filter for candidates
-            // Immediately clear old content and show loading
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🏋️ Active Training (All Weeks)';
-            previousPage = currentPage;
-            currentPage = 'in_training';
-            // Then fetch data asynchronously
-            loadInTrainingCandidates();
-        }
-
-        function showOfferPending() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // ✅ Ensure sticky button is present
-            // Immediately clear old content and show loading
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🎯 Incoming MITs (Starting Soon)';
-            previousPage = currentPage;
-            currentPage = 'offer_pending';
-            // Then fetch data asynchronously
-            loadOfferPendingCandidates();
-        }
-
-        function showWeeks0to3() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // ✅ Ensure sticky button is present
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '📋 Weeks 0-2 (Onboarding Phase)';
-            previousPage = currentPage;
-            currentPage = 'weeks_0_3';
-            loadWeeks0to3();
-        }
-
-        function showWeeks4to6() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // ✅ Ensure sticky button is present
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🏋️ Weeks 3-5 (Mid Training)';
-            previousPage = currentPage;
-            currentPage = 'weeks_4_6';
-            loadWeeks4to6();
-        }
-
-        function showWeek7Priority() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // ✅ Ensure sticky button is present
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '⚠️ Weeks 6-7 (Critical Placement Window)';
-            previousPage = currentPage;
-            currentPage = 'week_7_priority';
-            loadWeek7Priority();
-        }
-
-        function showWeeks8Plus() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // ✅ Ensure sticky button is present
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🚨 Weeks 8+ (Place Immediately)';
-            previousPage = currentPage;
-            currentPage = 'weeks_8_plus';
-            loadWeeks8Plus();
-        }
-
-        function showOfferPending() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // ✅ Ensure sticky button is present
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🎯 Incoming MITs (Starting Soon)';
-            previousPage = currentPage;
-            currentPage = 'offer_pending';
-            loadOfferPending();
-        }
-
-        // =============================================================================
-        // MENTOR FUNCTIONS
-        // =============================================================================
-
-        async function showAllMentors() {
-            try {
-                hideAllPages();
-                document.getElementById('candidateList').classList.add('active');
-                document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading mentors...</div>';
-                document.querySelector('.candidates-container h2').textContent = '👨‍🏫 Active Mentors';
-                previousPage = currentPage;
-                currentPage = 'mentors';
-                
-                const response = await fetch(`${API_BASE_URL}/api/mentors${CACHE_BUST}`);
-                const mentors = await response.json();
-                
-                if (mentors.error) {
-                    throw new Error(mentors.error);
-                }
-                
-                // Store all mentors and reset pagination
-                allMentors = mentors;
-                currentMentorPage = 1;
-                currentMentorFilter = 'all';
-                
-                // Initial filter and render
-                filterAndRenderMentors();
-                
-            } catch (error) {
-                console.error('Error loading mentors:', error);
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading mentors: ${error.message}</div>`;
-            }
-        }
-
-        // Global variables for training mentor filtering
-        let allTrainingMentors = [];
-        let currentTrainingMentorFilter = 'all';
-
-        async function showTrainingMentors() {
-            try {
-                hideAllPages();
-                document.getElementById('candidateList').classList.add('active');
-                // Force clear with empty string first, then add loading message
-                const container = document.getElementById('candidatesList');
-                container.innerHTML = '';
-                container.innerHTML = '<div class="loading">Loading training mentors...</div>';
-                document.querySelector('.candidates-container h2').textContent = '👨‍🏫 Active Training Mentors';
-                previousPage = currentPage;
-                currentPage = 'training_mentors';
-                
-                // USE CACHED FETCH for faster loads
-                const data = await cachedFetch(`${API_BASE_URL}/api/training-mentors${CACHE_BUST}`, 'training-mentors');
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                // Store all mentors for filtering
-                allTrainingMentors = [
-                    ...data.strong_mentors,
-                    ...data.needs_help_mentors,
-                    ...data.monitoring_mentors
-                ];
-                currentTrainingMentorFilter = 'all';
-                
-                renderTrainingMentors(allTrainingMentors, data);
-                
-            } catch (error) {
-                console.error('Error loading training mentors:', error);
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading training mentors: ${error.message}</div>`;
-            }
+@app.route('/api/job-matches/<int:job_id>', methods=['GET'])
+def get_job_matches(job_id):
+    """
+    Get top matching candidates for a specific job position
+    
+    This endpoint calculates match scores for all candidates against the specified job
+    and returns the top 3 matches based on the scoring algorithm.
+    
+    Args:
+        job_id: Job position ID to match against
+        
+    Returns:
+        JSON response with top matching candidates and their scores
+    """
+    try:
+        # Get top matches for the job
+        matches = get_top_matches(job_id, limit=6)
+        
+        if not matches:
+            return jsonify({'error': f'No matches found for job ID {job_id}'}), 404
+        
+        # Format response data with job details
+        job = matches[0]['job'] if matches else {}
+        response_data = {
+            'job_id': job_id,
+            'job_title': job.get('title', 'Unknown'),
+            'job_account': job.get('account', 'Unknown'),
+            'job_city': job.get('city', 'Unknown'),
+            'job_state': job.get('state', 'Unknown'),
+            'job_salary': parse_salary(job.get('salary', 0)),
+            'job_vertical': job.get('vertical', 'Unknown'),
+            'matches': []
         }
         
-        function filterTrainingMentors(filterType) {
-            currentTrainingMentorFilter = filterType;
-            let filtered = [];
-            
-            switch(filterType) {
-                case 'strong':
-                    filtered = allTrainingMentors.filter(m => m.mei_score >= 2.5);
-                    break;
-                case 'monitoring':
-                    filtered = allTrainingMentors.filter(m => m.mei_score >= 2.0 && m.mei_score < 2.5);
-                    break;
-                case 'needs_support':
-                    filtered = allTrainingMentors.filter(m => m.mei_score < 2.0 && m.mei_score > 0);
-                    break;
-                default:
-                    filtered = allTrainingMentors;
+        for match in matches:
+            match_data = {
+                'candidate_name': match['candidate']['name'],
+                'match_score': match['match_score'],
+                'match_quality': match['match_quality'],
+                'score_breakdown': match['score_breakdown'],
+                'candidate_data': match['candidate']
             }
-            
-            const data = {
-                total_training_mentors: allTrainingMentors.length,
-                total_trainees: allTrainingMentors.reduce((sum, m) => sum + m.trainee_count, 0)
-            };
-            
-            renderTrainingMentors(filtered, data);
+            response_data['matches'].append(match_data)
+        
+        response = jsonify(response_data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error(f"Error in job matches endpoint for job {job_id}", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+@app.route('/api/candidate-matches/<candidate_name>', methods=['GET'])
+def get_candidate_matches(candidate_name):
+    """
+    Get top matching jobs for a specific candidate (reverse match)
+    
+    This endpoint calculates match scores for all open positions against the specified candidate
+    and returns the top 3 matches based on the scoring algorithm.
+    
+    Args:
+        candidate_name: Candidate name to match against (URL encoded)
+        
+    Returns:
+        JSON response with top matching jobs and their scores
+    """
+    try:
+        # Get top matches for the candidate
+        matches = get_candidate_top_matches(candidate_name, limit=3)
+        
+        if not matches:
+            return jsonify({'error': f'No matches found for candidate {candidate_name}'}), 404
+        
+        # Format response data
+        response_data = {
+            'candidate_name': candidate_name,
+            'matches': []
         }
         
-        function renderTrainingMentors(mentors, data) {
-            // FIXED: Follow the working page pattern - all elements are direct children of candidatesList
-            const candidatesList = document.getElementById('candidatesList');
-            
-            // Build filter banner as a direct child (spans all columns)
-            let html = `
-                <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%); 
-                            padding: 15px 24px; border-radius: 10px; margin-bottom: 20px; 
-                            border: 1px solid rgba(139, 92, 246, 0.3);
-                            display: flex; justify-content: center; align-items: center;
-                            grid-column: 1 / -1;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <label style="color: rgba(255,255,255,0.95); font-size: 1.1rem; font-weight: 600;">Filter by MEI:</label>
-                        <select onchange="filterTrainingMentors(this.value)" value="${currentTrainingMentorFilter}" 
-                                style="padding: 12px 20px; border-radius: 8px;
-                                       background: #1a202c; 
-                                       color: #fff; border: 2px solid rgba(139, 92, 246, 0.5); 
-                                       font-size: 1.1rem; cursor: pointer; font-weight: 600;
-                                       box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-                            <option value="all" ${currentTrainingMentorFilter === 'all' ? 'selected' : ''}>All Mentors</option>
-                            <option value="strong" ${currentTrainingMentorFilter === 'strong' ? 'selected' : ''}>🟢 Strong (≥2.5)</option>
-                            <option value="monitoring" ${currentTrainingMentorFilter === 'monitoring' ? 'selected' : ''}>📊 Monitoring (2.0-2.49)</option>
-                            <option value="needs_support" ${currentTrainingMentorFilter === 'needs_support' ? 'selected' : ''}>⚠️ Needs Support (&lt;2.0)</option>
-                        </select>
-                    </div>
-                </div>
-            `;
-            
-            // Add mentor cards directly (following the working pattern)
-            if (mentors && mentors.length > 0) {
-                html += mentors.map(mentor => {
-                    const borderColor = '#14b8a6';
-                    const bgColor = 'rgba(45, 55, 72, 0.6)';
-                    const scoreColor = '#14b8a6';
-                    
-                    return `
-                        <div class="mentor-card" style="background: ${bgColor}; 
-                                                         padding: 24px; border-radius: 12px; border: 2px solid ${borderColor}; 
-                                                         box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s ease;
-                                                         display: flex; flex-direction: column;" 
-                             onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.4)';" 
-                             onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
-                            
-                            <h3 style="margin: 0 0 20px 0; font-size: 1.3rem; font-weight: 700; color: #fff; text-align: center;">
-                                <a href="#" onclick="showMentorProfile('${mentor.name.replace(/'/g, "\\'")}'); return false;" 
-                                   style="color: #fff; text-decoration: none; transition: color 0.2s;"
-                                   onmouseenter="this.style.color='${scoreColor}';"
-                                   onmouseleave="this.style.color='#fff';">
-                                    ${mentor.name}
-                                </a>
-                            </h3>
-                            
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
-                                <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; border: 2px solid ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'}; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">MEI</div>
-                                    <div style="font-size: 1.8rem; font-weight: 800; color: ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'};">
-                                        ${mentor.mei_score.toFixed(1)}
-                                    </div>
-                                </div>
-                                
-                                <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">LIFETIME<br>TRAINEES</div>
-                                    <div style="font-size: 1.8rem; font-weight: 800; color: #14b8a6;">${mentor.trainee_count}</div>
-                                </div>
-                                
-                                <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; border: 2px solid ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'}; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">SUCCESS<br>RATE</div>
-                                    <div style="font-size: 1.8rem; font-weight: 800; color: ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'};">
-                                        ${(mentor.success_rate || 0).toFixed(0)}%
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto;">
-                                ${mentor.trainees.map(t => `
-                                    <a href="#" onclick="showProfile('${t.name.replace(/'/g, "\\'")}'); return false;" 
-                                       style="background: rgba(20, 184, 166, 0.2); padding: 8px 14px; border-radius: 20px; 
-                                              color: ${scoreColor}; text-decoration: none; font-weight: 600; font-size: 0.85rem;
-                                              border: 1px solid ${scoreColor}66; transition: all 0.2s; display: inline-block;
-                                              box-shadow: 0 2px 4px rgba(0,0,0,0.2);"
-                                       onmouseenter="this.style.background='rgba(20, 184, 166, 0.3)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.3)';"
-                                       onmouseleave="this.style.background='rgba(20, 184, 166, 0.2)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)';">
-                                        ${t.name}
-                                    </a>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } else {
-                html += '<div class="no-data" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6); grid-column: 1 / -1;">No mentors found for this filter</div>';
+        for match in matches:
+            job = match['job']
+            match_data = {
+                'job_id': job.get('id', 0),
+                'job_title': job.get('title', 'Unknown'),
+                'job_account': job.get('account', 'Unknown'),
+                'job_city': job.get('city', 'Unknown'),
+                'job_state': job.get('state', 'Unknown'),
+                'job_salary': job.get('salary', 0),
+                'job_vertical': job.get('vertical', 'Unknown'),
+                'match_score': match['match_score'],
+                'match_quality': match['match_quality'],
+                'score_breakdown': match['score_breakdown']
             }
-            
-            candidatesList.innerHTML = html;
-        }
-
-        // MIT Alumni Page
-        async function showMITAlumni() {
-            try {
-                hideAllPages();
-                document.getElementById('candidateList').classList.add('active');
-                const container = document.getElementById('candidatesList');
-                container.innerHTML = '<div class="loading">Loading MIT alumni...</div>';
-                document.querySelector('.candidates-container h2').textContent = '🎓 MIT Alumni';
-                previousPage = currentPage;
-                currentPage = 'mit_alumni';
-                
-                // USE CACHED FETCH for faster loads
-                const data = await cachedFetch(`${API_BASE_URL}/api/mit-alumni${CACHE_BUST}`, 'mit-alumni');
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                renderMITAlumni(data.alumni);
-                
-            } catch (error) {
-                console.error('Error loading MIT alumni:', error);
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading MIT alumni: ${error.message}</div>`;
-            }
-        }
+            response_data['matches'].append(match_data)
         
-        function renderMITAlumni(alumni) {
-            // FIXED: Follow the working page pattern - all elements are direct children of candidatesList
-            const candidatesList = document.getElementById('candidatesList');
-            
-            // Gold-themed banner as direct child (spans all columns)
-            let html = `
-                <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%); 
-                            padding: 20px 30px; border-radius: 12px; margin-bottom: 25px; 
-                            border: 2px solid rgba(245, 158, 11, 0.4);
-                            text-align: center;
-                            grid-column: 1 / -1;">
-                    <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #f59e0b; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                        🎓 ${alumni.length} MIT Program Graduates Successfully Placed
-                    </h3>
-                </div>
-            `;
-            
-            // Add alumni cards directly (following the working pattern)
-            if (alumni && alumni.length > 0) {
-                html += alumni.map(alum => {
-                    const borderColor = '#f59e0b';
-                    const bgGradient = 'linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(45, 55, 72, 0.95) 100%)';
-                    const goldColor = '#f59e0b';
-                    
-                    return `
-                        <div class="alumni-card" style="background: ${bgGradient}; 
-                                                         padding: 20px; border-radius: 12px; border: 2px solid ${borderColor}; 
-                                                         box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s ease;
-                                                         display: flex; flex-direction: column; gap: 12px; min-height: 300px;" 
-                             onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(245, 158, 11, 0.4)';" 
-                             onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
-                            
-                            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: ${goldColor}; text-align: center;">
-                                ${alum.name}
-                            </h3>
-                            
-                            <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 8px; border-left: 4px solid ${goldColor};">
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                                    <span style="font-size: 1.1rem;">↑</span>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">CURRENT PLACEMENT</div>
-                                </div>
-                                <div style="color: ${goldColor}; font-size: 1.1rem; font-weight: 700; margin-bottom: 6px;">${alum.placement_site}</div>
-                                <div style="color: rgba(255,255,255,0.85); font-size: 0.95rem; margin-bottom: 8px;">${alum.placement_title}</div>
-                                <div style="display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); font-size: 0.85rem;">
-                                    <span>📅</span>
-                                    <span>Started: ${alum.placement_start_date}</span>
-                                </div>
-                            </div>
-                            
-                            <div style="background: rgba(0,0,0,0.2); padding: 14px; border-radius: 8px;">
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                                    <span style="font-size: 1.1rem;">📋</span>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">TRAINING BACKGROUND</div>
-                                </div>
-                                <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 0.9rem;">
-                                    <span style="color: rgba(255,255,255,0.6);">Site:</span>
-                                    <span style="color: ${goldColor}; font-weight: 600;">${alum.training_site}</span>
-                                    <span style="color: rgba(255,255,255,0.6);">Vertical:</span>
-                                    <span style="color: ${goldColor}; font-weight: 600;">${alum.training_vertical}</span>
-                                    <span style="color: rgba(255,255,255,0.6);">Duration:</span>
-                                    <span style="color: ${goldColor}; font-weight: 600;">${alum.weeks_in_program} weeks</span>
-                                </div>
-                            </div>
-                            
-                            <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin-top: auto;">
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                                    <span style="font-size: 1.1rem;">👤</span>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">TRAINED BY</div>
-                                </div>
-                                <a href="#" onclick="showMentorProfile('${(alum.mentor_name || 'TBD').replace(/'/g, "\\'")}'); return false;" 
-                                   style="color: ${goldColor}; text-decoration: none; font-weight: 600; font-size: 1rem; transition: color 0.2s; cursor: pointer;"
-                                   onmouseenter="this.style.color='#fff'; this.style.textDecoration='underline';"
-                                   onmouseleave="this.style.color='${goldColor}'; this.style.textDecoration='none';">
-                                    ${alum.mentor_name || 'TBD'}
-                                </a>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } else {
-                html += '<div class="no-data" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6); grid-column: 1 / -1;">No MIT alumni found</div>';
-            }
-            
-            candidatesList.innerHTML = html;
-        }
-
-        function filterMentorsByMEI(filterType) {
-            currentMentorFilter = filterType;
-            switch(filterType) {
-                case 'strong':
-                    filteredMentors = allMentors.filter(m => m.average_mei >= 2.5);
-                    break;
-                case 'in_progress':
-                    filteredMentors = allMentors.filter(m => m.average_mei >= 1.5 && m.average_mei < 2.5);
-                    break;
-                case 'needs_improvement':
-                    filteredMentors = allMentors.filter(m => m.average_mei < 1.5);
-                    break;
-                default:
-                    filteredMentors = allMentors;
-            }
-            currentMentorPage = 1; // Reset to first page when filter changes
-            renderMentorPage();
-        }
-
-        function renderMentorPage() {
-            const startIndex = (currentMentorPage - 1) * mentorsPerPage;
-            const endIndex = startIndex + mentorsPerPage;
-            const mentorsToShow = filteredMentors.slice(startIndex, endIndex);
-            const totalPages = Math.ceil(filteredMentors.length / mentorsPerPage);
-            
-            const candidatesList = document.getElementById('candidatesList');
-            
-            // Build header as direct child (spans all columns)
-            let html = `
-                <div class="page-header" style="grid-column: 1 / -1; padding: 0 0 16px 0;">
-                    <p style="font-size: 1.1em; margin: 0; color: rgba(255,255,255,0.8);">${filteredMentors.length} of ${allMentors.length} mentors${currentMentorFilter !== 'all' ? ' (filtered)' : ''}</p>
-                </div>
-                
-                <div class="mentor-filter-container" style="grid-column: 1 / -1; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; justify-content: center; background: rgba(0,0,0,0.2); padding: 16px; border-radius: 10px;">
-                    <span class="mentor-filter-label" style="font-size: 1rem; color: rgba(255,255,255,0.9); font-weight: 600;">Filter by MEI Score:</span>
-                    <select class="mentor-filter-select" onchange="filterMentorsByMEI(this.value)" style="padding: 10px 16px; border-radius: 8px; background: #1a202c; color: #fff; border: 2px solid rgba(139, 92, 246, 0.5); font-size: 1rem; cursor: pointer; font-weight: 600;">
-                        <option value="all" ${currentMentorFilter === 'all' ? 'selected' : ''}>All Mentors</option>
-                        <option value="strong" ${currentMentorFilter === 'strong' ? 'selected' : ''}>Strong (≥2.5)</option>
-                        <option value="in_progress" ${currentMentorFilter === 'in_progress' ? 'selected' : ''}>In Progress (1.5-2.49)</option>
-                        <option value="needs_improvement" ${currentMentorFilter === 'needs_improvement' ? 'selected' : ''}>Needs Improvement (&lt;1.5)</option>
-                    </select>
-                </div>
-            `;
-            
-            // Add mentor cards directly (following working pattern)
-            html += mentorsToShow.map(mentor => {
-                let cardClass = 'mentor-card';
-                let borderColor = '#10b981'; // green for strong
-                if (mentor.average_mei >= 2.5) {
-                    cardClass += ' strong-mentor';
-                    borderColor = '#10b981';
-                } else if (mentor.average_mei >= 1.5) {
-                    cardClass += ' in-progress-mentor';
-                    borderColor = '#f59e0b';
-                } else {
-                    cardClass += ' needs-improvement-mentor';
-                    borderColor = '#ef4444';
-                }
-                const name = mentor.name.replace(/'/g, "&#39;");
-                
-                return `<div class="${cardClass}" onclick="showMentorProfile('${name}')" style="border: 2px solid ${borderColor};">
-                    <div class="mentor-card-header">
-                        <div class="mentor-name">${mentor.name}</div>
-                    </div>
-                    <div class="mentor-stats">
-                        <div class="mentor-stat">
-                            <div class="mentor-stat-value">${mentor.num_trainees}</div>
-                            <div class="mentor-stat-label">Trainees</div>
-                        </div>
-                        <div class="mentor-stat">
-                            <div class="mentor-stat-value">${mentor.completed}</div>
-                            <div class="mentor-stat-label">Completed</div>
-                        </div>
-                        <div class="mentor-stat">
-                            <div class="mentor-stat-value">${mentor.success_rate}%</div>
-                            <div class="mentor-stat-label">Success</div>
-                        </div>
-                    </div>
-                    <div class="mentor-tier-summary">
-                        ${mentor.tier} • ${mentor.in_progress} in progress
-                    </div>
-                </div>`;
-            }).join('');
-            
-            // Add pagination as direct child (if needed)
-            if (totalPages > 1) {
-                html += `
-                    <div class="pagination-controls" style="grid-column: 1 / -1; margin-top: 20px;">
-                        <button class="pagination-button" onclick="goToMentorPage(${currentMentorPage - 1})" ${currentMentorPage === 1 ? 'disabled' : ''}>
-                            Previous
-                        </button>
-                        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(page => `
-                            <button class="pagination-button ${page === currentMentorPage ? 'active' : ''}" onclick="goToMentorPage(${page})">
-                                ${page}
-                            </button>
-                        `).join('')}
-                        <button class="pagination-button" onclick="goToMentorPage(${currentMentorPage + 1})" ${currentMentorPage === totalPages ? 'disabled' : ''}>
-                            Next
-                        </button>
-                        <span class="pagination-info">
-                            Page ${currentMentorPage} of ${totalPages}
-                        </span>
-                    </div>
-                `;
-            }
-            
-            // Add bottom nav as direct child
-            html += `
-                <div class="bottom-nav" style="grid-column: 1 / -1; margin-top: 20px; text-align: center;">
-                    <button onclick="showDashboard()" class="back-button">← Back to Dashboard</button>
-                </div>
-            `;
-            
-            candidatesList.innerHTML = html;
-        }
-
-        function filterAndRenderMentors() {
-            filterMentorsByMEI(currentMentorFilter);
-        }
-
-        function goToMentorPage(page) {
-            const totalPages = Math.ceil(filteredMentors.length / mentorsPerPage);
-            if (page >= 1 && page <= totalPages) {
-                currentMentorPage = page;
-                renderMentorPage();
-            }
-        }
-
-        async function showMentorProfile(mentorName) {
-            try {
-                hideAllPages();
-                document.getElementById('candidateList').classList.add('active');
-                document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading mentor profile...</div>';
-                document.querySelector('.candidates-container h2').textContent = `👨‍🏫 ${mentorName}`;
-                previousPage = currentPage;
-                currentPage = 'mentor_profile';
-                
-                const response = await fetch(`${API_BASE_URL}/api/mentor/${encodeURIComponent(mentorName)}${CACHE_BUST}`);
-                const mentor = await response.json();
-                
-                if (mentor.error) {
-                    throw new Error(mentor.error);
-                }
-                
-                // Categorize trainees
-                const completed = mentor.trainees.filter(t => t.completion_status.includes('Complete'));
-                const inProgress = mentor.trainees.filter(t => t.completion_status.includes('Currently') || t.completion_status.includes('Pending'));
-                const unsuccessful = mentor.trainees.filter(t => 
-                    ['Removed', 'Resigned', 'Incomplete', 'Never', 'Terminated'].some(s => t.completion_status.includes(s))
-                );
-                
-                const profileHTML = `
-                    <div class="mentor-profile-container">
-                        <div class="mentor-profile-content">
-                            <div class="mentor-profile-header">
-                                <div class="mentor-profile-title">
-                                    <h1 class="mentor-profile-name">${mentor.name}</h1>
-                                    <div class="mentor-mei-badge ${mentor.tier_color}">
-                                        ${mentor.average_mei.toFixed(2)}/3.0 MEI
-                                    </div>
-                                </div>
-                                
-                                <div class="mentor-overview-stats">
-                                    <div class="info-card">
-                                        <div class="info-label">Total Trainees</div>
-                                        <div class="info-value">${mentor.num_trainees}</div>
-                                    </div>
-                                    <div class="info-card">
-                                        <div class="info-label">Completed</div>
-                                        <div class="info-value" style="color: #10b981;">${mentor.completed}</div>
-                                    </div>
-                                    <div class="info-card">
-                                        <div class="info-label">In Progress</div>
-                                        <div class="info-value" style="color: #f59e0b;">${mentor.in_progress}</div>
-                                    </div>
-                                    <div class="info-card">
-                                        <div class="info-label">Success Rate</div>
-                                        <div class="info-value">${mentor.success_rate}%</div>
-                                    </div>
-                                    <div class="info-card">
-                                        <div class="info-label">Mentor Tier</div>
-                                        <div class="info-value">${mentor.tier}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="mentor-trainee-list">
-                            <h3 style="margin-bottom: 20px;">Mentorship History</h3>
-                            
-                            ${completed.length > 0 ? `
-                                <h4 style="color: #10b981; margin: 16px 0 12px 0;">✓ Completed (${completed.length})</h4>
-                                ${completed.map(t => `
-                                    <div class="trainee-item">
-                                        <div class="trainee-info">
-                                            <div class="trainee-name">${t.trainee_name}</div>
-                                            <div class="trainee-program">${t.training_program} • ${t.completion_status}</div>
-                                        </div>
-                                        <div class="trainee-status complete">Complete</div>
-                                    </div>
-                                `).join('')}
-                            ` : ''}
-                            
-                            ${inProgress.length > 0 ? `
-                                <h4 style="color: #f59e0b; margin: 16px 0 12px 0;">→ In Progress (${inProgress.length})</h4>
-                                ${inProgress.map(t => `
-                                    <div class="trainee-item">
-                                        <div class="trainee-info">
-                                            <div class="trainee-name">${t.trainee_name}</div>
-                                            <div class="trainee-program">${t.training_program} • ${t.completion_status}</div>
-                                        </div>
-                                        <div class="trainee-status in-progress">In Progress</div>
-                                    </div>
-                                `).join('')}
-                            ` : ''}
-                            
-                            ${unsuccessful.length > 0 ? `
-                                <h4 style="color: #ef4444; margin: 16px 0 12px 0;">✗ Unsuccessful (${unsuccessful.length})</h4>
-                                ${unsuccessful.map(t => `
-                                    <div class="trainee-item">
-                                        <div class="trainee-info">
-                                            <div class="trainee-name">${t.trainee_name}</div>
-                                            <div class="trainee-program">${t.training_program} • ${t.completion_status}</div>
-                                        </div>
-                                        <div class="trainee-status unsuccessful">${t.completion_status}</div>
-                                    </div>
-                                `).join('')}
-                            ` : ''}
-                        </div>
-                        
-                        <div class="bottom-nav">
-                            <button onclick="showAllMentors()" class="back-button">← Back to Mentors</button>
-                            <button onclick="showTrainingMentors()" class="back-button">← Back to MIT Mentors</button>
-                            <button onclick="showDashboard()" class="back-button">← Back to Dashboard</button>
-                        </div>
-                    </div>
-                `;
-                
-                document.getElementById('candidatesList').innerHTML = profileHTML;
-                
-            } catch (error) {
-                console.error('Error loading mentor profile:', error);
-                document.getElementById('candidatesList').innerHTML = 
-                    `<div class="error">Error loading mentor profile: ${error.message}</div>`;
-            }
-        }
-
-        function showMentorsList() {
-            // Legacy function - redirect to new implementation
-            showAllMentors();
-        }
-
-        function showCandidateList() {
-            hideAllPages();
-            document.getElementById('candidateList').classList.add('active');
-            // Immediately clear old content and show loading
-            document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
-            document.querySelector('.candidates-container h2').textContent = '🧩 Ready for Placement';
-            previousPage = currentPage;
-            currentPage = 'candidates';
-            // Then fetch data asynchronously
-            loadCandidates();
-        }
-
-        function showProfile(candidateName) {
-            hideAllPages();
-            document.getElementById('profilePage').classList.add('active');
-            previousPage = currentPage;
-            currentPage = 'profile';
-            loadCandidateProfile(candidateName);
-        }
-
-        function showJobMatches(jobId) {
-            hideAllPages();
-            document.getElementById('jobMatches').classList.add('active');
-            
-            // Show loading state immediately
-            document.getElementById('matchesList').innerHTML = `
-                <div class="loading">
-                    <div class="loading-spinner"></div>
-                    <div>Loading matches for job ${jobId}...</div>
-                    <div style="font-size: 0.8em; color: #9ca3af; margin-top: 8px;">
-                        This may take a few moments
-                    </div>
-                </div>
-            `;
-            document.getElementById('jobMatchesTitle').textContent = '🔍 Loading Top Matches...';
-            document.getElementById('jobHeaderContainer').innerHTML = '';
-            
-            previousPage = currentPage;
-            currentPage = 'job_matches';
-            
-            // Check cache first
-            const cached = jobMatchesCache[jobId];
-            const now = Date.now();
-            
-            if (cached && (now - cached.timestamp) < JOB_MATCHES_CACHE_DURATION) {
-                console.log(`✅ Using cached matches for job ${jobId}`);
-                renderJobMatches(cached.data);
-            } else {
-                console.log(`🔄 Fetching fresh matches for job ${jobId}`);
-            loadJobMatches(jobId);
-            }
-        }
-
-        async function loadJobMatches(jobId) {
-            try {
-                console.log(`🔄 Starting to load job matches for job ${jobId}`);
-                
-                // Add timeout to prevent hanging
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-                
-                const response = await fetch(`${API_BASE_URL}/api/job-matches/${jobId}`, {
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                
-                console.log(`✅ Got response for job ${jobId}, status: ${response.status}`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                console.log(`✅ Parsed JSON for job ${jobId}, matches count: ${data.matches ? data.matches.length : 'unknown'}`);
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                // Cache the results
-                jobMatchesCache[jobId] = {
-                    data: data,
-                    timestamp: Date.now()
-                };
-                
-                console.log(`🔄 About to render job matches for job ${jobId}`);
-                renderJobMatches(data);
-                console.log(`✅ Finished rendering job matches for job ${jobId}`);
-                
-            } catch (error) {
-                console.error(`❌ Error loading job matches for ${jobId}:`, error);
-                let errorMessage = 'Error loading matches';
-                
-                if (error.name === 'AbortError') {
-                    errorMessage = 'Request timed out. Please try again.';
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                
-                document.getElementById('matchesList').innerHTML = 
-                    `<div class="error">${errorMessage}</div>`;
-            }
-        }
-
-        function getScoreBarClass(score, maxScore) {
-            const percentage = (score / maxScore) * 100;
-            if (percentage >= 80) return 'high-score';
-            if (percentage >= 50) return 'medium-score';
-            return 'low-score';
-        }
-
-        function getJobLocation(jobData) {
-            // If we have both city and state, use them
-            if (jobData.job_city && jobData.job_state) {
-                return `${jobData.job_city}, ${jobData.job_state}`;
-            }
-            
-            // If we have just city or state, use what we have
-            if (jobData.job_city || jobData.job_state) {
-                return jobData.job_city || jobData.job_state;
-            }
-            
-            // Try to extract location from account name (e.g., "BMS Princeton Pike (NJ)" -> "NJ")
-            if (jobData.job_account && jobData.job_account.includes('(')) {
-                const match = jobData.job_account.match(/\(([^)]+)\)/);
-                if (match && match[1]) {
-                    return match[1];
-                }
-            }
-            
-            return 'Not specified';
-        }
-
-        function renderJobMatches(matchData) {
-            console.log('🔄 Starting renderJobMatches');
-            const matchesList = document.getElementById('matchesList');
-            const jobMatchesTitle = document.getElementById('jobMatchesTitle');
-            const jobHeaderContainer = document.getElementById('jobHeaderContainer');
-            
-            console.log('🔄 Updating page title');
-            // Update page title
-            jobMatchesTitle.textContent = `🔍 Top Matches for: ${matchData.job_title}`;
-            
-            console.log('🔄 Rendering job header');
-            // Render job header
-            const jobHeaderHTML = `
-                <div class="job-details-header">
-                    <div class="job-title-section">
-                        <h1 class="job-title">${matchData.job_title}</h1>
-                        <div class="job-company">${matchData.job_account}</div>
-                    </div>
-                    <div class="job-info-grid">
-                        <div class="job-info-item">
-                            <span class="info-label">Location</span>
-                            <span class="info-value">${getJobLocation(matchData)}</span>
-                        </div>
-                        <div class="job-info-item">
-                            <span class="info-label">Salary</span>
-                            <span class="info-value">$${parseInt(matchData.job_salary || 0).toLocaleString()}</span>
-                        </div>
-                        <div class="job-info-item">
-                            <span class="info-label">Vertical</span>
-                            <span class="info-value">${matchData.job_vertical}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            jobHeaderContainer.innerHTML = jobHeaderHTML;
-            console.log('✅ Job header rendered');
-            
-            if (matchData.matches.length === 0) {
-                console.log('⚠️ No matches found');
-                matchesList.innerHTML = `
-                    <div class="no-candidates">
-                        <h3>No matches found for this position</h3>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Render detailed match cards
-            matchesList.innerHTML = matchData.matches.map((match, index) => {
-                const candidate = match.candidate_data;
-                const breakdown = match.score_breakdown;
-                
-                return `
-                    <div class="match-card-detailed">
-                        <div class="match-header">
-                            <div class="match-rank">#${index + 1}</div>
-                            <div class="match-candidate-info">
-                                <h3 onclick="showProfile('${candidate.name}')">${candidate.name}</h3>
-                                <div class="candidate-meta-grid">
-                                    <div class="meta-item">
-                                        <span class="meta-icon">📍</span>
-                                        <span class="meta-text">${candidate.training_site || '—'}${candidate.location ? ', ' + candidate.location : ''}</span>
-                            </div>
-                                    <div class="meta-item">
-                                        <span class="meta-icon">📅</span>
-                                        <span class="meta-text">Week ${candidate.week || 0}</span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <span class="meta-icon">💰</span>
-                                        <span class="meta-text">${candidate.salary > 0 ? '$' + candidate.salary.toLocaleString() : 'Not Available'}</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Total Score below salary -->
-                                <div class="candidate-total-score">
-                                    <div class="candidate-score-number">${match.match_score}</div>
-                                    <div class="candidate-score-label">Total Score</div>
-                            </div>
-                        </div>
-                        </div>
-                        
-                        <div class="score-breakdown-visual">
-                            <div class="breakdown-header">Score Breakdown</div>
-                            <div class="score-item">
-                                <div class="score-item-header">
-                                    <span class="score-name">Vertical Alignment</span>
-                                    <span class="score-value">${breakdown.vertical_alignment.score}/${breakdown.vertical_alignment.max}</span>
-                            </div>
-                                <div class="score-bar-container">
-                                    <div class="score-bar ${getScoreBarClass(breakdown.vertical_alignment.score, breakdown.vertical_alignment.max)}" style="width: ${(breakdown.vertical_alignment.score / breakdown.vertical_alignment.max) * 100}%"></div>
-                        </div>
-                                <div class="score-explanation">${breakdown.vertical_alignment.explanation}</div>
-                            </div>
-                            
-                            <div class="score-item">
-                                <div class="score-item-header">
-                                    <span class="score-name">Salary Trajectory</span>
-                                    <span class="score-value">${breakdown.salary_trajectory.score}/${breakdown.salary_trajectory.max}</span>
-                                </div>
-                                <div class="score-bar-container">
-                                    <div class="score-bar ${getScoreBarClass(Math.max(0, breakdown.salary_trajectory.score), breakdown.salary_trajectory.max)}" style="width: ${Math.max(0, (breakdown.salary_trajectory.score / breakdown.salary_trajectory.max) * 100)}%"></div>
-                                </div>
-                                <div class="score-explanation">${breakdown.salary_trajectory.explanation}</div>
-                            </div>
-                            
-                            <div class="score-item">
-                                <div class="score-item-header">
-                                    <span class="score-name">Geographic Fit</span>
-                                    <span class="score-value">${breakdown.geographic_fit.score}/${breakdown.geographic_fit.max}</span>
-                                </div>
-                                <div class="score-bar-container">
-                                    <div class="score-bar ${getScoreBarClass(breakdown.geographic_fit.score, breakdown.geographic_fit.max)}" style="width: ${(breakdown.geographic_fit.score / breakdown.geographic_fit.max) * 100}%"></div>
-                                </div>
-                                <div class="score-explanation">${breakdown.geographic_fit.explanation}</div>
-                            </div>
-                            
-                            <div class="score-item">
-                                <div class="score-item-header">
-                                    <span class="score-name">Confidence</span>
-                                    <span class="score-value">${breakdown.confidence.score}/${breakdown.confidence.max}</span>
-                                </div>
-                                <div class="score-bar-container">
-                                    <div class="score-bar ${getScoreBarClass(breakdown.confidence.score, breakdown.confidence.max)}" style="width: ${(breakdown.confidence.score / breakdown.confidence.max) * 100}%"></div>
-                                </div>
-                                <div class="score-explanation">${breakdown.confidence.explanation}</div>
-                            </div>
-                            
-                            <div class="score-item">
-                                <div class="score-item-header">
-                                    <span class="score-name">Readiness</span>
-                                    <span class="score-value">${breakdown.readiness.score}/${breakdown.readiness.max}</span>
-                                </div>
-                                <div class="score-bar-container">
-                                    <div class="score-bar ${getScoreBarClass(breakdown.readiness.score, breakdown.readiness.max)}" style="width: ${(breakdown.readiness.score / breakdown.readiness.max) * 100}%"></div>
-                                </div>
-                                <div class="score-explanation">${breakdown.readiness.explanation}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="match-actions">
-                            <button class="view-profile-btn" onclick="showProfile('${candidate.name}')">
-                                View Full Profile →
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            console.log('✅ Job matches rendered successfully');
-        }
-
-        async function preloadJobMatches(positions) {
-            console.log(`🔄 Preloading matches for ${positions.length} positions...`);
-            
-            // Preload in batches of 3 to avoid overwhelming the server
-            const batchSize = 3;
-            for (let i = 0; i < positions.length; i += batchSize) {
-                const batch = positions.slice(i, i + batchSize);
-                await Promise.all(
-                    batch.map(async (position) => {
-                        try {
-                            const response = await fetch(`${API_BASE_URL}/api/job-matches/${position.id}`);
-                            const data = await response.json();
-                            
-                            if (!data.error) {
-                                jobMatchesCache[position.id] = {
-                                    data: data,
-                                    timestamp: Date.now()
-                                };
-                            }
-                        } catch (error) {
-                            console.warn(`Failed to preload matches for job ${position.id}:`, error);
-                        }
-                    })
-                );
-            }
-            
-            console.log('✅ Job matches preloading complete');
-        }
-
-        function goBackToList() {
-            console.log('🔙 goBackToList called');
-            console.log('📊 Cache status:', {
-                hasContent: !!cachedListContent,
-                hasTitle: !!cachedListTitle,
-                timestamp: cacheTimestamp,
-                currentTime: Date.now()
-            });
-            
-            // Check if we have cached content for instant navigation
-            // Also check if cache is not too old (5 minutes max)
-            const cacheAge = Date.now() - cacheTimestamp;
-            const maxCacheAge = 5 * 60 * 1000; // 5 minutes in milliseconds
-            
-            console.log('⏰ Cache age:', Math.round(cacheAge/1000), 'seconds (max:', Math.round(maxCacheAge/1000), 'seconds)');
-            
-            if (cachedListContent && cachedListTitle && cacheAge < maxCacheAge) {
-                console.log('⚡ Instant back navigation using cached content (age:', Math.round(cacheAge/1000), 'seconds)');
-                
-                // Hide all pages and show candidate list
-                hideAllPages();
-                document.getElementById('candidateList').classList.add('active');
-                
-                // Restore cached content instantly
-                document.getElementById('candidatesList').innerHTML = cachedListContent;
-                document.querySelector('.candidates-container h2').textContent = cachedListTitle;
-                
-                // Update page state
-                previousPage = currentPage;
-                currentPage = previousPage; // Keep the same page type
-                
-                return; // Exit early - no API calls needed!
-            } else if (cachedListContent && cacheAge >= maxCacheAge) {
-                console.log('🕒 Cache expired, fetching fresh data (age:', Math.round(cacheAge/1000), 'seconds)');
-            } else {
-                console.log('❌ No valid cache available:', {
-                    hasContent: !!cachedListContent,
-                    hasTitle: !!cachedListTitle,
-                    ageValid: cacheAge < maxCacheAge
-                });
-            }
-            
-            // Fallback to original behavior if no cache
-            console.log('🔄 Fallback navigation - no cached content available');
-            switch(previousPage) {
-                case 'all_candidates':
-                    showAllCandidates();
-                    break;
-                case 'in_training':
-                    showInTraining();
-                    break;
-                case 'offer_pending':
-                    showOfferPending();
-                    break;
-                case 'weeks_0_3':
-                    showWeeks0to3();
-                    break;
-                case 'weeks_4_6':
-                    showWeeks4to6();
-                    break;
-                case 'week_7_priority':
-                    showWeek7Priority();
-                    break;
-                case 'weeks_8_plus':
-                    showWeeks8Plus();
-                    break;
-                case 'candidates':
-                    showCandidateList();
-                    break;
-                case 'open_positions':
-                    showOpenPositions();
-                    break;
-                case 'job_matches':
-                    showOpenPositions();
-                    break;
-                default:
-                    // Default to dashboard if previous page is unknown
-                    showDashboard();
-                    break;
-            }
-        }
-
-        // Toggle collapsible sections
-        function toggleSection(sectionId) {
-            const section = document.getElementById(sectionId);
-            const icon = document.getElementById(sectionId + '-icon');
-            if (section.style.display === 'none') {
-                section.style.display = 'block';
-                icon.textContent = '▲';
-            } else {
-                section.style.display = 'none';
-                icon.textContent = '▼';
-            }
-        }
-
-        // Load top job matches for a candidate
-        async function loadCandidateJobMatches(candidateName) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/candidate-matches/${encodeURIComponent(candidateName)}`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    document.getElementById('candidateJobMatches').innerHTML = 
-                        `<div class="error">No job matches found</div>`;
-                    return;
-                }
-                
-                // Render top 3 job matches
-                const matchesHTML = `
-                    <div style="background: rgba(255,255,255,0.08); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15);">
-                        <h3 style="font-size: 1.5rem; margin-bottom: 25px; color: white;">🎯 Top Job Matches</h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-                            ${data.matches.map(match => `
-                                <div style="background: linear-gradient(145deg, #1e2329, #2a2f37); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.3s ease;" 
-                                     onclick="showJobMatches(${match.job_id}, '${match.job_title}')">
-                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                                        <h4 style="margin: 0; font-size: 1.15rem; color: white;">${match.job_title}</h4>
-                                        <span class="match-score-badge ${match.match_quality.toLowerCase()}">${match.match_quality}</span>
-                                    </div>
-                                    <p style="color: #a5b4fc; font-size: 0.95rem; margin: 6px 0;">${match.job_account}</p>
-                                    <p style="color: #d1d5db; font-size: 0.9rem; margin: 6px 0;">${match.job_city}, ${match.job_state}</p>
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
-                                        <span style="color: #10b981; font-weight: 600;">$${match.job_salary.toLocaleString()}</span>
-                                        <span style="color: #60a5fa; font-size: 1.2rem; font-weight: 700;">${match.match_score}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-                
-                document.getElementById('candidateJobMatches').innerHTML = matchesHTML;
-                
-            } catch (error) {
-                console.error('Error loading candidate job matches:', error);
-                document.getElementById('candidateJobMatches').innerHTML = 
-                    `<div class="error">Error loading job matches</div>`;
-            }
-        }
-
-        // Resume modal functions
-        function showResume(resumeLink, candidateName) {
-            const modal = document.getElementById('resumeModal');
-            const iframe = document.getElementById('resumeIframe');
-            const title = document.getElementById('resumeTitle');
-            
-            // Convert Google Drive link to embeddable format if needed
-            let embedUrl = resumeLink;
-            if (resumeLink.includes('drive.google.com/file/d/')) {
-                const fileIdMatch = resumeLink.match(/\/d\/([^\/]+)/);
-                if (fileIdMatch) {
-                    const fileId = fileIdMatch[1];
-                    embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
-                }
-            } else if (resumeLink.includes('docs.google.com/document')) {
-                embedUrl = resumeLink.replace('/edit', '/preview');
-            }
-            
-            iframe.src = embedUrl;
-            title.textContent = `${candidateName}'s Resume`;
-            modal.style.display = 'block';
-        }
-
-        function closeResume() {
-            const modal = document.getElementById('resumeModal');
-            const iframe = document.getElementById('resumeIframe');
-            modal.style.display = 'none';
-            iframe.src = ''; // Clear iframe to stop loading
-        }
+        response = jsonify(response_data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
         
-        // OIG Task modal functions
-        function showOIGTaskModal(candidateName) {
-            const candidate = candidateCache[candidateName];
-            if (!candidate) return;
-            
-            const modal = document.getElementById('oigTaskModal');
-            const title = document.getElementById('oigTaskTitle');
-            const taskList = document.getElementById('oigTaskList');
-            
-            title.textContent = `${candidateName}'s OIG Task Checklist`;
-            
-            // Mock task data (will be replaced with real data from Google Sheets)
-            const tasks = candidate.oig_tasks || [
-                { name: "Learn KPI's (Leader, Site, Employee)", completed: true },
-                { name: "Complete an Interactive Audit", completed: true },
-                { name: "Log Report-Its and Good Catches (Daily)", completed: false },
-                { name: "Learn your SOW and space types", completed: true },
-                { name: "Meet with site leadership team", completed: false },
-                { name: "Complete safety training module", completed: true },
-                { name: "Shadow senior team member", completed: false },
-                { name: "Review company policies", completed: true },
-                { name: "Set up equipment and tools", completed: false },
-                { name: "Complete first week assessment", completed: false },
-                { name: "Attend team orientation", completed: true },
-                { name: "Review operational procedures", completed: true },
-                { name: "Complete onboarding paperwork", completed: true }
-            ];
-            
-            const taskHTML = tasks.map(task => `
-                <div class="oig-task-item">
-                    <span class="oig-task-icon">${task.completed ? '✓' : '✗'}</span>
-                    <span class="oig-task-name ${task.completed ? 'completed' : ''}">${task.name}</span>
-                </div>
-            `).join('');
-            
-            taskList.innerHTML = taskHTML;
-            modal.style.display = 'block';
-        }
-        
-        function closeOIGTaskModal() {
-            const modal = document.getElementById('oigTaskModal');
-            modal.style.display = 'none';
-        }
+    except Exception as e:
+        log_error(f"Error in candidate matches endpoint for {candidate_name}", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
-        function showComingSoon(feature) {
-            alert(`${feature} feature coming soon!\n\nThis feature will provide detailed insights and candidate information.`);
-        }
+# =============================================================================
+# STATIC FILE SERVING
+# =============================================================================
 
-        function hideAllPages() {
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-        }
+@app.route('/headshots/<path:filename>')
+@app.route('/headshots/<filename>')
+def serve_headshot(filename):
+    """Serve headshot images from the headshots directory (supports nested paths)."""
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        headshots_dir = os.path.join(base_dir, 'headshots')
+        return send_from_directory(headshots_dir, filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'Image not found'}), 404
 
-        // Mentor Feedback Modal Functions
-        function showMentorFeedback(candidateName) {
-            const normalizedName = candidateName.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
-            const assessmentData = mentorAssessments[normalizedName];
-            const latestAssessment = assessmentData?.assessments?.[0];
-            
-            // Check if assessment has actual data
-            const hasData = latestAssessment && calculateSectionAverage(latestAssessment.section_1_core_competencies) > 0;
-            
-            if (!hasData) {
-                // No feedback available
-                const modal = `
-                    <div class="modal-overlay" onclick="closeModal()" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px;">
-                        <div onclick="event.stopPropagation()" style="background: linear-gradient(145deg, #1e2329, #2a2f37); border-radius: 20px; padding: 40px; max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="text-align: center;">
-                                <div style="font-size: 4rem; margin-bottom: 20px;">📋</div>
-                                <h2 style="color: #f3f4f6; margin-bottom: 16px; font-size: 1.75rem;">No Feedback Available</h2>
-                                <p style="color: rgba(255,255,255,0.6); font-size: 1.1rem; margin-bottom: 30px;">
-                                    Mentor assessments for ${candidateName} have not been submitted yet.
-                                </p>
-                                <button onclick="closeModal()" style="background: linear-gradient(135deg, #475569, #334155); color: white; border: none; padding: 14px 32px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1rem;">
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.body.insertAdjacentHTML('beforeend', modal);
-                return;
-            }
-            
-            // Get candidate data from cache to pull mentor_name and week
-            const candidate = candidateCache[candidateName] || {};
-            const mentorName = candidate.mentor_name || 'Mentor';
-            const weekNumber = candidate.week || 0;
-            const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-            
-            // Auto-calculate averages from questions
-            const coreAvg = calculateSectionAverage(latestAssessment.section_1_core_competencies);
-            const softSkillsAvg = calculateSectionAverage(latestAssessment.section_2_soft_skills_leadership);
-            const engagementAvg = calculateSectionAverage(latestAssessment.section_3_engagement_aptitude);
-            
-            // Build detailed feedback modal
-            const section4 = latestAssessment.section_4_readiness_confidence;
-            const performanceColor = section4.weekly_performance === 'Exceeding Expectations' ? '#10b981' 
-                : section4.weekly_performance === 'Progressing as Expected' ? '#f59e0b' 
-                : '#ef4444';
-            
-            const modal = `
-                <div class="modal-overlay" onclick="closeModal()" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
-                    <div onclick="event.stopPropagation()" style="background: linear-gradient(145deg, #1e2329, #2a2f37); border-radius: 20px; padding: 40px; max-width: 900px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); margin: 20px 0; max-height: 90vh; overflow-y: auto;">
-                        
-                        <!-- Header -->
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 30px;">
-                            <div>
-                                <h2 style="color: #f3f4f6; margin: 0 0 8px 0; font-size: 1.75rem;">📋 Mentor Assessment</h2>
-                                <p style="color: rgba(255,255,255,0.6); margin: 0; font-size: 1rem;">
-                                    ${candidateName} • Week ${weekNumber} • ${today}
-                                </p>
-                                <p style="color: rgba(255,255,255,0.5); margin: 4px 0 0 0; font-size: 0.9rem;">
-                                    By ${mentorName}
-                                </p>
-                            </div>
-                            <button onclick="closeModal()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
-                                    onmouseover="this.style.background='rgba(255,255,255,0.2)'"
-                                    onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                                ×
-                            </button>
-                        </div>
-                        
-                        <!-- Weekly Performance Status -->
-                        <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid ${performanceColor};">
-                            <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Weekly Performance</div>
-                            <div style="font-size: 1.3rem; color: ${performanceColor}; font-weight: 700;">${section4.weekly_performance}</div>
-                        </div>
-                        
-                        <!-- MENTOR OBSERVATIONS FIRST (EMPHASIS!) -->
-                        <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15)); padding: 32px; border-radius: 16px; border: 2px solid rgba(102, 126, 234, 0.4); margin-bottom: 28px; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);">
-                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-                                <span style="font-size: 2rem;">💭</span>
-                                <div style="font-weight: 700; color: #f3f4f6; font-size: 1.4rem;">Mentor Observations</div>
-                            </div>
-                            <div style="color: rgba(255,255,255,0.9); line-height: 1.9; font-size: 1.05rem; max-height: 450px; overflow-y: auto; padding-right: 12px; scrollbar-width: thin; scrollbar-color: rgba(102, 126, 234, 0.5) rgba(0,0,0,0.2);">
-                                <p style="margin: 0; white-space: pre-wrap;">${section4.observations}</p>
-                            </div>
-                        </div>
-                        
-                        <!-- COMPACT Scores Grid (Supporting Data) -->
-                        <div style="margin-bottom: 12px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px;">
-                            <div style="font-size: 0.9rem; color: rgba(255,255,255,0.5); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.8px; text-align: center;">📊 Assessment Scores Summary</div>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
-                                <!-- Compact Core -->
-                                <div style="text-align: center; padding: 16px; background: rgba(239, 68, 68, 0.15); border-radius: 10px; border: 2px solid rgba(239, 68, 68, 0.3);">
-                                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">🎯 Core</div>
-                                    <div style="font-size: 1.5rem; color: #ef4444; font-weight: 800;">${coreAvg.toFixed(1)}</div>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 4px;">out of 5.0</div>
-                                </div>
-                                
-                                <!-- Compact Soft Skills -->
-                                <div style="text-align: center; padding: 16px; background: rgba(139, 92, 246, 0.15); border-radius: 10px; border: 2px solid rgba(139, 92, 246, 0.3);">
-                                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">👥 Leadership</div>
-                                    <div style="font-size: 1.5rem; color: #8b5cf6; font-weight: 800;">${softSkillsAvg.toFixed(1)}</div>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 4px;">out of 5.0</div>
-                                </div>
-                                
-                                <!-- Compact Engagement -->
-                                <div style="text-align: center; padding: 16px; background: rgba(245, 158, 11, 0.15); border-radius: 10px; border: 2px solid rgba(245, 158, 11, 0.3);">
-                                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Engagement</div>
-                                    <div style="font-size: 1.5rem; color: #f59e0b; font-weight: 800;">${engagementAvg.toFixed(1)}</div>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 4px;">out of 5.0</div>
-                                </div>
-                                
-                                <!-- Compact Readiness -->
-                                <div style="text-align: center; padding: 16px; background: rgba(16, 185, 129, 0.15); border-radius: 10px; border: 2px solid rgba(16, 185, 129, 0.3);">
-                                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">✅ Readiness</div>
-                                    <div style="font-size: 1.5rem; color: #10b981; font-weight: 800;">${section4.confidence_level}</div>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 4px;">out of 5</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Close Button -->
-                        <button onclick="closeModal()" style="width: 100%; margin-top: 24px; padding: 14px; background: linear-gradient(135deg, #475569, #334155); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: all 0.2s;"
-                                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';"
-                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)';">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', modal);
-        }
+@app.route('/data/<path:filename>')
+def serve_data_file(filename):
+    """Serve data files from the data directory (JSON, etc)."""
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(base_dir, 'data')
+        return send_from_directory(data_dir, filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'Data file not found'}), 404
 
-        function closeModal() {
-            const modal = document.querySelector('.modal-overlay');
-            if (modal) {
-                modal.remove();
-            }
-        }
+# =============================================================================
+# DEBUG ENDPOINT
+# =============================================================================
 
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 MIT Dashboard loaded');
-            
-            // Load cached profiles from localStorage
-            loadCacheFromStorage();
-            
-            // Load dashboard data
-            loadDashboardData();
-        });
-    </script>
-</body>
-</html>
+@app.route('/api/debug-columns', methods=['GET'])
+def debug_columns():
+    """Return list of columns detected from Google Sheets."""
+    try:
+        df = fetch_google_sheets_data()
+        return jsonify({'columns': list(df.columns)}), 200
+    except Exception as e:
+        log_error("Error debugging columns", e)
+        return jsonify({'error': str(e)}), 500
+
+# =============================================================================
+# WEEK-BASED FILTERING ENDPOINTS
+# =============================================================================
+
+@app.route('/api/candidates/weeks-0-3', methods=['GET'])
+def get_weeks_0_3():
+    """Candidates in weeks 0-3 (Operational Overview)"""
+    try:
+        candidates = merge_candidate_sources()
+        categorized = categorize_candidates_by_week(candidates)
+        return jsonify(categorized['weeks_0_3']), 200
+    except Exception as e:
+        log_error("Error fetching weeks 0-3 candidates", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/candidates/weeks-4-6', methods=['GET'])
+def get_weeks_4_6():
+    """Candidates in weeks 4-6 (Active Training)"""
+    try:
+        candidates = merge_candidate_sources()
+        categorized = categorize_candidates_by_week(candidates)
+        return jsonify(categorized['weeks_4_6']), 200
+    except Exception as e:
+        log_error("Error fetching weeks 4-6 candidates", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/candidates/week-7-priority', methods=['GET'])
+def get_week_7_priority():
+    """ONLY Week 7 candidates (Placement Priority)"""
+    try:
+        candidates = merge_candidate_sources()
+        categorized = categorize_candidates_by_week(candidates)
+        return jsonify(categorized['week_7_only']), 200
+    except Exception as e:
+        log_error("Error fetching week 7 priority candidates", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/candidates/weeks-8-plus', methods=['GET'])
+def get_weeks_8_plus():
+    """Candidates week 8+ (Ready for Placement)"""
+    try:
+        candidates = merge_candidate_sources()
+        categorized = categorize_candidates_by_week(candidates)
+        return jsonify(categorized['weeks_8_plus']), 200
+    except Exception as e:
+        log_error("Error fetching weeks 8+ candidates", e)
+        return jsonify({'error': str(e)}), 500
+
+# =============================================================================
+# ERROR HANDLERS
+# =============================================================================
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors"""
+    return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+# =============================================================================
+# MENTOR ENDPOINTS
+# =============================================================================
+
+@app.route('/api/mentors', methods=['GET'])
+def get_all_mentors():
+    """Get list of all mentors with their profiles"""
+    profiles = build_mentor_profiles()
+    return jsonify(profiles), 200
+
+@app.route('/api/mentor/<mentor_name>', methods=['GET'])
+def get_mentor_profile(mentor_name):
+    """Get detailed profile for a specific mentor"""
+    profiles = build_mentor_profiles()
+    
+    # Find mentor by name using normalized matching (handles trailing spaces, case, etc.)
+    target_norm = normalize_name(mentor_name)
+    mentor = next((m for m in profiles if normalize_name(m['name']) == target_norm), None)
+    
+    if not mentor:
+        return jsonify({'error': 'Mentor not found'}), 404
+    
+    return jsonify(mentor), 200
+
+@app.route('/api/mentor-metrics', methods=['GET'])
+def get_mentor_metrics():
+    """Get mentor metrics for dashboard block"""
+    metrics = get_mentor_dashboard_metrics()
+    return jsonify(metrics), 200
+
+@app.route('/api/training-mentors', methods=['GET'])
+def get_training_mentors_endpoint():
+    """Get mentors actively training current MIT candidates"""
+    try:
+        mentors = get_active_training_mentors()
+        response = jsonify(mentors)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, 200
+    except Exception as e:
+        log_error("Error in training mentors endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+@app.route('/api/mit-alumni', methods=['GET'])
+def get_mit_alumni_endpoint():
+    """Get MIT alumni with placement information"""
+    try:
+        alumni_data = get_mit_alumni()
+        response = jsonify(alumni_data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, 200
+    except Exception as e:
+        log_error("Error in MIT alumni endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+# =============================================================================
+# MAIN APPLICATION
+# =============================================================================
+
+if __name__ == '__main__':
+    # Use Heroku's PORT environment variable if available, otherwise use configured port
+    port = int(os.environ.get('PORT', SERVER_PORT))
+    
+    print("=" * 60)
+    print("MIT Dashboard API Server - Final Optimized Version")
+    print("=" * 60)
+    print(f"Version: {API_VERSION}")
+    print(f"Debug Mode: {'Enabled' if DEBUG_MODE else 'Disabled'}")
+    print(f"Cache Duration: {CACHE_DURATION_MINUTES} minutes")
+    print()
+    print("API Endpoints:")
+    print("   - GET / - Main dashboard interface")
+    print("   - GET /api/dashboard-data - Dashboard metrics")
+    print("   - GET /api/candidates - Ready for placement candidates")
+    print("   - GET /api/candidate/<name> - Individual candidate profile")
+    print("   - GET /api/all-candidates - All candidates")
+    print("   - GET /api/in-training-candidates - In training candidates")
+    print("   - GET /api/offer-pending-candidates - Offer pending candidates")
+    print("   - GET /api/open-positions - Open job positions")
+    print("   - GET /api/job-matches/<job_id> - Top candidate matches for a job")
+    print("   - GET /api/candidates/weeks-0-3 - Weeks 0-3 candidates")
+    print("   - GET /api/candidates/weeks-4-6 - Weeks 4-6 candidates")
+    print("   - GET /api/candidates/week-7-priority - Week 7 priority candidates")
+    print("   - GET /api/candidates/weeks-8-plus - Weeks 8+ candidates")
+    print("   - GET /api/mentors - All mentors with profiles")
+    print("   - GET /api/mentor/<name> - Individual mentor profile")
+    print("   - GET /api/mentor-metrics - Mentor dashboard metrics")
+    print("   - GET /headshots/<filename> - Serve headshot images")
+    print("   - GET /data/<filename> - Serve data files (JSON)")
+    print("   - GET /api/health - Health check")
+    print()
+    print(f"API Server running on: http://localhost:{port}")
+    print("Open your HTML file to use the dashboard!")
+    print("=" * 60)
+    
+    # Run the Flask app
+    app.run(
+        host=SERVER_HOST, 
+        port=port, 
+        debug=SERVER_DEBUG
+    )
