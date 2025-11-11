@@ -252,13 +252,16 @@ def get_candidates():
 @app.route('/api/all-candidates', methods=['GET'])
 def get_all_candidates():
     """
-    Get all candidates regardless of status
+    Get all ACTIVE candidates (excludes offer pending/incoming MITs who haven't started)
     
     Returns:
-        JSON response with all candidates
+        JSON response with active candidates only
     """
     try:
-        response = jsonify(merge_candidate_sources())
+        all_candidates = merge_candidate_sources()
+        # Filter out offer pending (incoming MITs who haven't started yet)
+        active_only = [c for c in all_candidates if 'offer' not in str(c.get('status', '')).lower() and 'pending' not in str(c.get('status', '')).lower()]
+        response = jsonify(active_only)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
         
