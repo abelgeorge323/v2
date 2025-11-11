@@ -2075,6 +2075,10 @@
             margin: -40px -40px 20px -40px;
             border-bottom: 1px solid rgba(102, 126, 234, 0.3);
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
         }
 
         .sticky-back-nav .back-btn {
@@ -2087,11 +2091,51 @@
             font-size: 0.95rem;
             font-weight: 600;
             transition: all 0.3s ease;
+            flex-shrink: 0;
         }
 
         .sticky-back-nav .back-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Filter Pills */
+        .filter-pills {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-select {
+            background: rgba(102, 126, 234, 0.15);
+            color: #e0e7ff;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .filter-select:hover {
+            background: rgba(102, 126, 234, 0.25);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .filter-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        /* Style the dropdown options */
+        .filter-select option {
+            background: #1e2329;
+            color: #e0e7ff;
+            padding: 8px;
         }
 
         /* Section headers for dashboard grouping (desktop and mobile) */
@@ -2120,6 +2164,21 @@
             .sticky-back-nav {
                 margin: -20px -20px 15px -20px;
                 padding: 10px 15px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .filter-pills {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .filter-select {
+                flex: 1;
+                min-width: 0;
+                font-size: 0.8rem;
+                padding: 8px 10px;
             }
             
             /* Compact profile layout on mobile - smaller bio text */
@@ -2342,6 +2401,11 @@
         let currentPage = 'dashboard';
         let previousPage = 'dashboard'; // Track the previous page for back navigation
         let candidates = [];
+        let positions = [];
+        
+        // Store original unfiltered data for filtering
+        let originalCandidates = [];
+        let originalPositions = [];
         
         // Store rendered content for instant back navigation
         let cachedListContent = '';
@@ -2617,6 +2681,7 @@
                 if (cached && (now - cached.timestamp) < CANDIDATES_CACHE_DURATION) {
                     console.log('✅ Using cached all candidates');
                     candidates = cached.data;
+                    originalCandidates = [...cached.data]; // Store original unfiltered data
                     renderAllCandidates();
                     return;
                 }
@@ -2644,6 +2709,7 @@
                 };
                 
                 candidates = data;
+                originalCandidates = [...data]; // Store original unfiltered data
                 renderAllCandidates();
                 
             } catch (error) {
@@ -2662,6 +2728,7 @@
                 if (cached && (now - cached.timestamp) < CANDIDATES_CACHE_DURATION) {
                     console.log('✅ Using cached in-training candidates');
                     candidates = cached.data;
+                    originalCandidates = [...cached.data]; // Store original unfiltered data
                     renderInTrainingCandidates();
                     return;
                 }
@@ -2689,6 +2756,7 @@
                 };
                 
                 candidates = data;
+                originalCandidates = [...data]; // Store original unfiltered data
                 renderInTrainingCandidates();
                 
             } catch (error) {
@@ -2860,6 +2928,7 @@
                 if (cached && (now - cached.timestamp) < OPEN_POSITIONS_CACHE_DURATION) {
                     console.log('✅ Using cached open positions');
                     positions = cached.data;
+                    originalPositions = [...cached.data]; // Store original unfiltered data
                     renderOpenPositions();
                     return;
                 }
@@ -2887,6 +2956,7 @@
                 };
                 
                 positions = data;
+                originalPositions = [...data]; // Store original unfiltered data
                 renderOpenPositions();
                 
             } catch (error) {
@@ -3394,6 +3464,79 @@
             }, 500);
         }
 
+        // ==========================================
+        // FILTER FUNCTIONS
+        // ==========================================
+
+        // Filter positions by vertical and salary
+        function applyPositionFilters() {
+            const verticalFilter = document.getElementById('verticalFilter');
+            const salaryFilter = document.getElementById('salaryFilter');
+            
+            if (!verticalFilter || !salaryFilter) return;
+            
+            const vertical = verticalFilter.value;
+            const salaryRange = salaryFilter.value;
+            
+            // Start with original unfiltered data
+            let filtered = [...originalPositions];
+            
+            // Filter by vertical
+            if (vertical !== 'all') {
+                filtered = filtered.filter(p => p.vertical.toLowerCase() === vertical.toLowerCase());
+            }
+            
+            // Filter by salary
+            if (salaryRange !== 'all') {
+                if (salaryRange === '80') {
+                    filtered = filtered.filter(p => p.salary >= 80000);
+                } else {
+                    const [min, max] = salaryRange.split('-').map(v => parseInt(v) * 1000);
+                    filtered = filtered.filter(p => p.salary >= min && p.salary < max);
+                }
+            }
+            
+            // Update positions array and re-render
+            positions = filtered;
+            renderOpenPositions();
+            
+            console.log(`🔍 Filtered positions: ${filtered.length} of ${originalPositions.length} total`);
+        }
+
+        // Filter candidates by week
+        function applyCandidateFilters() {
+            const weekFilter = document.getElementById('weekFilter');
+            
+            if (!weekFilter) return;
+            
+            const weekRange = weekFilter.value;
+            
+            // Start with original unfiltered data
+            let filtered = [...originalCandidates];
+            
+            // Filter by week range
+            if (weekRange !== 'all') {
+                if (weekRange === '8') {
+                    filtered = filtered.filter(c => c.week >= 8);
+                } else {
+                    const [min, max] = weekRange.split('-').map(v => parseInt(v));
+                    filtered = filtered.filter(c => c.week >= min && c.week <= max);
+                }
+            }
+            
+            // Update candidates array and re-render
+            candidates = filtered;
+            
+            // Re-render based on current page
+            if (currentPage === 'all_candidates') {
+                renderAllCandidates();
+            } else if (currentPage === 'in_training') {
+                renderInTrainingCandidates();
+            }
+            
+            console.log(`🔍 Filtered candidates: ${filtered.length} of ${originalCandidates.length} total`);
+        }
+
         // Load candidate profile from API with client-side caching
         async function loadCandidateProfile(name) {
             try {
@@ -3787,7 +3930,7 @@
         function showAllCandidates() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // ✅ Ensure sticky button is present
+            ensureStickyBackButton('candidates'); // ✅ Add week filter for candidates
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
             document.querySelector('.candidates-container h2').textContent = '👥 Active MITs (All Candidates)';
@@ -3798,24 +3941,69 @@
         }
 
         // Helper function to ensure sticky back button exists
-        function ensureStickyBackButton() {
+        function ensureStickyBackButton(filterType = null) {
             const container = document.querySelector('.candidates-container');
             if (!container) return;
             
-            const existingStickyNav = container.querySelector('.sticky-back-nav');
-            if (!existingStickyNav) {
-                // Insert sticky button at the beginning of container
-                const stickyNav = document.createElement('div');
+            let stickyNav = container.querySelector('.sticky-back-nav');
+            
+            // Build filters HTML based on page type
+            let filtersHTML = '';
+            if (filterType === 'positions') {
+                filtersHTML = `
+                    <div class="filter-pills">
+                        <select class="filter-select" id="verticalFilter" onchange="applyPositionFilters()">
+                            <option value="all">All Verticals</option>
+                            <option value="distribution">Distribution</option>
+                            <option value="tech">Tech</option>
+                            <option value="aviation">Aviation</option>
+                            <option value="manufacturing">Manufacturing</option>
+                            <option value="auto">Auto</option>
+                            <option value="life science">Life Science</option>
+                            <option value="finance">Finance</option>
+                        </select>
+                        <select class="filter-select" id="salaryFilter" onchange="applyPositionFilters()">
+                            <option value="all">All Salaries</option>
+                            <option value="50-60">$50-60K</option>
+                            <option value="60-70">$60-70K</option>
+                            <option value="70-80">$70-80K</option>
+                            <option value="80">$80K+</option>
+                        </select>
+                    </div>
+                `;
+            } else if (filterType === 'candidates') {
+                filtersHTML = `
+                    <div class="filter-pills">
+                        <select class="filter-select" id="weekFilter" onchange="applyCandidateFilters()">
+                            <option value="all">All Weeks</option>
+                            <option value="0-2">Weeks 0-2</option>
+                            <option value="3-5">Weeks 3-5</option>
+                            <option value="6-7">Weeks 6-7</option>
+                            <option value="8">Week 8+</option>
+                        </select>
+                    </div>
+                `;
+            }
+            
+            // Create or update sticky nav
+            if (!stickyNav) {
+                // Create new sticky nav if it doesn't exist
+                stickyNav = document.createElement('div');
                 stickyNav.className = 'sticky-back-nav';
-                stickyNav.innerHTML = '<button onclick="showDashboard()" class="back-btn">← Back to Dashboard</button>';
                 container.insertBefore(stickyNav, container.firstChild);
             }
+            
+            // Always update the content (to add/remove filters)
+            stickyNav.innerHTML = `
+                <button onclick="showDashboard()" class="back-btn">← Back to Dashboard</button>
+                ${filtersHTML}
+            `;
         }
 
         function showOpenPositions() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // ✅ Ensure sticky button is present
+            ensureStickyBackButton('positions'); // ✅ Add filters for positions
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading positions...</div>';
             document.querySelector('.candidates-container h2').textContent = '💼 Placement Roles';
@@ -3827,7 +4015,7 @@
         function showInTraining() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // ✅ Ensure sticky button is present
+            ensureStickyBackButton('candidates'); // ✅ Add week filter for candidates
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
             document.querySelector('.candidates-container h2').textContent = '🏋️ Active Training (All Weeks)';
