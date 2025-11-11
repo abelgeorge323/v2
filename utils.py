@@ -194,14 +194,6 @@ def mentor_match(m1: Any, m2: Any) -> bool:
     Check if two mentor names match after normalization.
     """
     return normalize_name(m1) != '' and normalize_name(m1) == normalize_name(m2)
-    
-    try:
-        # Remove common currency symbols and commas
-        salary_str = str(salary_value).replace('$', '').replace(',', '').strip()
-        return float(salary_str)
-    except (ValueError, TypeError):
-        logger.warning(f"Could not parse salary value: {salary_value}")
-        return 0.0
 
 def calculate_week_from_start_date(start_date: Any) -> int:
     """
@@ -478,7 +470,13 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
         logger.info("Fetching open positions data from Google Sheets")
         
         # Fetch data from Google Sheets with skiprows=5 to skip the first 5 rows
+        # (Row 6 becomes the header row with Job Title, JV ID, etc.)
         df = pd.read_csv(OPEN_POSITIONS_URL, skiprows=5)
+        
+        # Drop the first empty column (the leading comma in the CSV)
+        if len(df.columns) > 0 and 'Unnamed' in str(df.columns[0]):
+            logger.info(f"Dropping empty first column: {df.columns[0]}")
+            df = df.drop(df.columns[0], axis=1)
         
         # Debug: Log available columns
         logger.info(f"Available columns in open positions: {list(df.columns)}")
@@ -487,20 +485,24 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
         df = df.dropna(how='all')
         
         # Filter out rows where Job Title is empty or NaN
-        df = df[df['Job Title'].notna() & (df['Job Title'] != '')]
+        if 'Job Title' in df.columns:
+            df = df[df['Job Title'].notna() & (df['Job Title'].astype(str).str.strip() != '')]
+        else:
+            logger.error("'Job Title' column not found in open positions data")
+            return []
         
         positions = []
         for _, row in df.iterrows():
-            # Parse location from Column F (Location) - try different possible column names
-            location = ''
-            for col_name in ['Location', 'location', 'LOCATION', 'City', 'city', 'CITY']:
-                if col_name in df.columns:
-                    location = str(row.get(col_name, ''))
-                    if location and location != 'nan':
-                        break
+            # Skip header-like rows (like "Available Placement Options")
+            job_title = str(row.get('Job Title', '')).strip()
+            if job_title.lower() in ['job title', 'available placement options', '']:
+                continue
             
+            # Parse location from Location column
+            location = str(row.get('Location', '')).strip()
             city, state = '', ''
-            if location and location != 'nan':
+            
+            if location and location.lower() not in ['nan', 'none', '']:
                 # Split "Detroit, MI" into city and state
                 parts = location.split(',')
                 if len(parts) >= 2:
@@ -509,13 +511,25 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
                 else:
                     city = location.strip()
             
+            # Parse JV ID - handle empty values and formats like "15422-1"
+            jv_id_raw = row.get('JV ID', '')
+            try:
+                # Try to convert to int for the 'id' field
+                if pd.notna(jv_id_raw) and str(jv_id_raw).strip():
+                    jv_id_clean = str(jv_id_raw).strip().split('-')[0]  # Handle "15422-1" format
+                    job_id = int(float(jv_id_clean))
+                else:
+                    job_id = 0
+            except (ValueError, TypeError):
+                job_id = 0
+            
             position = {
-                'id': int(row.get('JV ID', 0)) if pd.notna(row.get('JV ID')) else 0,
-                'title': str(row.get('Job Title', '')),
-                'jv_id': str(row.get('JV ID', '')),
-                'jv_link': str(row.get('JV Link', '')),
-                'vertical': str(row.get('VERT', '')),
-                'account': str(row.get('Account', '')),
+                'id': job_id,
+                'title': job_title,
+                'jv_id': str(jv_id_raw).strip() if pd.notna(jv_id_raw) else '',
+                'jv_link': '',  # Not in your sheet, leaving empty
+                'vertical': str(row.get('VERT', '')).strip(),
+                'account': str(row.get('Account', '')).strip(),
                 'city': city,
                 'state': state,
                 'salary': parse_salary(row.get('Salary', 0))
@@ -523,10 +537,12 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
             positions.append(position)
         
         logger.info(f"Successfully fetched {len(positions)} open positions")
+        if positions:
+            logger.info(f"Sample positions: {[p['title'] + ' at ' + p['account'] for p in positions[:3]]}")
         return positions
         
     except Exception as e:
-        logger.error(f"Error fetching open positions data: {str(e)}")
+        logger.error(f"Error fetching open positions data: {str(e)}", exc_info=True)
         # Return empty list on error
         return []
 
@@ -943,7 +959,7 @@ def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict
     Uses Company Start Date to calculate current week.
     
     Returns:
-        Dict with keys: 'weeks_0_3' (0-2), 'weeks_4_6' (3-7), 'week_7_only' (6-7), 
+        Dict with keys: 'weeks_0_3' (0-2), 'weeks_4_6' (3-5), 'week_7_only' (6-7), 
                        'weeks_8_plus' (8+), 'offer_pending', 'total_candidates', 'total_training'
     """
     weeks_0_3 = []
@@ -961,16 +977,16 @@ def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict
             offer_pending.append(candidate)
         elif 0 <= week <= 2:
             weeks_0_3.append(candidate)
-        elif 3 <= week <= 7:
+        elif 3 <= week <= 5:  # Fixed: Changed from 3-7 to 3-5
             weeks_4_6.append(candidate)
-        elif 6 <= week <= 7:
+        elif 6 <= week <= 7:  # Now reachable! Critical placement window
             week_7_only.append(candidate)
         elif week >= 8:
             weeks_8_plus.append(candidate)
     
     return {
         'weeks_0_3': weeks_0_3,  # Operational Overview (Weeks 0-2)
-        'weeks_4_6': weeks_4_6,  # Active Training (Weeks 3-7)
+        'weeks_4_6': weeks_4_6,  # Active Training (Weeks 3-5)
         'week_7_only': week_7_only,  # Weeks 6-7 Priority
         'weeks_8_plus': weeks_8_plus,  # Ready for Placement (Weeks 8+)
         'offer_pending': offer_pending,  # Offer Pending
