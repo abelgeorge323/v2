@@ -648,6 +648,51 @@ def fetch_mit_tracking_data() -> pd.DataFrame:
         df_data['Status'] = df_data['Status'].fillna('')
         df_data.loc[(df_data['Status'] == '') & (df_data['MIT Name'].notna()), 'Status'] = 'Offer Pending'
         
+        # ========================================
+        # DETECT INCOMING MITS (Future Start Dates)
+        # ========================================
+        
+        # Primary check: Start date is in the future
+        # Check for both "Start date" (training section) and "Start Date" (incoming section)
+        start_date_col = None
+        if 'Start date' in df_data.columns:
+            start_date_col = 'Start date'
+        elif 'Start Date' in df_data.columns:
+            start_date_col = 'Start Date'
+        
+        if start_date_col:
+            try:
+                # Parse start dates
+                df_data['Start date parsed'] = pd.to_datetime(df_data[start_date_col], errors='coerce')
+                current_date = pd.Timestamp.now()
+                
+                # Mark candidates with future start dates as "Offer Pending"
+                future_start_mask = (
+                    df_data['Start date parsed'].notna() & 
+                    (df_data['Start date parsed'] > current_date) &
+                    df_data['MIT Name'].notna()
+                )
+                df_data.loc[future_start_mask, 'Status'] = 'Offer Pending'
+                
+                logger.info(f"Marked {future_start_mask.sum()} candidates with future start dates as Offer Pending (using column '{start_date_col}')")
+                
+            except Exception as e:
+                logger.warning(f"Could not parse start dates for incoming MIT detection: {e}")
+        
+        # Backup check: Status contains "Training starting" keywords AND has future start date
+        # This catches edge cases where date parsing worked but we want to be extra sure
+        if start_date_col and 'Start date parsed' in df_data.columns:
+            backup_mask = (
+                df_data['Status'].astype(str).str.contains('Training starting|starting TBD', case=False, na=False, regex=True) &
+                df_data['MIT Name'].notna() &
+                df_data['Start date parsed'].notna() &
+                (df_data['Start date parsed'] > current_date)  # ONLY if future start date
+            )
+            df_data.loc[backup_mask, 'Status'] = 'Offer Pending'
+            logger.info(f"Backup check marked {backup_mask.sum()} additional candidates as Offer Pending")
+        
+        logger.info(f"Total candidates marked as Offer Pending: {(df_data['Status'] == 'Offer Pending').sum()}")
+        
         # Normalize Week to numeric
         if 'Week' in df_data.columns:
             df_data['Week'] = pd.to_numeric(df_data['Week'], errors='coerce').fillna(0).astype(int)
@@ -838,7 +883,7 @@ def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
 def merge_candidate_sources() -> List[Dict[str, Any]]:
     """
     Build a unified candidate list from MIT Tracking (master), Main sheet, and Fallback sheet.
-    Matching uses exact normalized name, then fuzzy.
+    MIT Tracking is the SOURCE OF TRUTH for status (especially for incoming MITs with future start dates).
     """
     mit_df = fetch_mit_tracking_data()
     main_df = fetch_google_sheets_data()
@@ -852,11 +897,16 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
         if not str(candidate_name).strip():
             continue
 
+        # MIT Tracking is source of truth for status (detects future start dates)
+        mit_tracking_status = str(trow.get('Status', '')).lower()
+
         # Try main with mentor hint
         found = find_candidate_in_sheet(candidate_name, main_df, hint_mentor=mentor_name)
         if found is not None:
             cand = process_candidate_data(found)
             cand['data_quality'] = 'full'
+            # Override with MIT Tracking status (source of truth for incoming MITs)
+            cand['status'] = mit_tracking_status
             unified.append(cand)
             continue
 
@@ -865,10 +915,12 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
         if found is not None:
             cand = process_candidate_data(found)
             cand['data_quality'] = 'archive'
+            # Override with MIT Tracking status (source of truth for incoming MITs)
+            cand['status'] = mit_tracking_status
             unified.append(cand)
             continue
 
-        # Basic profile
+        # Basic profile from MIT Tracking
         unified.append(create_basic_profile_from_mit(trow))
 
     return unified
