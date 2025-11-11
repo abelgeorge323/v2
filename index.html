@@ -2667,7 +2667,7 @@
                 <div class="metric-card offer-pending" onclick="showOfferPending()">
                     <div class="metric-label">Incoming MITs</div>
                     <div class="metric-value">${data.offer_pending || 0}</div>
-                    <div class="metric-change">Offer pending</div>
+                    <div class="metric-change">Pending Start</div>
                 </div>
             `;
         }
@@ -2899,7 +2899,7 @@
                 document.getElementById('candidatesList').innerHTML = `
                     <div class="loading-state">
                         <div class="loading-spinner"></div>
-                        <p style="margin-top: 20px;">Loading offer pending candidates...</p>
+                        <p style="margin-top: 20px;">Loading incoming MITs...</p>
                     </div>
                 `;
                 
@@ -3139,11 +3139,11 @@
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
-                        <h3>No candidates with pending offers</h3>
+                        <h3>No incoming MITs with pending start dates</h3>
                     </div>
                 `;
                 cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '🤝 Offer Pending Candidates';
+                cachedListTitle = '🎯 Incoming MITs (Starting Soon)';
                 cacheTimestamp = Date.now();
                 console.log('💾 Cached empty list content with timestamp:', cacheTimestamp);
                 return;
@@ -3164,7 +3164,7 @@
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${candidate.training_site}</div>
                             <div><strong>Week:</strong> ${candidate.week}</div>
-                            <div><strong>Status:</strong> Offer Pending 🤝</div>
+                            <div><strong>Status:</strong> Pending Start 🎯</div>
                             <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
                         </div>
                     </div>
@@ -3379,11 +3379,11 @@
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
-                        <h3>No offer pending candidates</h3>
+                        <h3>No incoming MITs with pending start dates</h3>
                     </div>
                 `;
                 cachedListContent = candidatesList.innerHTML;
-                cachedListTitle = '⏳ Offer Pending Candidates';
+                cachedListTitle = '🎯 Incoming MITs (Starting Soon)';
                 cacheTimestamp = Date.now();
                 return;
             }
@@ -3403,7 +3403,7 @@
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${candidate.training_site || 'TBD'}</div>
                             <div><strong>Week:</strong> ${candidate.week || 'N/A'}</div>
-                            <div><strong>Status:</strong> Offer Pending 🤝</div>
+                            <div><strong>Status:</strong> Pending Start 🎯</div>
                             <div><strong>Expected Graduation:</strong> ${candidate.expected_graduation_week || 'TBD'}</div>
                         </div>
                     </div>
