@@ -2374,6 +2374,32 @@
             return data;
         }
         
+        // Mentor Assessment Data Cache
+        let mentorAssessments = {};
+        
+        async function loadMentorAssessments() {
+            try {
+                const response = await fetch('/data/mentor_assessments.json');
+                mentorAssessments = await response.json();
+                console.log('✅ Loaded mentor assessments for', Object.keys(mentorAssessments).length, 'candidates');
+                console.log('📋 Assessment keys:', Object.keys(mentorAssessments));
+            } catch (error) {
+                console.warn('⚠️ Could not load mentor assessments:', error);
+                mentorAssessments = {};
+            }
+        }
+        
+        // Call on page load
+        window.addEventListener('DOMContentLoaded', loadMentorAssessments);
+        
+        // Helper function to auto-calculate average from questions
+        function calculateSectionAverage(section) {
+            if (!section || !section.questions) return 0;
+            const scores = Object.values(section.questions).filter(s => typeof s === 'number' && s > 0);
+            if (scores.length === 0) return 0;
+            return scores.reduce((a, b) => a + b, 0) / scores.length;
+        }
+        
         // Client-side cache for candidate profiles (for instant profile switching)
         let candidateCache = {};
         
@@ -3561,37 +3587,100 @@
                 <!-- Executive View: Row 2 - Mentor Assessment & Operation Context -->
                 <div class="profile-content">
                     <div class="mentor-assessment-section">
-                        <h3>⭐ Weekly Mentor Assessment</h3>
-                        <div class="assessment-grid">
-                            <div class="assessment-tile">
-                                <div class="tile-title">🎯 Core Competency</div>
-                                <div class="assessment-progress-bar">
-                                    <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
+                        ${(() => {
+                            // Get assessment data for this candidate
+                            const normalizedName = candidate.name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+                            console.log(`🔍 Looking for assessment: "${candidate.name}" → normalized: "${normalizedName}"`);
+                            const assessmentData = mentorAssessments[normalizedName];
+                            console.log(`📊 Assessment found:`, !!assessmentData);
+                            const latestAssessment = assessmentData?.assessments?.[0]; // Most recent assessment
+                            
+                            // Calculate progress percentages (auto-calculate from questions)
+                            const coreCompetencyAvg = latestAssessment ? calculateSectionAverage(latestAssessment.section_1_core_competencies) : 0;
+                            const softSkillsAvg = latestAssessment ? calculateSectionAverage(latestAssessment.section_2_soft_skills_leadership) : 0;
+                            const engagementAvg = latestAssessment ? calculateSectionAverage(latestAssessment.section_3_engagement_aptitude) : 0;
+                            const readinessScore = latestAssessment?.section_4_readiness_confidence?.confidence_level || 0;
+                            
+                            const coreCompetencyPercent = (coreCompetencyAvg / 5 * 100);
+                            const softSkillsPercent = (softSkillsAvg / 5 * 100);
+                            const engagementPercent = (engagementAvg / 5 * 100);
+                            const readinessPercent = (readinessScore / 5 * 100);
+                            
+                            const hasAssessment = !!latestAssessment && coreCompetencyAvg > 0;
+                            
+                            return `
+                                <h3>⭐ Weekly Mentor Assessment</h3>
+                                <div class="assessment-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px;">
+                                    <!-- Core Competency -->
+                                    <div class="assessment-tile" style="background: rgba(239, 68, 68, 0.1); padding: 16px; border-radius: 10px; border-left: 4px solid #ef4444;">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                            <span style="font-size: 1.5rem;">🎯</span>
+                                            <div style="font-weight: 600; color: #f3f4f6; font-size: 0.95rem;">Core Competency</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+                                            <div style="background: ${hasAssessment ? '#ef4444' : '#4b5563'}; height: 100%; width: ${coreCompetencyPercent}%; transition: width 0.3s;"></div>
+                                        </div>
+                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+                                            ${hasAssessment ? coreCompetencyAvg.toFixed(1) + '/5.0' : 'Available soon'}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Leadership & Soft Skills -->
+                                    <div class="assessment-tile" style="background: rgba(139, 92, 246, 0.1); padding: 16px; border-radius: 10px; border-left: 4px solid #8b5cf6;">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                            <span style="font-size: 1.5rem;">👥</span>
+                                            <div style="font-weight: 600; color: #f3f4f6; font-size: 0.95rem;">Leadership & Soft Skills</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+                                            <div style="background: ${hasAssessment ? '#8b5cf6' : '#4b5563'}; height: 100%; width: ${softSkillsPercent}%; transition: width 0.3s;"></div>
+                                        </div>
+                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+                                            ${hasAssessment ? softSkillsAvg.toFixed(1) + '/5.0' : 'Available soon'}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Readiness & Confidence -->
+                                    <div class="assessment-tile" style="background: rgba(16, 185, 129, 0.1); padding: 16px; border-radius: 10px; border-left: 4px solid #10b981;">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                            <span style="font-size: 1.5rem;">✅</span>
+                                            <div style="font-weight: 600; color: #f3f4f6; font-size: 0.95rem;">Readiness & Confidence</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+                                            <div style="background: ${hasAssessment ? '#10b981' : '#4b5563'}; height: 100%; width: ${readinessPercent}%; transition: width 0.3s;"></div>
+                                        </div>
+                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+                                            ${hasAssessment ? readinessScore + '/5' : 'Available soon'}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Engagement & Aptitude -->
+                                    <div class="assessment-tile" style="background: rgba(245, 158, 11, 0.1); padding: 16px; border-radius: 10px; border-left: 4px solid #f59e0b;">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                            <span style="font-size: 1.5rem;">⚡</span>
+                                            <div style="font-weight: 600; color: #f3f4f6; font-size: 0.95rem;">Engagement & Aptitude</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+                                            <div style="background: ${hasAssessment ? '#f59e0b' : '#4b5563'}; height: 100%; width: ${engagementPercent}%; transition: width 0.3s;"></div>
+                                        </div>
+                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+                                            ${hasAssessment ? engagementAvg.toFixed(1) + '/5.0' : 'Available soon'}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="assessment-score-value">${getMentorAssessmentDisplay(0, 5, candidate.week)}</div>
-                            </div>
-                            <div class="assessment-tile">
-                                <div class="tile-title">👥 Leadership & Soft Skills</div>
-                                <div class="assessment-progress-bar">
-                                    <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
-                                </div>
-                                <div class="assessment-score-value">${getMentorAssessmentDisplay(0, 5, candidate.week)}</div>
-                            </div>
-                            <div class="assessment-tile">
-                                <div class="tile-title">⚡ Engagement & Aptitude</div>
-                                <div class="assessment-progress-bar">
-                                    <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
-                                </div>
-                                <div class="assessment-score-value">${getMentorAssessmentDisplay(0, 5, candidate.week)}</div>
-                            </div>
-                            <div class="assessment-tile">
-                                <div class="tile-title">✓ Readiness & Confidence</div>
-                                <div class="assessment-progress-bar">
-                                    <div class="assessment-progress-fill score-needs-improvement" style="width: 0%"></div>
-                                </div>
-                                <div class="assessment-score-value">${getMentorAssessmentDisplay(0, 5, candidate.week)}</div>
-                            </div>
-                        </div>
+                                
+                                <!-- Mentor Feedback Button -->
+                                <button onclick="showMentorFeedback('${candidate.name.replace(/'/g, "\\'")}')" 
+                                        class="view-details-btn" 
+                                        style="width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2); 
+                                               color: white; border: none; border-radius: 10px; font-weight: 600; 
+                                               cursor: pointer; transition: all 0.3s; font-size: 1rem;
+                                               box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);"
+                                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';"
+                                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)';">
+                                    ${hasAssessment ? '📋 View Detailed Mentor Feedback' : '📋 No Feedback Available Yet'}
+                                </button>
+                            `;
+                        })()}
                     </div>
 
                     <div class="operation-mentor-container">
@@ -4151,84 +4240,95 @@
             const mentorsToShow = filteredMentors.slice(startIndex, endIndex);
             const totalPages = Math.ceil(filteredMentors.length / mentorsPerPage);
             
-            const mentorsHTML = `
-                <div class="mentor-list-container">
-                    <div class="page-header">
-                        <p style="font-size: 1.1em; margin-bottom: 16px;">${filteredMentors.length} of ${allMentors.length} mentors${currentMentorFilter !== 'all' ? ' (filtered)' : ''}</p>
-                    </div>
-                    
-                    <div class="mentor-filter-container">
-                        <span class="mentor-filter-label">Filter by MEI Score:</span>
-                        <select class="mentor-filter-select" onchange="filterMentorsByMEI(this.value)">
-                            <option value="all" ${currentMentorFilter === 'all' ? 'selected' : ''}>All Mentors</option>
-                            <option value="strong" ${currentMentorFilter === 'strong' ? 'selected' : ''}>Strong (≥2.5)</option>
-                            <option value="in_progress" ${currentMentorFilter === 'in_progress' ? 'selected' : ''}>In Progress (1.5-2.49)</option>
-                            <option value="needs_improvement" ${currentMentorFilter === 'needs_improvement' ? 'selected' : ''}>Needs Improvement (&lt;1.5)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mentor-grid">
-                        ${mentorsToShow.map(mentor => {
-                            let cardClass = 'mentor-card';
-                            if (mentor.average_mei >= 2.5) {
-                                cardClass += ' strong-mentor';
-                            } else if (mentor.average_mei >= 1.5) {
-                                cardClass += ' in-progress-mentor';
-                            } else {
-                                cardClass += ' needs-improvement-mentor';
-                            }
-                            const name = mentor.name.replace(/'/g, "&#39;");
-                            return '<div class="' + cardClass + '" onclick="showMentorProfile(\'' + name + '\')">' +
-                                '<div class="mentor-card-header">' +
-                                    '<div class="mentor-name">' + mentor.name + '</div>' +
-                                '</div>' +
-                                '<div class="mentor-stats">' +
-                                    '<div class="mentor-stat">' +
-                                        '<div class="mentor-stat-value">' + mentor.num_trainees + '</div>' +
-                                        '<div class="mentor-stat-label">Trainees</div>' +
-                                    '</div>' +
-                                    '<div class="mentor-stat">' +
-                                        '<div class="mentor-stat-value">' + mentor.completed + '</div>' +
-                                        '<div class="mentor-stat-label">Completed</div>' +
-                                    '</div>' +
-                                    '<div class="mentor-stat">' +
-                                        '<div class="mentor-stat-value">' + mentor.success_rate + '%</div>' +
-                                        '<div class="mentor-stat-label">Success</div>' +
-                                    '</div>' +
-                                '</div>' +
-                                '<div class="mentor-tier-summary">' +
-                                    mentor.tier + ' • ' + mentor.in_progress + ' in progress' +
-                                '</div>' +
-                            '</div>';
-                        }).join('')}
-                    </div>
-                    
-                    ${totalPages > 1 ? `
-                        <div class="pagination-controls">
-                            <button class="pagination-button" onclick="goToMentorPage(${currentMentorPage - 1})" ${currentMentorPage === 1 ? 'disabled' : ''}>
-                                Previous
-                            </button>
-                            ${Array.from({ length: totalPages }, (_, i) => i + 1).map(page => `
-                                <button class="pagination-button ${page === currentMentorPage ? 'active' : ''}" onclick="goToMentorPage(${page})">
-                                    ${page}
-                                </button>
-                            `).join('')}
-                            <button class="pagination-button" onclick="goToMentorPage(${currentMentorPage + 1})" ${currentMentorPage === totalPages ? 'disabled' : ''}>
-                                Next
-                            </button>
-                            <span class="pagination-info">
-                                Page ${currentMentorPage} of ${totalPages}
-                            </span>
-                        </div>
-                    ` : ''}
-                    
-                    <div class="bottom-nav">
-                        <button onclick="showDashboard()" class="back-button">← Back to Dashboard</button>
-                    </div>
+            const candidatesList = document.getElementById('candidatesList');
+            
+            // Build header as direct child (spans all columns)
+            let html = `
+                <div class="page-header" style="grid-column: 1 / -1; padding: 0 0 16px 0;">
+                    <p style="font-size: 1.1em; margin: 0; color: rgba(255,255,255,0.8);">${filteredMentors.length} of ${allMentors.length} mentors${currentMentorFilter !== 'all' ? ' (filtered)' : ''}</p>
+                </div>
+                
+                <div class="mentor-filter-container" style="grid-column: 1 / -1; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; justify-content: center; background: rgba(0,0,0,0.2); padding: 16px; border-radius: 10px;">
+                    <span class="mentor-filter-label" style="font-size: 1rem; color: rgba(255,255,255,0.9); font-weight: 600;">Filter by MEI Score:</span>
+                    <select class="mentor-filter-select" onchange="filterMentorsByMEI(this.value)" style="padding: 10px 16px; border-radius: 8px; background: #1a202c; color: #fff; border: 2px solid rgba(139, 92, 246, 0.5); font-size: 1rem; cursor: pointer; font-weight: 600;">
+                        <option value="all" ${currentMentorFilter === 'all' ? 'selected' : ''}>All Mentors</option>
+                        <option value="strong" ${currentMentorFilter === 'strong' ? 'selected' : ''}>Strong (≥2.5)</option>
+                        <option value="in_progress" ${currentMentorFilter === 'in_progress' ? 'selected' : ''}>In Progress (1.5-2.49)</option>
+                        <option value="needs_improvement" ${currentMentorFilter === 'needs_improvement' ? 'selected' : ''}>Needs Improvement (&lt;1.5)</option>
+                    </select>
                 </div>
             `;
             
-            document.getElementById('candidatesList').innerHTML = mentorsHTML;
+            // Add mentor cards directly (following working pattern)
+            html += mentorsToShow.map(mentor => {
+                let cardClass = 'mentor-card';
+                let borderColor = '#10b981'; // green for strong
+                if (mentor.average_mei >= 2.5) {
+                    cardClass += ' strong-mentor';
+                    borderColor = '#10b981';
+                } else if (mentor.average_mei >= 1.5) {
+                    cardClass += ' in-progress-mentor';
+                    borderColor = '#f59e0b';
+                } else {
+                    cardClass += ' needs-improvement-mentor';
+                    borderColor = '#ef4444';
+                }
+                const name = mentor.name.replace(/'/g, "&#39;");
+                
+                return `<div class="${cardClass}" onclick="showMentorProfile('${name}')" style="border: 2px solid ${borderColor};">
+                    <div class="mentor-card-header">
+                        <div class="mentor-name">${mentor.name}</div>
+                    </div>
+                    <div class="mentor-stats">
+                        <div class="mentor-stat">
+                            <div class="mentor-stat-value">${mentor.num_trainees}</div>
+                            <div class="mentor-stat-label">Trainees</div>
+                        </div>
+                        <div class="mentor-stat">
+                            <div class="mentor-stat-value">${mentor.completed}</div>
+                            <div class="mentor-stat-label">Completed</div>
+                        </div>
+                        <div class="mentor-stat">
+                            <div class="mentor-stat-value">${mentor.success_rate}%</div>
+                            <div class="mentor-stat-label">Success</div>
+                        </div>
+                    </div>
+                    <div class="mentor-tier-summary">
+                        ${mentor.tier} • ${mentor.in_progress} in progress
+                    </div>
+                </div>`;
+            }).join('');
+            
+            // Add pagination as direct child (if needed)
+            if (totalPages > 1) {
+                html += `
+                    <div class="pagination-controls" style="grid-column: 1 / -1; margin-top: 20px;">
+                        <button class="pagination-button" onclick="goToMentorPage(${currentMentorPage - 1})" ${currentMentorPage === 1 ? 'disabled' : ''}>
+                            Previous
+                        </button>
+                        ${Array.from({ length: totalPages }, (_, i) => i + 1).map(page => `
+                            <button class="pagination-button ${page === currentMentorPage ? 'active' : ''}" onclick="goToMentorPage(${page})">
+                                ${page}
+                            </button>
+                        `).join('')}
+                        <button class="pagination-button" onclick="goToMentorPage(${currentMentorPage + 1})" ${currentMentorPage === totalPages ? 'disabled' : ''}>
+                            Next
+                        </button>
+                        <span class="pagination-info">
+                            Page ${currentMentorPage} of ${totalPages}
+                        </span>
+                    </div>
+                `;
+            }
+            
+            // Add bottom nav as direct child
+            html += `
+                <div class="bottom-nav" style="grid-column: 1 / -1; margin-top: 20px; text-align: center;">
+                    <button onclick="showDashboard()" class="back-button">← Back to Dashboard</button>
+                </div>
+            `;
+            
+            candidatesList.innerHTML = html;
         }
 
         function filterAndRenderMentors() {
@@ -4900,6 +5000,147 @@
             document.querySelectorAll('.page').forEach(page => {
                 page.classList.remove('active');
             });
+        }
+
+        // Mentor Feedback Modal Functions
+        function showMentorFeedback(candidateName) {
+            const normalizedName = candidateName.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+            const assessmentData = mentorAssessments[normalizedName];
+            const latestAssessment = assessmentData?.assessments?.[0];
+            
+            // Check if assessment has actual data
+            const hasData = latestAssessment && calculateSectionAverage(latestAssessment.section_1_core_competencies) > 0;
+            
+            if (!hasData) {
+                // No feedback available
+                const modal = `
+                    <div class="modal-overlay" onclick="closeModal()" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px;">
+                        <div onclick="event.stopPropagation()" style="background: linear-gradient(145deg, #1e2329, #2a2f37); border-radius: 20px; padding: 40px; max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="text-align: center;">
+                                <div style="font-size: 4rem; margin-bottom: 20px;">📋</div>
+                                <h2 style="color: #f3f4f6; margin-bottom: 16px; font-size: 1.75rem;">No Feedback Available</h2>
+                                <p style="color: rgba(255,255,255,0.6); font-size: 1.1rem; margin-bottom: 30px;">
+                                    Mentor assessments for ${candidateName} have not been submitted yet.
+                                </p>
+                                <button onclick="closeModal()" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 14px 32px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1rem;">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modal);
+                return;
+            }
+            
+            // Get candidate data from cache to pull mentor_name and week
+            const candidate = candidateCache[candidateName] || {};
+            const mentorName = candidate.mentor_name || 'Mentor';
+            const weekNumber = candidate.week || 0;
+            const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            
+            // Auto-calculate averages from questions
+            const coreAvg = calculateSectionAverage(latestAssessment.section_1_core_competencies);
+            const softSkillsAvg = calculateSectionAverage(latestAssessment.section_2_soft_skills_leadership);
+            const engagementAvg = calculateSectionAverage(latestAssessment.section_3_engagement_aptitude);
+            
+            // Build detailed feedback modal
+            const section4 = latestAssessment.section_4_readiness_confidence;
+            const performanceColor = section4.weekly_performance === 'Exceeding Expectations' ? '#10b981' 
+                : section4.weekly_performance === 'Progressing as Expected' ? '#f59e0b' 
+                : '#ef4444';
+            
+            const modal = `
+                <div class="modal-overlay" onclick="closeModal()" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
+                    <div onclick="event.stopPropagation()" style="background: linear-gradient(145deg, #1e2329, #2a2f37); border-radius: 20px; padding: 40px; max-width: 900px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); margin: 20px 0; max-height: 90vh; overflow-y: auto;">
+                        
+                        <!-- Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 30px;">
+                            <div>
+                                <h2 style="color: #f3f4f6; margin: 0 0 8px 0; font-size: 1.75rem;">📋 Mentor Assessment</h2>
+                                <p style="color: rgba(255,255,255,0.6); margin: 0; font-size: 1rem;">
+                                    ${candidateName} • Week ${weekNumber} • ${today}
+                                </p>
+                                <p style="color: rgba(255,255,255,0.5); margin: 4px 0 0 0; font-size: 0.9rem;">
+                                    By ${mentorName}
+                                </p>
+                            </div>
+                            <button onclick="closeModal()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+                                    onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+                                    onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                                ×
+                            </button>
+                        </div>
+                        
+                        <!-- Weekly Performance Status -->
+                        <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid ${performanceColor};">
+                            <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Weekly Performance</div>
+                            <div style="font-size: 1.3rem; color: ${performanceColor}; font-weight: 700;">${section4.weekly_performance}</div>
+                        </div>
+                        
+                        <!-- MENTOR OBSERVATIONS FIRST (EMPHASIS!) -->
+                        <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15)); padding: 32px; border-radius: 16px; border: 2px solid rgba(102, 126, 234, 0.4); margin-bottom: 28px; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                                <span style="font-size: 2rem;">💭</span>
+                                <div style="font-weight: 700; color: #f3f4f6; font-size: 1.4rem;">Mentor Observations</div>
+                            </div>
+                            <div style="color: rgba(255,255,255,0.9); line-height: 1.9; font-size: 1.05rem; max-height: 450px; overflow-y: auto; padding-right: 12px; scrollbar-width: thin; scrollbar-color: rgba(102, 126, 234, 0.5) rgba(0,0,0,0.2);">
+                                <p style="margin: 0; white-space: pre-wrap;">${section4.observations}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- COMPACT Scores Grid (Supporting Data) -->
+                        <div style="margin-bottom: 12px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px;">
+                            <div style="font-size: 0.9rem; color: rgba(255,255,255,0.5); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.8px; text-align: center;">📊 Assessment Scores Summary</div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                                <!-- Compact Core -->
+                                <div style="text-align: center; padding: 16px; background: rgba(239, 68, 68, 0.15); border-radius: 10px; border: 2px solid rgba(239, 68, 68, 0.3);">
+                                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">🎯 Core</div>
+                                    <div style="font-size: 1.5rem; color: #ef4444; font-weight: 800;">${coreAvg.toFixed(1)}</div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 4px;">out of 5.0</div>
+                                </div>
+                                
+                                <!-- Compact Soft Skills -->
+                                <div style="text-align: center; padding: 16px; background: rgba(139, 92, 246, 0.15); border-radius: 10px; border: 2px solid rgba(139, 92, 246, 0.3);">
+                                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">👥 Leadership</div>
+                                    <div style="font-size: 1.5rem; color: #8b5cf6; font-weight: 800;">${softSkillsAvg.toFixed(1)}</div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 4px;">out of 5.0</div>
+                                </div>
+                                
+                                <!-- Compact Engagement -->
+                                <div style="text-align: center; padding: 16px; background: rgba(245, 158, 11, 0.15); border-radius: 10px; border: 2px solid rgba(245, 158, 11, 0.3);">
+                                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Engagement</div>
+                                    <div style="font-size: 1.5rem; color: #f59e0b; font-weight: 800;">${engagementAvg.toFixed(1)}</div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 4px;">out of 5.0</div>
+                                </div>
+                                
+                                <!-- Compact Readiness -->
+                                <div style="text-align: center; padding: 16px; background: rgba(16, 185, 129, 0.15); border-radius: 10px; border: 2px solid rgba(16, 185, 129, 0.3);">
+                                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">✅ Readiness</div>
+                                    <div style="font-size: 1.5rem; color: #10b981; font-weight: 800;">${section4.confidence_level}</div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 4px;">out of 5</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Close Button -->
+                        <button onclick="closeModal()" style="width: 100%; margin-top: 24px; padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: all 0.2s;"
+                                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';"
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)';">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modal);
+        }
+
+        function closeModal() {
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
         }
 
         // Initialize app
