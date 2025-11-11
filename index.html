@@ -2348,6 +2348,32 @@
         let cachedListTitle = '';
         let cacheTimestamp = 0; // Track when cache was created
         
+        // API Response Cache for faster page loads
+        const apiCache = new Map();
+        const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes in milliseconds
+        
+        // Cached fetch function to reduce API calls
+        async function cachedFetch(url, cacheKey) {
+            const now = Date.now();
+            const cached = apiCache.get(cacheKey);
+            
+            // Return cached data if it's fresh
+            if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+                console.log(`✅ Using cached data for ${cacheKey}`);
+                return cached.data;
+            }
+            
+            // Fetch fresh data
+            console.log(`🔄 Fetching fresh data for ${cacheKey}`);
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            // Cache it
+            apiCache.set(cacheKey, { data, timestamp: now });
+            
+            return data;
+        }
+        
         // Client-side cache for candidate profiles (for instant profile switching)
         let candidateCache = {};
         
@@ -3841,8 +3867,8 @@
                 previousPage = currentPage;
                 currentPage = 'training_mentors';
                 
-                const response = await fetch(`${API_BASE_URL}/api/training-mentors${CACHE_BUST}`);
-                const data = await response.json();
+                // USE CACHED FETCH for faster loads
+                const data = await cachedFetch(`${API_BASE_URL}/api/training-mentors${CACHE_BUST}`, 'training-mentors');
                 
                 if (data.error) {
                     throw new Error(data.error);
@@ -3892,16 +3918,16 @@
         }
         
         function renderTrainingMentors(mentors, data) {
-            // VERSION: 2025-11-03-13:25 - OVERRIDE candidates-grid CSS completely
-            // Wrap everything in a container that overrides default grid styles
-            let html = '<div style="display: block; width: 100%;">';  // Override candidates-grid
+            // FIXED: Follow the working page pattern - all elements are direct children of candidatesList
+            const candidatesList = document.getElementById('candidatesList');
             
-            // Centered filter banner (removed overview text)
-            html += `
+            // Build filter banner as a direct child (spans all columns)
+            let html = `
                 <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%); 
                             padding: 15px 24px; border-radius: 10px; margin-bottom: 20px; 
                             border: 1px solid rgba(139, 92, 246, 0.3);
-                            display: flex; justify-content: center; align-items: center;">
+                            display: flex; justify-content: center; align-items: center;
+                            grid-column: 1 / -1;">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <label style="color: rgba(255,255,255,0.95); font-size: 1.1rem; font-weight: 600;">Filter by MEI:</label>
                         <select onchange="filterTrainingMentors(this.value)" value="${currentTrainingMentorFilter}" 
@@ -3910,26 +3936,23 @@
                                        color: #fff; border: 2px solid rgba(139, 92, 246, 0.5); 
                                        font-size: 1.1rem; cursor: pointer; font-weight: 600;
                                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-                            <option value="all" style="background: #1a202c; color: #ffffff;" ${currentTrainingMentorFilter === 'all' ? 'selected' : ''}>All Mentors</option>
-                            <option value="strong" style="background: #1a202c; color: #ffffff;" ${currentTrainingMentorFilter === 'strong' ? 'selected' : ''}>🟢 Strong (≥2.5)</option>
-                            <option value="monitoring" style="background: #1a202c; color: #ffffff;" ${currentTrainingMentorFilter === 'monitoring' ? 'selected' : ''}>📊 Monitoring (2.0-2.49)</option>
-                            <option value="needs_support" style="background: #1a202c; color: #ffffff;" ${currentTrainingMentorFilter === 'needs_support' ? 'selected' : ''}>⚠️ Needs Support (&lt;2.0)</option>
+                            <option value="all" ${currentTrainingMentorFilter === 'all' ? 'selected' : ''}>All Mentors</option>
+                            <option value="strong" ${currentTrainingMentorFilter === 'strong' ? 'selected' : ''}>🟢 Strong (≥2.5)</option>
+                            <option value="monitoring" ${currentTrainingMentorFilter === 'monitoring' ? 'selected' : ''}>📊 Monitoring (2.0-2.49)</option>
+                            <option value="needs_support" ${currentTrainingMentorFilter === 'needs_support' ? 'selected' : ''}>⚠️ Needs Support (&lt;2.0)</option>
                         </select>
                     </div>
                 </div>
             `;
             
-            // Display mentors in a responsive grid
+            // Add mentor cards directly (following the working pattern)
             if (mentors && mentors.length > 0) {
-                html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; width: 100%;">';
-                
-                mentors.forEach(mentor => {
-                    // Use teal-green color scheme for all cards (matching first image style)
-                    const borderColor = '#14b8a6'; // Teal
-                    const bgColor = 'rgba(45, 55, 72, 0.6)'; // Dark gray-blue
-                    const scoreColor = '#14b8a6'; // Teal
+                html += mentors.map(mentor => {
+                    const borderColor = '#14b8a6';
+                    const bgColor = 'rgba(45, 55, 72, 0.6)';
+                    const scoreColor = '#14b8a6';
                     
-                    html += `
+                    return `
                         <div class="mentor-card" style="background: ${bgColor}; 
                                                          padding: 24px; border-radius: 12px; border: 2px solid ${borderColor}; 
                                                          box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s ease;
@@ -3937,7 +3960,6 @@
                              onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.4)';" 
                              onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
                             
-                            <!-- Mentor Name -->
                             <h3 style="margin: 0 0 20px 0; font-size: 1.3rem; font-weight: 700; color: #fff; text-align: center;">
                                 <a href="#" onclick="showMentorProfile('${mentor.name.replace(/'/g, "\\'")}'); return false;" 
                                    style="color: #fff; text-decoration: none; transition: color 0.2s;"
@@ -3947,48 +3969,33 @@
                                 </a>
                             </h3>
                             
-                            <!-- Performance Metrics (3 boxes in a row): MEI | Lifetime Trainees | Success Rate -->
                             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
-                                <!-- MEI Score (color-coded by performance) -->
                                 <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; border: 2px solid ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'}; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                                        MEI
-                                    </div>
+                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">MEI</div>
                                     <div style="font-size: 1.8rem; font-weight: 800; color: ${mentor.mei_score >= 2.5 ? '#10b981' : mentor.mei_score >= 2.0 ? '#f59e0b' : '#ef4444'};">
                                         ${mentor.mei_score.toFixed(1)}
                                     </div>
                                 </div>
                                 
-                                <!-- Lifetime Trainees -->
                                 <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">
-                                        LIFETIME<br>TRAINEES
-                                    </div>
-                                    <div style="font-size: 1.8rem; font-weight: 800; color: #14b8a6;">
-                                        ${mentor.trainee_count}
-                                    </div>
+                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">LIFETIME<br>TRAINEES</div>
+                                    <div style="font-size: 1.8rem; font-weight: 800; color: #14b8a6;">${mentor.trainee_count}</div>
                                 </div>
                                 
-                                <!-- Success Rate % (color-coded by performance) -->
                                 <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; border: 2px solid ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'}; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">
-                                        SUCCESS<br>RATE
-                                    </div>
+                                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">SUCCESS<br>RATE</div>
                                     <div style="font-size: 1.8rem; font-weight: 800; color: ${(mentor.success_rate || 0) >= 50 ? '#10b981' : (mentor.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'};">
                                         ${(mentor.success_rate || 0).toFixed(0)}%
                                     </div>
                                 </div>
                             </div>
                             
-                            <!-- Mentee Names as Pills/Tags -->
                             <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto;">
                                 ${mentor.trainees.map(t => `
                                     <a href="#" onclick="showProfile('${t.name.replace(/'/g, "\\'")}'); return false;" 
-                                       style="background: rgba(20, 184, 166, 0.2); 
-                                              padding: 8px 14px; border-radius: 20px; 
+                                       style="background: rgba(20, 184, 166, 0.2); padding: 8px 14px; border-radius: 20px; 
                                               color: ${scoreColor}; text-decoration: none; font-weight: 600; font-size: 0.85rem;
-                                              border: 1px solid ${scoreColor}66;
-                                              transition: all 0.2s; display: inline-block;
+                                              border: 1px solid ${scoreColor}66; transition: all 0.2s; display: inline-block;
                                               box-shadow: 0 2px 4px rgba(0,0,0,0.2);"
                                        onmouseenter="this.style.background='rgba(20, 184, 166, 0.3)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.3)';"
                                        onmouseleave="this.style.background='rgba(20, 184, 166, 0.2)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)';">
@@ -3998,16 +4005,12 @@
                             </div>
                         </div>
                     `;
-                });
-                
-                html += '</div>';  // Close mentor grid
+                }).join('');
             } else {
-                html += '<div class="no-data" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6);">No mentors found for this filter</div>';
+                html += '<div class="no-data" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6); grid-column: 1 / -1;">No mentors found for this filter</div>';
             }
             
-            html += '</div>';  // Close wrapper div that overrides candidates-grid
-            
-            document.getElementById('candidatesList').innerHTML = html;
+            candidatesList.innerHTML = html;
         }
 
         // MIT Alumni Page
@@ -4021,8 +4024,8 @@
                 previousPage = currentPage;
                 currentPage = 'mit_alumni';
                 
-                const response = await fetch(`${API_BASE_URL}/api/mit-alumni${CACHE_BUST}`);
-                const data = await response.json();
+                // USE CACHED FETCH for faster loads
+                const data = await cachedFetch(`${API_BASE_URL}/api/mit-alumni${CACHE_BUST}`, 'mit-alumni');
                 
                 if (data.error) {
                     throw new Error(data.error);
@@ -4038,32 +4041,30 @@
         }
         
         function renderMITAlumni(alumni) {
-            // Override candidates-grid CSS and expand beyond container padding
-            let html = '<div style="display: block !important; width: calc(100% + 80px) !important; margin-left: -40px !important; margin-right: -40px !important; margin-top: -10px; padding: 0 40px; box-sizing: border-box !important;">';
+            // FIXED: Follow the working page pattern - all elements are direct children of candidatesList
+            const candidatesList = document.getElementById('candidatesList');
             
-            // Gold-themed banner
-            html += `
+            // Gold-themed banner as direct child (spans all columns)
+            let html = `
                 <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%); 
                             padding: 20px 30px; border-radius: 12px; margin-bottom: 25px; 
                             border: 2px solid rgba(245, 158, 11, 0.4);
-                            text-align: center;">
+                            text-align: center;
+                            grid-column: 1 / -1;">
                     <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #f59e0b; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
                         🎓 ${alumni.length} MIT Program Graduates Successfully Placed
                     </h3>
                 </div>
             `;
             
-            // Display alumni in responsive grid
+            // Add alumni cards directly (following the working pattern)
             if (alumni && alumni.length > 0) {
-                html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; width: 100%; max-width: 100%; box-sizing: border-box;">';
-                
-                alumni.forEach(alum => {
-                    // Gold gradient for alumni cards - cleaner design
+                html += alumni.map(alum => {
                     const borderColor = '#f59e0b';
                     const bgGradient = 'linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(45, 55, 72, 0.95) 100%)';
                     const goldColor = '#f59e0b';
                     
-                    html += `
+                    return `
                         <div class="alumni-card" style="background: ${bgGradient}; 
                                                          padding: 20px; border-radius: 12px; border: 2px solid ${borderColor}; 
                                                          box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s ease;
@@ -4071,58 +4072,42 @@
                              onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(245, 158, 11, 0.4)';" 
                              onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
                             
-                            <!-- Alumni Name (non-clickable display) -->
                             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: ${goldColor}; text-align: center;">
                                 ${alum.name}
                             </h3>
                             
-                            <!-- Current Placement Section -->
                             <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 8px; border-left: 4px solid ${goldColor};">
                                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                                     <span style="font-size: 1.1rem;">↑</span>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                                        CURRENT PLACEMENT
-                                    </div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">CURRENT PLACEMENT</div>
                                 </div>
-                                <div style="color: ${goldColor}; font-size: 1.1rem; font-weight: 700; margin-bottom: 6px;">
-                                    ${alum.placement_site}
-                                </div>
-                                <div style="color: rgba(255,255,255,0.85); font-size: 0.95rem; margin-bottom: 8px;">
-                                    ${alum.placement_title}
-                                </div>
+                                <div style="color: ${goldColor}; font-size: 1.1rem; font-weight: 700; margin-bottom: 6px;">${alum.placement_site}</div>
+                                <div style="color: rgba(255,255,255,0.85); font-size: 0.95rem; margin-bottom: 8px;">${alum.placement_title}</div>
                                 <div style="display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); font-size: 0.85rem;">
                                     <span>📅</span>
                                     <span>Started: ${alum.placement_start_date}</span>
                                 </div>
                             </div>
                             
-                            <!-- Training Background Section -->
                             <div style="background: rgba(0,0,0,0.2); padding: 14px; border-radius: 8px;">
                                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                                     <span style="font-size: 1.1rem;">📋</span>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                                        TRAINING BACKGROUND
-                                    </div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">TRAINING BACKGROUND</div>
                                 </div>
                                 <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 0.9rem;">
                                     <span style="color: rgba(255,255,255,0.6);">Site:</span>
                                     <span style="color: ${goldColor}; font-weight: 600;">${alum.training_site}</span>
-                                    
                                     <span style="color: rgba(255,255,255,0.6);">Vertical:</span>
                                     <span style="color: ${goldColor}; font-weight: 600;">${alum.training_vertical}</span>
-                                    
                                     <span style="color: rgba(255,255,255,0.6);">Duration:</span>
                                     <span style="color: ${goldColor}; font-weight: 600;">${alum.weeks_in_program} weeks</span>
                                 </div>
                             </div>
                             
-                            <!-- Trained By Section -->
                             <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin-top: auto;">
                                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                                     <span style="font-size: 1.1rem;">👤</span>
-                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                                        TRAINED BY
-                                    </div>
+                                    <div style="font-size: 0.7rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">TRAINED BY</div>
                                 </div>
                                 <a href="#" onclick="showMentorProfile('${(alum.mentor_name || 'TBD').replace(/'/g, "\\'")}'); return false;" 
                                    style="color: ${goldColor}; text-decoration: none; font-weight: 600; font-size: 1rem; transition: color 0.2s; cursor: pointer;"
@@ -4133,16 +4118,12 @@
                             </div>
                         </div>
                     `;
-                });
-                
-                html += '</div>';  // Close alumni grid
+                }).join('');
             } else {
-                html += '<div class="no-data" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6);">No MIT alumni found</div>';
+                html += '<div class="no-data" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6); grid-column: 1 / -1;">No MIT alumni found</div>';
             }
             
-            html += '</div>';  // Close wrapper div
-            
-            document.getElementById('candidatesList').innerHTML = html;
+            candidatesList.innerHTML = html;
         }
 
         function filterMentorsByMEI(filterType) {
