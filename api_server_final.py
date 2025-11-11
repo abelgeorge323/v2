@@ -259,8 +259,8 @@ def get_all_candidates():
     """
     try:
         all_candidates = merge_candidate_sources()
-        # Filter out offer pending (incoming MITs who haven't started yet)
-        active_only = [c for c in all_candidates if 'offer' not in str(c.get('status', '')).lower() and 'pending' not in str(c.get('status', '')).lower()]
+        # Filter out pending start (incoming MITs who haven't started yet)
+        active_only = [c for c in all_candidates if 'pending' not in str(c.get('status', '')).lower()]
         response = jsonify(active_only)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
@@ -291,14 +291,15 @@ def get_in_training_candidates():
 @app.route('/api/offer-pending-candidates', methods=['GET'])
 def get_offer_pending_candidates():
     """
-    Get candidates with pending offers
+    Get candidates with pending start dates (incoming MITs who haven't started yet)
     
     Returns:
-        JSON response with offer-pending candidates
+        JSON response with pending start candidates
     """
     try:
         unified = merge_candidate_sources()
-        offer_list = [c for c in unified if 'offer' in str(c.get('status','')).lower()]
+        # Changed from 'offer' to 'pending' to match new "Pending Start" status
+        offer_list = [c for c in unified if 'pending' in str(c.get('status','')).lower()]
         response = jsonify(offer_list)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
