@@ -23,6 +23,156 @@ from config import *
 logger = logging.getLogger(__name__)
 
 # =============================================================================
+# SAFE COLUMN ACCESS UTILITIES
+# =============================================================================
+
+def safe_get(row_or_dict: Any, column_name: str, default: Any = None) -> Any:
+    """
+    Safely access a column from a pandas Series, DataFrame row, or dictionary.
+    
+    This function prevents KeyError exceptions when columns are missing,
+    renamed, or deleted from Google Sheets.
+    
+    Args:
+        row_or_dict: pandas Series, DataFrame row, or dictionary
+        column_name: Name of the column to access
+        default: Default value to return if column doesn't exist
+        
+    Returns:
+        Column value if exists, otherwise default value
+        
+    Example:
+        >>> row = pd.Series({'Name': 'John', 'Age': 25})
+        >>> safe_get(row, 'Name', 'Unknown')
+        'John'
+        >>> safe_get(row, 'MissingColumn', 'N/A')
+        'N/A'
+    """
+    try:
+        if isinstance(row_or_dict, pd.Series):
+            # For pandas Series, use .get() which returns default if key missing
+            return row_or_dict.get(column_name, default)
+        elif isinstance(row_or_dict, dict):
+            # For dictionaries, use .get()
+            return row_or_dict.get(column_name, default)
+        elif hasattr(row_or_dict, '__getitem__'):
+            # For DataFrame rows or other indexable objects
+            try:
+                return row_or_dict[column_name]
+            except (KeyError, IndexError):
+                return default
+        else:
+            return default
+    except Exception as e:
+        logger.warning(f"Error accessing column '{column_name}': {e}")
+        return default
+
+def standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Standardize column names in a DataFrame using COLUMN_MAPPING.
+    
+    This function normalizes column headers to handle:
+    - Renamed columns
+    - Misspelled columns
+    - Extra spaces or non-breaking spaces
+    - Case variations
+    
+    Args:
+        df: DataFrame with potentially non-standard column names
+        
+    Returns:
+        DataFrame with standardized column names
+        
+    Example:
+        >>> df = pd.DataFrame({'Trainee Name': ['John'], 'Confidence': [85]})
+        >>> df_std = standardize_columns(df)
+        >>> 'MIT Name' in df_std.columns
+        True
+        >>> 'Confidence Score' in df_std.columns
+        True
+    """
+    if df is None or df.empty:
+        return df
+    
+    # Create a copy to avoid modifying original
+    df_std = df.copy()
+    
+    # Normalize existing column names (handle spaces, non-breaking spaces, case)
+    df_std.columns = (
+        df_std.columns.astype(str)
+          .str.replace('\u00A0', ' ', regex=False)  # Replace non-breaking spaces
+          .str.replace(r'\s+', ' ', regex=True)      # Collapse multiple spaces
+          .str.strip()
+    )
+    
+    # Apply case-insensitive mapping using COLUMN_MAPPING
+    norm = lambda s: re.sub(r'\s+', ' ', s.replace('\u00A0', ' ').strip().lower())
+    mapping_norm = {norm(k): v for k, v in COLUMN_MAPPING.items()}
+    
+    # Rename columns based on normalized mapping
+    rename_dict = {}
+    for col in df_std.columns:
+        col_norm = norm(col)
+        if col_norm in mapping_norm:
+            rename_dict[col] = mapping_norm[col_norm]
+    
+    if rename_dict:
+        df_std.rename(columns=rename_dict, inplace=True)
+        logger.debug(f"Standardized columns: {rename_dict}")
+    
+    return df_std
+
+def validate_schema(df: pd.DataFrame, sheet_name: str = "Sheet") -> None:
+    """
+    Validate that required columns exist in the DataFrame.
+    
+    Logs warnings for missing columns but does not stop execution.
+    This allows the dashboard to continue functioning even if some columns
+    are missing, renamed, or deleted.
+    
+    Args:
+        df: DataFrame to validate
+        sheet_name: Name of the sheet being validated (for logging)
+        
+    Example:
+        >>> df = pd.DataFrame({'MIT Name': ['John'], 'Age': [25]})
+        >>> validate_schema(df, "Main Sheet")
+        # Logs warning if 'Training Program' is missing
+    """
+    if df is None or df.empty:
+        logger.warning(f"{sheet_name}: DataFrame is empty or None")
+        return
+    
+    missing_required = []
+    missing_important = []
+    
+    # Check required columns
+    for col in REQUIRED_COLUMNS:
+        if col not in df.columns:
+            missing_required.append(col)
+    
+    # Check important columns
+    for col in IMPORTANT_COLUMNS:
+        if col not in df.columns:
+            missing_important.append(col)
+    
+    # Log warnings
+    if missing_required:
+        logger.warning(
+            f"{sheet_name}: Missing REQUIRED columns: {missing_required}. "
+            f"Dashboard functionality may be limited."
+        )
+    
+    if missing_important:
+        logger.warning(
+            f"{sheet_name}: Missing IMPORTANT columns: {missing_important}. "
+            f"Some features may not work correctly."
+        )
+    
+    if not missing_required and not missing_important:
+        logger.debug(f"{sheet_name}: All required and important columns present")
+
+# =============================================================================
 # BIOS SUPPORT (loaded from data/bios.json)
 # =============================================================================
 
@@ -279,12 +429,12 @@ def calculate_business_lessons_progress(row: pd.Series) -> Dict[str, Any]:
     current_date = datetime.now()
     
     if DEBUG_MODE:
-        candidate_name = row.get('MIT Name', 'Unknown')
+        candidate_name = safe_get(row, 'MIT Name', 'Unknown')
         logger.info(f"=== BUSINESS LESSONS DEBUG FOR {candidate_name} ===")
         logger.info(f"Today's Date: {current_date.strftime('%m/%d/%Y')}")
     
     for lesson in BUSINESS_LESSON_COLUMNS:
-        value = row.get(lesson, '')
+        value = safe_get(row, lesson, '')
         is_completed = False
         
         if pd.notna(value) and str(value).strip():
@@ -349,7 +499,7 @@ def calculate_onboarding_progress(row: pd.Series) -> Dict[str, Any]:
     total = len(ONBOARDING_TASKS)
     
     for task in ONBOARDING_TASKS:
-        value = row.get(task, '')
+        value = safe_get(row, task, '')
         if pd.notna(value) and str(value).strip().lower() in COMPLETION_KEYWORDS:
             completed += 1
     
@@ -379,13 +529,13 @@ def extract_real_scores(row: pd.Series) -> Dict[str, Any]:
     """
     scores = {}
     
-    # Debug logging for score extraction
-    candidate_name = row.get('MIT Name', 'Unknown')
-    logger.info(f"=== SCORE EXTRACTION DEBUG FOR {candidate_name} ===")
+    # Only log verbose details in debug mode (uses logger.debug which is faster)
+    candidate_name = safe_get(row, 'MIT Name', 'Unknown')
+    logger.debug(f"=== SCORE EXTRACTION DEBUG FOR {candidate_name} ===")
     
     for score_key, column_name in SCORE_COLUMNS.items():
-        score_value = row.get(column_name, 0)
-        logger.info(f"  {score_key} -> Column '{column_name}': '{score_value}' (type: {type(score_value)})")
+        score_value = safe_get(row, column_name, 0)
+        logger.debug(f"  {score_key} -> Column '{column_name}': '{score_value}' (type: {type(score_value)})")
         
         if pd.notna(score_value) and str(score_value).strip():
             try:
@@ -396,32 +546,32 @@ def extract_real_scores(row: pd.Series) -> Dict[str, Any]:
                 # Special handling for skill_ranking (text field)
                 if score_key == 'skill_ranking':
                     scores[score_key] = val_str if val_str else 'TBD'
-                    logger.info(f"    -> SUCCESS: {scores[score_key]} (text field from '{score_value}')")
+                    logger.debug(f"    -> SUCCESS: {scores[score_key]} (text field from '{score_value}')")
                 elif score_key == 'mock_qbr_score':
                     # Mock QBR Score is out of 4, not 100
                     scores[score_key] = float(val_str) if val_str else 0.0
-                    logger.info(f"    -> SUCCESS: {scores[score_key]} (Mock QBR out of 4 from '{score_value}')")
+                    logger.debug(f"    -> SUCCESS: {scores[score_key]} (Mock QBR out of 4 from '{score_value}')")
                 else:
                     # Other numeric fields (out of 100)
                     scores[score_key] = float(val_str) if val_str else 0.0
-                    logger.info(f"    -> SUCCESS: {scores[score_key]} (cleaned from '{score_value}')")
+                    logger.debug(f"    -> SUCCESS: {scores[score_key]} (cleaned from '{score_value}')")
             except (ValueError, TypeError) as e:
                 if score_key == 'skill_ranking':
                     scores[score_key] = 'TBD'
-                    logger.info(f"    -> ERROR: {e}, defaulting to 'TBD'")
+                    logger.debug(f"    -> ERROR: {e}, defaulting to 'TBD'")
                 else:
                     scores[score_key] = 0.0
-                    logger.info(f"    -> ERROR: {e}, defaulting to 0.0")
+                    logger.debug(f"    -> ERROR: {e}, defaulting to 0.0")
         else:
             if score_key == 'skill_ranking':
                 scores[score_key] = 'TBD'
-                logger.info(f"    -> EMPTY/NULL, defaulting to 'TBD'")
+                logger.debug(f"    -> EMPTY/NULL, defaulting to 'TBD'")
             else:
                 scores[score_key] = 0.0
-                logger.info(f"    -> EMPTY/NULL, defaulting to 0.0")
+                logger.debug(f"    -> EMPTY/NULL, defaulting to 0.0")
     
-    logger.info(f"Final scores: {scores}")
-    logger.info("=" * 50)
+    logger.debug(f"Final scores: {scores}")
+    logger.debug("=" * 50)
     
     return scores
 
@@ -439,8 +589,8 @@ def derive_status(row: pd.Series) -> str:
     Returns:
         str: Candidate status ('training', 'ready', 'pending start', etc.)
     """
-    week = row.get('Week', 0)
-    completion_status = row.get('Completion Status', '')
+    week = safe_get(row, 'Week', 0)
+    completion_status = safe_get(row, 'Completion Status', '')
     
     # Handle "#ref!" or invalid status values
     if pd.isna(completion_status) or completion_status == '' or completion_status == '#ref!':
@@ -473,6 +623,12 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
         # (Row 6 becomes the header row with Job Title, JV ID, etc.)
         df = pd.read_csv(OPEN_POSITIONS_URL, skiprows=5)
         
+        # Standardize columns FIRST
+        df = standardize_columns(df)
+        
+        # Validate schema
+        validate_schema(df, "Open Positions")
+        
         # Drop the first empty column (the leading comma in the CSV)
         if len(df.columns) > 0 and 'Unnamed' in str(df.columns[0]):
             logger.info(f"Dropping empty first column: {df.columns[0]}")
@@ -494,12 +650,12 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
         positions = []
         for _, row in df.iterrows():
             # Skip header-like rows (like "Available Placement Options")
-            job_title = str(row.get('Job Title', '')).strip()
+            job_title = str(safe_get(row, 'Job Title', '')).strip()
             if job_title.lower() in ['job title', 'available placement options', '']:
                 continue
             
             # Parse location from Location column
-            location = str(row.get('Location', '')).strip()
+            location = str(safe_get(row, 'Location', '')).strip()
             city, state = '', ''
             
             if location and location.lower() not in ['nan', 'none', '']:
@@ -512,7 +668,7 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
                     city = location.strip()
             
             # Parse JV ID - handle empty values and formats like "15422-1"
-            jv_id_raw = row.get('JV ID', '')
+            jv_id_raw = safe_get(row, 'JV ID', '')
             try:
                 # Try to convert to int for the 'id' field
                 if pd.notna(jv_id_raw) and str(jv_id_raw).strip():
@@ -528,11 +684,11 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
                 'title': job_title,
                 'jv_id': str(jv_id_raw).strip() if pd.notna(jv_id_raw) else '',
                 'jv_link': '',  # Not in your sheet, leaving empty
-                'vertical': str(row.get('VERT', '')).strip(),
-                'account': str(row.get('Account', '')).strip(),
+                'vertical': str(safe_get(row, 'VERT', '')).strip(),
+                'account': str(safe_get(row, 'Account', '')).strip(),
                 'city': city,
                 'state': state,
-                'salary': parse_salary(row.get('Salary', 0))
+                'salary': parse_salary(safe_get(row, 'Salary', 0))
             }
             positions.append(position)
         
@@ -616,7 +772,10 @@ def fetch_mit_tracking_data() -> pd.DataFrame:
               .str.strip()
         )
         
-        # Standardize column names
+        # Standardize columns using COLUMN_MAPPING
+        df_data = standardize_columns(df_data)
+        
+        # Standardize column names (additional mapping for MIT Tracking specific columns)
         rename_map = {
             'Week (in MIT budget)': 'Week',
             'Start date': 'Start date',
@@ -633,11 +792,17 @@ def fetch_mit_tracking_data() -> pd.DataFrame:
         }
         df_data.rename(columns={k: v for k, v in rename_map.items() if k in df_data.columns}, inplace=True)
         
+        # Validate schema
+        validate_schema(df_data, "MIT Tracking Sheet")
+        
         # Filter out empty rows and header rows
-        df_data = df_data[df_data['MIT Name'].notna()]
-        df_data = df_data[df_data['MIT Name'].astype(str).str.strip().str.lower() != 'mit name']
-        df_data = df_data[df_data['MIT Name'].astype(str).str.strip() != '']
-        df_data = df_data[df_data['MIT Name'].astype(str).str.strip() != 'New Candidate Name']  # Remove header row from second section
+        if 'MIT Name' in df_data.columns:
+            df_data = df_data[df_data['MIT Name'].notna()]
+            df_data = df_data[df_data['MIT Name'].astype(str).str.strip().str.lower() != 'mit name']
+            df_data = df_data[df_data['MIT Name'].astype(str).str.strip() != '']
+            df_data = df_data[df_data['MIT Name'].astype(str).str.strip() != 'New Candidate Name']  # Remove header row from second section
+        else:
+            logger.warning("'MIT Name' column missing - cannot filter rows")
         
         # Handle the two sections
         # Mark candidates from second section as pending start
@@ -645,8 +810,10 @@ def fetch_mit_tracking_data() -> pd.DataFrame:
             df_data.loc[df_data['JV'].notna(), 'Status'] = 'Pending Start'
         
         # Also mark rows where Status is empty as Pending Start (for second section)
-        df_data['Status'] = df_data['Status'].fillna('')
-        df_data.loc[(df_data['Status'] == '') & (df_data['MIT Name'].notna()), 'Status'] = 'Pending Start'
+        if 'Status' in df_data.columns:
+            df_data['Status'] = df_data['Status'].fillna('')
+            if 'MIT Name' in df_data.columns:
+                df_data.loc[(df_data['Status'] == '') & (df_data['MIT Name'].notna()), 'Status'] = 'Pending Start'
         
         # ========================================
         # DETECT INCOMING MITS (Future Start Dates)
@@ -682,16 +849,24 @@ def fetch_mit_tracking_data() -> pd.DataFrame:
         # Backup check: Status contains "Training starting" keywords AND has future start date
         # This catches edge cases where date parsing worked but we want to be extra sure
         if start_date_col and 'Start date parsed' in df_data.columns:
-            backup_mask = (
-                df_data['Status'].astype(str).str.contains('Training starting|starting TBD', case=False, na=False, regex=True) &
-                df_data['MIT Name'].notna() &
-                df_data['Start date parsed'].notna() &
-                (df_data['Start date parsed'] > current_date)  # ONLY if future start date
-            )
-            df_data.loc[backup_mask, 'Status'] = 'Pending Start'
-            logger.info(f"Backup check marked {backup_mask.sum()} additional candidates as Pending Start")
+            # Add column existence checks before accessing
+            if 'Status' in df_data.columns and 'MIT Name' in df_data.columns:
+                backup_mask = (
+                    df_data['Status'].astype(str).str.contains('Training starting|starting TBD', case=False, na=False, regex=True) &
+                    df_data['MIT Name'].notna() &
+                    df_data['Start date parsed'].notna() &
+                    (df_data['Start date parsed'] > current_date)  # ONLY if future start date
+                )
+                df_data.loc[backup_mask, 'Status'] = 'Pending Start'
+                logger.info(f"Backup check marked {backup_mask.sum()} additional candidates as Pending Start")
+            else:
+                logger.warning("Cannot create backup mask: 'Status' or 'MIT Name' column missing")
         
-        logger.info(f"Total candidates marked as Pending Start: {(df_data['Status'] == 'Pending Start').sum()}")
+        # Safe logging - check if Status column exists before accessing
+        if 'Status' in df_data.columns:
+            logger.info(f"Total candidates marked as Pending Start: {(df_data['Status'] == 'Pending Start').sum()}")
+        else:
+            logger.warning("'Status' column missing - cannot count Pending Start candidates")
         
         # Normalize Week to numeric
         if 'Week' in df_data.columns:
@@ -704,7 +879,8 @@ def fetch_mit_tracking_data() -> pd.DataFrame:
                 df_data[col] = None
         
         logger.info(f"MIT Tracking data: Found {len(df_data)} candidates")
-        logger.info(f"Candidate names: {list(df_data['MIT Name'].dropna())}")
+        if 'MIT Name' in df_data.columns:
+            logger.info(f"Candidate names: {list(df_data['MIT Name'].dropna())}")
         
         return df_data
     except Exception as e:
@@ -724,10 +900,11 @@ def fetch_fallback_candidate_data() -> pd.DataFrame:
         if len(df.columns) > 0:
             df = df.drop(df.columns[0], axis=1)
         
-        # Now apply the normal column mapping
-        norm = lambda s: re.sub(r'\s+', ' ', s.replace('\u00A0', ' ').strip().lower())
-        mapping_norm = {norm(k): v for k, v in COLUMN_MAPPING.items()}
-        df.rename(columns=lambda c: mapping_norm.get(norm(c), c), inplace=True)
+        # Standardize columns using COLUMN_MAPPING
+        df = standardize_columns(df)
+        
+        # Validate schema
+        validate_schema(df, "Fallback Candidate Sheet")
 
         # Preserve original Company Start Date string for display parity with main sheet
         if "Company Start Date" in df.columns and "Company Start Date Original" not in df.columns:
@@ -769,6 +946,12 @@ def fetch_placed_mits_data() -> List[Dict[str, Any]]:
         # Row 5 is the header row, so it becomes column names
         df = pd.read_csv(io.StringIO(response.text), skiprows=4, dtype=str)
         
+        # Standardize columns FIRST
+        df = standardize_columns(df)
+        
+        # Validate schema
+        validate_schema(df, "Placed MITs Sheet")
+        
         # Drop the first column (empty Column A)
         if len(df.columns) > 0:
             logger.info(f"Columns before drop: {df.columns.tolist()}")
@@ -780,7 +963,7 @@ def fetch_placed_mits_data() -> List[Dict[str, Any]]:
         placed_mits = []
         
         for idx, row in df.iterrows():
-            mit_name = str(row.get('MIT Name', '')).strip()
+            mit_name = str(safe_get(row, 'MIT Name', '')).strip()
             logger.info(f"Processing row {idx}: MIT Name = '{mit_name}'")
             
             # Stop at "Dropped Out/Terminated" section
@@ -796,20 +979,20 @@ def fetch_placed_mits_data() -> List[Dict[str, Any]]:
             # Extract placement data
             placed_mit = {
                 'name': mit_name,
-                'weeks_in_program': str(row.get('Weeks in Program', 'TBD')).strip(),
-                'training_start_date': str(row.get('Start date', 'TBD')).strip(),
-                'training_vertical': str(row.get('VERT', 'TBD')).strip(),
-                'training_site': str(row.get('Training Site', 'TBD')).strip(),
-                'training_location': str(row.get('Location', 'TBD')).strip(),
-                'training_salary': str(row.get('Salary', 'TBD')).strip(),
-                'level': str(row.get('Level', 'TBD')).strip(),
-                'status': str(row.get('Status', 'TBD')).strip(),
-                'confidence': str(row.get('Confidence', 'TBD')).strip(),
-                'notes': str(row.get('Notes', '')).strip(),
+                'weeks_in_program': str(safe_get(row, 'Weeks in Program', 'TBD')).strip(),
+                'training_start_date': str(safe_get(row, 'Start date', 'TBD')).strip(),
+                'training_vertical': str(safe_get(row, 'VERT', 'TBD')).strip(),
+                'training_site': str(safe_get(row, 'Training Site', 'TBD')).strip(),
+                'training_location': str(safe_get(row, 'Location', 'TBD')).strip(),
+                'training_salary': str(safe_get(row, 'Salary', 'TBD')).strip(),
+                'level': str(safe_get(row, 'Level', 'TBD')).strip(),
+                'status': str(safe_get(row, 'Status', 'TBD')).strip(),
+                'confidence': str(safe_get(row, 'Confidence', 'TBD')).strip(),
+                'notes': str(safe_get(row, 'Notes', '')).strip(),
                 # Placement information (NEW - not in other sheets)
-                'placement_site': str(row.get('Placement Site', 'TBD')).strip(),
-                'placement_title': str(row.get('Title', 'TBD')).strip(),
-                'placement_start_date': str(row.get('New Start Date', 'TBD')).strip(),
+                'placement_site': str(safe_get(row, 'Placement Site', 'TBD')).strip(),
+                'placement_title': str(safe_get(row, 'Title', 'TBD')).strip(),
+                'placement_start_date': str(safe_get(row, 'New Start Date', 'TBD')).strip(),
             }
             
             logger.info(f"Found placed MIT: {mit_name}")
@@ -833,16 +1016,16 @@ def find_candidate_in_sheet(name: str, df: pd.DataFrame, hint_mentor: str = None
 
     # Exact first
     for _, row in df.iterrows():
-        if normalize_name(row.get('MIT Name', '')) == target:
+        if normalize_name(safe_get(row, 'MIT Name', '')) == target:
             return row
 
     # Fuzzy with mentor boost
     for _, row in df.iterrows():
-        nm = row.get('MIT Name', '')
+        nm = safe_get(row, 'MIT Name', '')
         if fuzzy_match_name(name, nm, threshold=0.85):
             return row
         # If mentor matches, accept with lower name threshold
-        if hint_mentor and mentor_match(hint_mentor, row.get('Mentor Name', '')):
+        if hint_mentor and mentor_match(hint_mentor, safe_get(row, 'Mentor Name', '')):
             if fuzzy_match_name(name, nm, threshold=0.78):
                 return row
 
@@ -852,28 +1035,28 @@ def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
     """
     Create a minimal candidate profile from MIT Tracking fields.
     """
-    name_value = str(tracking_row.get('MIT Name', 'TBD'))
+    name_value = str(safe_get(tracking_row, 'MIT Name', 'TBD'))
     return {
         'name': name_value,
-        'training_site': str(tracking_row.get('Training Site', 'TBD')),
-        'location': str(tracking_row.get('Location', 'TBD')),
-        'week': int(pd.to_numeric(tracking_row.get('Week', 0), errors='coerce') or 0),
+        'training_site': str(safe_get(tracking_row, 'Training Site', 'TBD')),
+        'location': str(safe_get(tracking_row, 'Location', 'TBD')),
+        'week': int(pd.to_numeric(safe_get(tracking_row, 'Week', 0), errors='coerce') or 0),
         'expected_graduation_week': 'TBD',
-        'salary': parse_salary(tracking_row.get('Salary', 0)),
-        'status': str(tracking_row.get('Status', 'pending start')).lower(),
+        'salary': parse_salary(safe_get(tracking_row, 'Salary', 0)),
+        'status': str(safe_get(tracking_row, 'Status', 'pending start')).lower(),
         'training_program': 'MIT',
-        'mentor_name': str(tracking_row.get('Mentor', 'TBD')),
+        'mentor_name': str(safe_get(tracking_row, 'Mentor', 'TBD')),
         'mentor_title': 'TBD',
         'bio': get_bio_for_name(name_value),
         'scores': {},
         'onboarding_progress': None,
         'business_lessons_progress': None,
         'operation_details': {
-            'company_start_date': str(tracking_row.get('Start date', 'TBD')),
+            'company_start_date': str(safe_get(tracking_row, 'Start date', 'TBD')),
             'training_start_date': 'TBD',
             'title': 'TBD',
-            'operation_location': str(tracking_row.get('Training Site', 'TBD')),
-            'vertical': str(tracking_row.get('VERT', 'TBD'))
+            'operation_location': str(safe_get(tracking_row, 'Training Site', 'TBD')),
+            'vertical': str(safe_get(tracking_row, 'VERT', 'TBD'))
         },
         'resume_link': '',
         'profile_image': resolve_headshot_path(name_value),
@@ -892,13 +1075,13 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
     unified: List[Dict[str, Any]] = []
 
     for _, trow in mit_df.iterrows():
-        candidate_name = trow.get('MIT Name', '')
-        mentor_name = trow.get('Mentor', '')
+        candidate_name = safe_get(trow, 'MIT Name', '')
+        mentor_name = safe_get(trow, 'Mentor', '')
         if not str(candidate_name).strip():
             continue
 
         # MIT Tracking is source of truth for status (detects future start dates)
-        mit_tracking_status = str(trow.get('Status', '')).lower()
+        mit_tracking_status = str(safe_get(trow, 'Status', '')).lower()
 
         # Try main with mentor hint
         found = find_candidate_in_sheet(candidate_name, main_df, hint_mentor=mentor_name)
@@ -948,30 +1131,26 @@ def fetch_google_sheets_data() -> pd.DataFrame:
         # Read CSV data
         df = pd.read_csv(GOOGLE_SHEETS_URL, dtype=str)
         
-        # --- Normalize headers: fix non-breaking spaces, spacing, and case issues ---
-        df.columns = (
-            df.columns.astype(str)
-              .str.replace('\u00A0', ' ', regex=False)   # Replace non-breaking spaces
-              .str.replace(r'\s+', ' ', regex=True)      # Collapse multiple spaces
-              .str.strip()
-        )
+        # Standardize column names FIRST (before any processing)
+        df = standardize_columns(df)
         
-        # Apply case-insensitive renaming using COLUMN_MAPPING
-        import re
-        norm = lambda s: re.sub(r'\s+', ' ', s.replace('\u00A0', ' ').strip().lower())
-        mapping_norm = {norm(k): v for k, v in COLUMN_MAPPING.items()}
-        df.rename(columns=lambda c: mapping_norm.get(norm(c), c), inplace=True)
+        # Validate schema (logs warnings but doesn't stop)
+        validate_schema(df, "Main Google Sheets")
         
         # 🧩 DEBUG LOG
-        logger.info(f"[COLUMNS AFTER NORMALIZATION] {list(df.columns)}")
+        logger.info(f"[COLUMNS AFTER STANDARDIZATION] {list(df.columns)}")
         
-        # Filter for target programs
-        df = df[df['Training Program'].isin(TARGET_PROGRAMS)]
+        # Filter for target programs (use safe column check)
+        if 'Training Program' in df.columns:
+            df = df[df['Training Program'].isin(TARGET_PROGRAMS)]
+        else:
+            logger.warning("'Training Program' column missing - cannot filter by program")
         
         # Calculate Week from Company Start Date
         if "Company Start Date" in df.columns:
             # Save original string values before conversion
-            df["Company Start Date Original"] = df["Company Start Date"].copy()
+            if "Company Start Date Original" not in df.columns:
+                df["Company Start Date Original"] = df["Company Start Date"].copy()
             df["Company Start Date"] = pd.to_datetime(df["Company Start Date"], errors="coerce")
             today = pd.Timestamp.now()
             
@@ -989,6 +1168,7 @@ def fetch_google_sheets_data() -> pd.DataFrame:
             # For future dates (negative weeks), set to 0
             df["Week"] = df["Week"].clip(lower=0)
         else:
+            logger.warning("'Company Start Date' column missing - cannot calculate weeks")
             df["Week"] = 0
         
         # Derive Status column
@@ -1064,10 +1244,10 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
         Dict containing processed candidate data in dashboard format
     """
     # Calculate week from Company Start Date
-    week_value = calculate_week_from_start_date(row.get('Company Start Date'))
+    week_value = calculate_week_from_start_date(safe_get(row, 'Company Start Date'))
     
     # Parse salary
-    salary_value = parse_salary(row.get('Salary', 0))
+    salary_value = parse_salary(safe_get(row, 'Salary', 0))
     
     # Extract real scores
     real_scores = extract_real_scores(row)
@@ -1077,41 +1257,41 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
     business_lessons_progress = calculate_business_lessons_progress(row)
     
     # Resolve headshot path from candidate name
-    candidate_name = str(row.get('MIT Name', 'Unknown'))
+    candidate_name = str(safe_get(row, 'MIT Name', 'Unknown'))
     profile_image_path = resolve_headshot_path(candidate_name)
     
     logger.info(f"Generated profile image path for {candidate_name}: {profile_image_path}")
     
     # Debug graduation week extraction
-    graduation_week_raw = row.get('Expected Graduation Week', 'NOT_FOUND')
+    graduation_week_raw = safe_get(row, 'Expected Graduation Week', 'NOT_FOUND')
     logger.info(f"=== GRADUATION WEEK DEBUG FOR {candidate_name} ===")
     logger.info(f"Raw graduation week value: '{graduation_week_raw}' (type: {type(graduation_week_raw)})")
     
     # Build candidate data dictionary
     candidate_data = {
         'name': candidate_name,
-        'training_site': str(row.get('Training Site', row.get('Ops Account- Location', 'TBD'))),
-        'location': str(row.get('Location', 'TBD')),
+        'training_site': str(safe_get(row, 'Training Site', safe_get(row, 'Ops Account- Location', 'TBD'))),
+        'location': str(safe_get(row, 'Location', 'TBD')),
         'week': week_value,
-        'expected_graduation_week': str(row.get('Expected Graduation Week', 'TBD')),
+        'expected_graduation_week': str(safe_get(row, 'Expected Graduation Week', 'TBD')),
         'salary': salary_value,
-        'status': str(row.get('Status', 'TBD')),
-        'training_program': str(row.get('Training Program', 'TBD')),
-        'mentor_name': str(row.get('Mentor Name', 'TBD')),
-        'mentor_title': str(row.get('Title of Mentor', 'TBD')),
+        'status': str(safe_get(row, 'Status', 'TBD')),
+        'training_program': str(safe_get(row, 'Training Program', 'TBD')),
+        'mentor_name': str(safe_get(row, 'Mentor Name', 'TBD')),
+        'mentor_title': str(safe_get(row, 'Title of Mentor', 'TBD')),
         'bio': get_bio_for_name(candidate_name),
         'scores': {k: convert_numpy_types(v) for k, v in real_scores.items()},
         'onboarding_progress': {k: convert_numpy_types(v) for k, v in onboarding_progress.items()},
         'business_lessons_progress': {k: convert_numpy_types(v) for k, v in business_lessons_progress.items()},
         'operation_details': {
-            'company_start_date': str(row.get('Company Start Date Original', 'TBD')),  # Display original string
-            'training_start_date': str(row.get('Training Start Date', 'TBD')),  # Display only
-            'title': str(row.get('Title', 'TBD')),
-            'operation_location': str(row.get('Ops Account- Location', 'TBD')),
-            'vertical': str(row.get('Vertical', 'TBD'))
+            'company_start_date': str(safe_get(row, 'Company Start Date Original', 'TBD')),  # Display original string
+            'training_start_date': str(safe_get(row, 'Training Start Date', 'TBD')),  # Display only
+            'title': str(safe_get(row, 'Title', 'TBD')),
+            'operation_location': str(safe_get(row, 'Ops Account- Location', 'TBD')),
+            'vertical': str(safe_get(row, 'Vertical', 'TBD'))
         },
         # Local file paths
-        'resume_link': str(row.get('Resume', '')),
+        'resume_link': str(safe_get(row, 'Resume', '')),
         'profile_image': profile_image_path
     }
     
@@ -1444,27 +1624,73 @@ def fetch_mentor_relationships_data() -> List[Dict[str, Any]]:
         logger.info("Fetching mentor relationships data from Google Sheets")
         df = pd.read_csv(MENTOR_RELATIONSHIPS_URL, dtype=str)
         
-        # Clean column names
-        df.columns = df.columns.str.strip()
+        # Clean column names (normalize whitespace, but DON'T apply COLUMN_MAPPING)
+        # Mentor sheets have different structure than candidate sheets
+        # COLUMN_MAPPING would rename "Trainee Name" -> "MIT Name" which breaks this sheet
+        df.columns = (
+            df.columns.astype(str)
+              .str.replace('\u00A0', ' ', regex=False)  # Replace non-breaking spaces
+              .str.replace(r'\s+', ' ', regex=True)      # Collapse multiple spaces
+              .str.strip()
+        )
         
-        # Filter out empty rows
-        df = df.dropna(subset=['Mentor Name', 'Trainee Name'], how='all')
+        # Validate schema (but don't require candidate-specific columns)
+        validate_schema(df, "Mentor Relationships")
+        
+        # Debug: Log what columns we have
+        logger.info(f"Mentor Relationships columns: {list(df.columns)}")
+        
+        # Find the mentor and trainee name columns (handle variations)
+        mentor_col = None
+        trainee_col = None
+        
+        # Try to find the columns (handle variations in naming)
+        for col in df.columns:
+            col_lower = col.lower().strip()
+            if 'mentor' in col_lower and 'name' in col_lower:
+                mentor_col = col
+            if 'trainee' in col_lower and 'name' in col_lower:
+                trainee_col = col
+        
+        # Fallback: try exact matches
+        if not mentor_col and 'Mentor Name' in df.columns:
+            mentor_col = 'Mentor Name'
+        if not trainee_col and 'Trainee Name' in df.columns:
+            trainee_col = 'Trainee Name'
+        
+        if mentor_col and trainee_col:
+            logger.info(f"Using columns: Mentor='{mentor_col}', Trainee='{trainee_col}'")
+            # Filter out rows where both are empty
+            df = df.dropna(subset=[mentor_col, trainee_col], how='all')
+            # Also filter out rows where both are empty strings
+            df = df[~((df[mentor_col].astype(str).str.strip() == '') & (df[trainee_col].astype(str).str.strip() == ''))]
+        else:
+            logger.warning(f"Missing required columns for mentor relationships. Found columns: {list(df.columns)}")
+            logger.warning(f"Looking for columns containing 'mentor name' and 'trainee name'")
+            return []
         
         relationships = []
         for _, row in df.iterrows():
+            mentor_name = str(safe_get(row, mentor_col, '')).strip()
+            trainee_name = str(safe_get(row, trainee_col, '')).strip()
+            
+            # Skip rows where both names are empty
+            if not mentor_name and not trainee_name:
+                continue
+            
             relationships.append({
-                'mentor_name': str(row.get('Mentor Name', '')).strip(),
-                'trainee_name': str(row.get('Trainee Name', '')).strip(),
-                'training_program': str(row.get('Training Program', '')).strip(),
-                'completion_status': str(row.get('Completion Status', '')).strip(),
-                'effectiveness_score': float(row.get('Mentor Effectiveness Score', 0)) if pd.notna(row.get('Mentor Effectiveness Score')) else 0.0
+                'mentor_name': mentor_name,
+                'trainee_name': trainee_name,
+                'training_program': str(safe_get(row, 'Training Program', '')).strip(),
+                'completion_status': str(safe_get(row, 'Completion Status', '')).strip(),
+                'effectiveness_score': float(safe_get(row, 'Mentor Effectiveness Score', 0)) if pd.notna(safe_get(row, 'Mentor Effectiveness Score', 0)) else 0.0
             })
         
         logger.info(f"Successfully fetched {len(relationships)} mentor relationships")
         return relationships
         
     except Exception as e:
-        logger.error(f"Error fetching mentor relationships data: {str(e)}")
+        logger.error(f"Error fetching mentor relationships data: {str(e)}", exc_info=True)
         return []
 
 
@@ -1479,19 +1705,29 @@ def fetch_mentor_mei_summary() -> Dict[str, Dict[str, Any]]:
         logger.info("Fetching mentor MEI summary from Google Sheets")
         df = pd.read_csv(MENTOR_MEI_SUMMARY_URL, dtype=str)
         
+        # Standardize columns FIRST
+        df = standardize_columns(df)
+        
         # Clean column names
         df.columns = df.columns.str.strip()
         
+        # Validate schema
+        validate_schema(df, "Mentor MEI Summary")
+        
         # Filter out empty rows
-        df = df.dropna(subset=['Mentor Name'], how='all')
+        if 'Mentor Name' in df.columns:
+            df = df.dropna(subset=['Mentor Name'], how='all')
+        else:
+            logger.warning("Missing 'Mentor Name' column in MEI summary")
+            return {}
         
         summary = {}
         for _, row in df.iterrows():
-            mentor_name = str(row.get('Mentor Name', '')).strip()
+            mentor_name = str(safe_get(row, 'Mentor Name', '')).strip()
             if mentor_name:
                 summary[mentor_name] = {
-                    'num_trainees': int(row.get('Number of Trainees', 0)) if pd.notna(row.get('Number of Trainees')) else 0,
-                    'average_mei': float(row.get('Average MEI', 0)) if pd.notna(row.get('Average MEI')) else 0.0
+                    'num_trainees': int(safe_get(row, 'Number of Trainees', 0)) if pd.notna(safe_get(row, 'Number of Trainees', 0)) else 0,
+                    'average_mei': float(safe_get(row, 'Average MEI', 0)) if pd.notna(safe_get(row, 'Average MEI', 0)) else 0.0
                 }
         
         logger.info(f"Successfully fetched MEI summary for {len(summary)} mentors")
@@ -1512,19 +1748,71 @@ def build_mentor_profiles() -> List[Dict[str, Any]]:
     relationships = fetch_mentor_relationships_data()
     mei_summary = fetch_mentor_mei_summary()
     
-    # Group relationships by mentor
+    logger.info(f"Building mentor profiles: {len(relationships)} relationships, {len(mei_summary)} MEI summaries")
+    
+    # Create normalized MEI summary lookup for flexible name matching
+    mei_summary_normalized = {}
+    for mentor_name, data in mei_summary.items():
+        normalized = normalize_name(mentor_name)
+        if normalized:
+            mei_summary_normalized[normalized] = (mentor_name, data)  # Store original name and data
+    
+    # Group relationships by mentor (using normalized names for consistency)
     mentor_trainees = {}
+    mentor_name_map = {}  # Maps normalized name to original name from relationships
+    
     for rel in relationships:
         mentor_name = rel['mentor_name']
-        if mentor_name not in mentor_trainees:
-            mentor_trainees[mentor_name] = []
-        mentor_trainees[mentor_name].append(rel)
+        if not mentor_name or mentor_name.strip() == '':
+            continue  # Skip empty mentor names
+        
+        normalized = normalize_name(mentor_name)
+        if normalized not in mentor_trainees:
+            mentor_trainees[normalized] = []
+            mentor_name_map[normalized] = mentor_name  # Store original name
+        
+        mentor_trainees[normalized].append(rel)
+    
+    logger.info(f"Grouped into {len(mentor_trainees)} unique mentors from relationships")
+    
+    # If no relationships but we have MEI summary, create profiles from MEI summary only
+    if not mentor_trainees and mei_summary:
+        logger.info("No relationships found, creating profiles from MEI summary only")
+        for mentor_name, summary_data in mei_summary.items():
+            if not mentor_name or mentor_name.strip() == '':
+                continue
+            lifetime_trainees = summary_data.get('num_trainees', 0)
+            profiles.append({
+                'name': mentor_name,
+                'average_mei': round(summary_data.get('average_mei', 0.0), 2),
+                'num_trainees': 0,  # No current relationships
+                'trainee_count': lifetime_trainees,  # Lifetime total from MEI summary (for frontend)
+                'completed': 0,
+                'in_progress': 0,
+                'unsuccessful': 0,
+                'tier': 'Strong Mentor' if summary_data.get('average_mei', 0) >= 2.5 else ('In Progress' if summary_data.get('average_mei', 0) >= 1.5 else 'Needs Improvement'),
+                'tier_color': 'green' if summary_data.get('average_mei', 0) >= 2.5 else ('yellow' if summary_data.get('average_mei', 0) >= 1.5 else 'red'),
+                'trainees': [],
+                'success_rate': 0.0
+            })
+        profiles.sort(key=lambda x: x['average_mei'], reverse=True)
+        logger.info(f"Built {len(profiles)} mentor profiles from MEI summary only")
+        return profiles
     
     # Build profiles
     profiles = []
-    for mentor_name, trainees in mentor_trainees.items():
-        # Get MEI summary or calculate from relationships
-        summary = mei_summary.get(mentor_name, {})
+    for normalized_name, trainees in mentor_trainees.items():
+        # Get original mentor name (prefer from relationships, fallback to MEI summary)
+        original_name = mentor_name_map.get(normalized_name, normalized_name)
+        
+        # Try to find MEI summary using normalized name matching
+        summary = {}
+        if normalized_name in mei_summary_normalized:
+            original_mei_name, summary = mei_summary_normalized[normalized_name]
+            # Use the original name from MEI summary if available (more consistent)
+            if original_mei_name:
+                original_name = original_mei_name
+        
         avg_mei = summary.get('average_mei', 0.0)
         
         # If no summary, calculate from relationships
@@ -1532,10 +1820,39 @@ def build_mentor_profiles() -> List[Dict[str, Any]]:
             scores = [t['effectiveness_score'] for t in trainees if t['effectiveness_score'] > 0]
             avg_mei = sum(scores) / len(scores) if scores else 0.0
         
-        # Count completion statuses
-        completed = sum(1 for t in trainees if 'Complete' in t['completion_status'])
-        in_progress = sum(1 for t in trainees if 'Currently' in t['completion_status'] or 'Pending' in t['completion_status'])
-        unsuccessful = sum(1 for t in trainees if any(x in t['completion_status'] for x in ['Removed', 'Resigned', 'Incomplete', 'Never']))
+        # Count completion statuses (case-insensitive matching)
+        completed = 0
+        in_progress = 0
+        unsuccessful = 0
+        
+        logger.debug(f"Processing {len(trainees)} trainees for mentor {original_name}")
+        for t in trainees:
+            status = str(t.get('completion_status', '')).lower().strip()
+            trainee_name = t.get('trainee_name', 'Unknown')
+            
+            if any(x in status for x in ['complete', 'completed', 'successful', 'graduated']):
+                completed += 1
+                logger.debug(f"  {trainee_name}: COMPLETED (status: '{t.get('completion_status', '')}')")
+            elif any(x in status for x in ['currently', 'pending', 'in progress', 'active', 'training']):
+                in_progress += 1
+                logger.debug(f"  {trainee_name}: IN PROGRESS (status: '{t.get('completion_status', '')}')")
+            elif any(x in status for x in ['removed', 'resigned', 'incomplete', 'failed', 'never', 'unsuccessful', 'terminated']):
+                unsuccessful += 1
+                logger.debug(f"  {trainee_name}: UNSUCCESSFUL (status: '{t.get('completion_status', '')}')")
+            else:
+                # Default to in-progress if status is unclear
+                in_progress += 1
+                logger.debug(f"  {trainee_name}: DEFAULT TO IN PROGRESS (status: '{t.get('completion_status', '')}')")
+        
+        logger.debug(f"Mentor {original_name}: completed={completed}, in_progress={in_progress}, unsuccessful={unsuccessful}")
+        
+        # Get lifetime trainee count from MEI summary (more accurate than len(trainees))
+        lifetime_trainees = summary.get('num_trainees', len(trainees))
+        
+        # Calculate success rate: completed / (completed + unsuccessful) * 100
+        # Only count finished trainees (exclude in-progress) in denominator
+        finished_count = completed + unsuccessful
+        success_rate = round((completed / finished_count * 100) if finished_count > 0 else 0.0, 1)
         
         # Determine mentor tier
         if avg_mei >= 2.5:
@@ -1549,16 +1866,17 @@ def build_mentor_profiles() -> List[Dict[str, Any]]:
             tier_color = 'red'
         
         profiles.append({
-            'name': mentor_name,
+            'name': original_name,  # Use original name (from MEI summary if available)
             'average_mei': round(avg_mei, 2),
-            'num_trainees': len(trainees),
+            'num_trainees': len(trainees),  # Current active relationships
+            'trainee_count': lifetime_trainees,  # Lifetime total from MEI summary (for frontend)
             'completed': completed,
             'in_progress': in_progress,
             'unsuccessful': unsuccessful,
             'tier': tier,
             'tier_color': tier_color,
             'trainees': trainees,
-            'success_rate': round((completed / len(trainees) * 100) if trainees else 0, 1)
+            'success_rate': success_rate
         })
     
     # Sort by average MEI descending
@@ -1806,19 +2124,19 @@ def get_mit_alumni() -> Dict[str, Any]:
                 logger.info(f"Found enrichment data for {name} in Fallback sheet")
                 
                 # Add mentor information
-                alumni_profile['mentor_name'] = str(fallback_row.get('Mentor Name', 'TBD')).strip()
+                alumni_profile['mentor_name'] = str(safe_get(fallback_row, 'Mentor Name', 'TBD')).strip()
                 
                 # Add scores if available
-                alumni_profile['mock_qbr_score'] = float(pd.to_numeric(fallback_row.get('Mock QBR Score', 0), errors='coerce') or 0)
-                alumni_profile['assessment_score'] = float(pd.to_numeric(fallback_row.get('Assessment Score', 0), errors='coerce') or 0)
-                alumni_profile['perf_eval_score'] = float(pd.to_numeric(fallback_row.get('Perf Evaluation Score', 0), errors='coerce') or 0)
-                alumni_profile['confidence_score'] = float(pd.to_numeric(fallback_row.get('Confidence Score', 0), errors='coerce') or 0)
+                alumni_profile['mock_qbr_score'] = float(pd.to_numeric(safe_get(fallback_row, 'Mock QBR Score', 0), errors='coerce') or 0)
+                alumni_profile['assessment_score'] = float(pd.to_numeric(safe_get(fallback_row, 'Assessment Score', 0), errors='coerce') or 0)
+                alumni_profile['perf_eval_score'] = float(pd.to_numeric(safe_get(fallback_row, 'Perf Evaluation Score', 0), errors='coerce') or 0)
+                alumni_profile['confidence_score'] = float(pd.to_numeric(safe_get(fallback_row, 'Confidence Score', 0), errors='coerce') or 0)
                 
-                skill_rank = str(fallback_row.get('Skill Ranking', 'TBD')).strip()
+                skill_rank = str(safe_get(fallback_row, 'Skill Ranking', 'TBD')).strip()
                 alumni_profile['skill_ranking'] = skill_rank if skill_rank.lower() not in ['nan', 'none', ''] else 'TBD'
                 
                 # Add graduation date if available
-                grad_date = str(fallback_row.get('Graduation Date', '')).strip()
+                grad_date = str(safe_get(fallback_row, 'Graduation Date', '')).strip()
                 if grad_date and grad_date.lower() not in ['nan', 'none', '']:
                     alumni_profile['graduation_date'] = grad_date
             else:
