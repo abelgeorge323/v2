@@ -109,6 +109,24 @@ SCORE_COLUMNS = {
 }
 
 # =============================================================================
+# REQUIRED COLUMNS CONFIGURATION
+# =============================================================================
+
+# Core required columns that must exist for the dashboard to function
+REQUIRED_COLUMNS = [
+    'MIT Name',  # Essential for candidate identification
+    'Training Program',  # Essential for filtering
+]
+
+# Important columns (warn if missing but don't stop execution)
+IMPORTANT_COLUMNS = [
+    'Company Start Date',  # Used for week calculation
+    'Status',  # Used for status derivation
+    'Salary',  # Used for salary parsing
+    'Week',  # Used for categorization
+]
+
+# =============================================================================
 # CACHE CONFIGURATION
 # =============================================================================
 
