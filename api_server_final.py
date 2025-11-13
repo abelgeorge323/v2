@@ -56,6 +56,8 @@ CORS(app)
 app.config['JSON_AS_ASCII'] = False
 
 # Set up logging
+# Use INFO level for performance (skips debug logs). Set to DEBUG only when needed for troubleshooting.
+# INFO level: Shows important operations but skips verbose debug logs
 logging.basicConfig(
     level=logging.INFO if DEBUG_MODE else logging.WARNING,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -113,17 +115,31 @@ class DataCache:
 # Global cache instance
 data_cache = DataCache()
 
+# Cache for merged candidate sources (most expensive operation - 3 HTTP requests + processing)
+merged_candidates_cache = {
+    'data': None,
+    'timestamp': None
+}
+
 # =============================================================================
 # DATA FETCHING WITH CACHING
 # =============================================================================
 
 def get_cached_data() -> pd.DataFrame:
     """
-    Get data from cache or fetch fresh data if cache is expired
+    Get data from cache or fetch fresh data if cache is expired.
+    Respects FORCE_FRESH_DATA flag to bypass cache.
     
     Returns:
         pd.DataFrame: Processed data from Google Sheets
     """
+    # Force fresh data if flag is set
+    if FORCE_FRESH_DATA:
+        log_debug("FORCE_FRESH_DATA enabled - bypassing cache")
+        fresh_data = fetch_google_sheets_data()
+        data_cache.set_data(fresh_data)  # Still cache it for future use
+        return fresh_data
+    
     # Check cache first
     cached_data = data_cache.get_data()
     if cached_data is not None:
@@ -133,6 +149,39 @@ def get_cached_data() -> pd.DataFrame:
     log_debug("Cache expired, fetching fresh data")
     fresh_data = fetch_google_sheets_data()
     data_cache.set_data(fresh_data)
+    return fresh_data
+
+def get_cached_merged_candidates() -> List[Dict[str, Any]]:
+    """
+    Get merged candidates from cache or compute fresh if expired.
+    This is the most expensive operation (3 HTTP requests + processing all candidates).
+    Respects FORCE_FRESH_DATA flag to bypass cache.
+    
+    Returns:
+        List of merged candidate dictionaries
+    """
+    # Force fresh data if flag is set
+    if FORCE_FRESH_DATA:
+        log_debug("FORCE_FRESH_DATA enabled - bypassing merged candidates cache")
+        fresh_data = merge_candidate_sources()
+        merged_candidates_cache['data'] = fresh_data
+        merged_candidates_cache['timestamp'] = datetime.now()
+        return fresh_data
+    
+    cache_duration = timedelta(minutes=CACHE_DURATION_MINUTES)
+    
+    # Check if cache is valid
+    if (merged_candidates_cache['data'] is not None and 
+        merged_candidates_cache['timestamp'] is not None and
+        datetime.now() - merged_candidates_cache['timestamp'] < cache_duration):
+        log_debug("Using cached merged candidates")
+        return merged_candidates_cache['data']
+    
+    # Compute fresh data
+    log_debug("Cache expired, computing fresh merged candidates")
+    fresh_data = merge_candidate_sources()
+    merged_candidates_cache['data'] = fresh_data
+    merged_candidates_cache['timestamp'] = datetime.now()
     return fresh_data
 
 # =============================================================================
@@ -183,8 +232,8 @@ def get_dashboard_data():
         JSON response with dashboard metrics
     """
     try:
-        # Use unified candidate list from three-tier integration
-        candidates = merge_candidate_sources()
+        # Use unified candidate list from three-tier integration (cached)
+        candidates = get_cached_merged_candidates()
         
         # Calculate week-based categories first
         categorized = categorize_candidates_by_week(candidates)
@@ -239,7 +288,7 @@ def get_candidates():
         JSON response with list of candidates ready for placement
     """
     try:
-        unified = merge_candidate_sources()
+        unified = get_cached_merged_candidates()
         ready_list = [c for c in unified if str(c.get('status','')).lower() == 'ready']
         response = jsonify(ready_list)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
@@ -258,7 +307,7 @@ def get_all_candidates():
         JSON response with active candidates only
     """
     try:
-        all_candidates = merge_candidate_sources()
+        all_candidates = get_cached_merged_candidates()
         # Filter out pending start (incoming MITs who haven't started yet)
         active_only = [c for c in all_candidates if 'pending' not in str(c.get('status', '')).lower()]
         response = jsonify(active_only)
@@ -278,7 +327,7 @@ def get_in_training_candidates():
         JSON response with in-training candidates
     """
     try:
-        unified = merge_candidate_sources()
+        unified = get_cached_merged_candidates()
         training_list = [c for c in unified if str(c.get('status','')).lower() == 'training']
         response = jsonify(training_list)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
@@ -297,7 +346,7 @@ def get_offer_pending_candidates():
         JSON response with pending start candidates
     """
     try:
-        unified = merge_candidate_sources()
+        unified = get_cached_merged_candidates()
         # Changed from 'offer' to 'pending' to match new "Pending Start" status
         offer_list = [c for c in unified if 'pending' in str(c.get('status','')).lower()]
         response = jsonify(offer_list)
@@ -321,7 +370,7 @@ def get_candidate_profile(name: str):
     """
     try:
         # Step 1: Check current MIT candidates
-        unified = merge_candidate_sources()
+        unified = get_cached_merged_candidates()
         target_norm = normalize_name(name)
         candidate_data = None
         
@@ -534,6 +583,60 @@ def debug_columns():
         log_error("Error debugging columns", e)
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/debug-mentor-relationships', methods=['GET'])
+def debug_mentor_relationships():
+    """Debug endpoint to see mentor relationships data and columns."""
+    try:
+        import pandas as pd
+        from config import MENTOR_RELATIONSHIPS_URL
+        
+        # Fetch raw data
+        df = pd.read_csv(MENTOR_RELATIONSHIPS_URL, dtype=str)
+        
+        # Clean columns
+        df.columns = (
+            df.columns.astype(str)
+              .str.replace('\u00A0', ' ', regex=False)
+              .str.replace(r'\s+', ' ', regex=True)
+              .str.strip()
+        )
+        
+        # Get relationships
+        relationships = fetch_mentor_relationships_data()
+        
+        return jsonify({
+            'raw_columns': list(df.columns),
+            'relationships_count': len(relationships),
+            'sample_relationships': relationships[:5] if relationships else [],
+            'sample_raw_data': df.head(3).to_dict('records') if not df.empty else []
+        }), 200
+    except Exception as e:
+        log_error("Error debugging mentor relationships", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/debug-mentor-profiles', methods=['GET'])
+def debug_mentor_profiles():
+    """Debug endpoint to see mentor profiles build process."""
+    try:
+        from utils import fetch_mentor_relationships_data, fetch_mentor_mei_summary, build_mentor_profiles
+        
+        relationships = fetch_mentor_relationships_data()
+        mei_summary = fetch_mentor_mei_summary()
+        profiles = build_mentor_profiles()
+        
+        return jsonify({
+            'relationships_count': len(relationships),
+            'mei_summary_count': len(mei_summary),
+            'profiles_count': len(profiles),
+            'sample_relationships': relationships[:3] if relationships else [],
+            'sample_mei_summary': dict(list(mei_summary.items())[:3]) if mei_summary else {},
+            'sample_profiles': profiles[:3] if profiles else [],
+            'all_mentor_names': [p['name'] for p in profiles]
+        }), 200
+    except Exception as e:
+        log_error("Error debugging mentor profiles", e)
+        return jsonify({'error': str(e)}), 500
+
 # =============================================================================
 # WEEK-BASED FILTERING ENDPOINTS
 # =============================================================================
@@ -542,7 +645,7 @@ def debug_columns():
 def get_weeks_0_3():
     """Candidates in weeks 0-3 (Operational Overview)"""
     try:
-        candidates = merge_candidate_sources()
+        candidates = get_cached_merged_candidates()
         categorized = categorize_candidates_by_week(candidates)
         return jsonify(categorized['weeks_0_3']), 200
     except Exception as e:
@@ -553,7 +656,7 @@ def get_weeks_0_3():
 def get_weeks_4_6():
     """Candidates in weeks 4-6 (Active Training)"""
     try:
-        candidates = merge_candidate_sources()
+        candidates = get_cached_merged_candidates()
         categorized = categorize_candidates_by_week(candidates)
         return jsonify(categorized['weeks_4_6']), 200
     except Exception as e:
@@ -564,7 +667,7 @@ def get_weeks_4_6():
 def get_week_7_priority():
     """ONLY Week 7 candidates (Placement Priority)"""
     try:
-        candidates = merge_candidate_sources()
+        candidates = get_cached_merged_candidates()
         categorized = categorize_candidates_by_week(candidates)
         return jsonify(categorized['week_7_only']), 200
     except Exception as e:
@@ -575,7 +678,7 @@ def get_week_7_priority():
 def get_weeks_8_plus():
     """Candidates week 8+ (Ready for Placement)"""
     try:
-        candidates = merge_candidate_sources()
+        candidates = get_cached_merged_candidates()
         categorized = categorize_candidates_by_week(candidates)
         return jsonify(categorized['weeks_8_plus']), 200
     except Exception as e:
@@ -611,11 +714,24 @@ def get_mentor_profile(mentor_name):
     """Get detailed profile for a specific mentor"""
     profiles = build_mentor_profiles()
     
+    log_debug(f"Looking for mentor: '{mentor_name}' in {len(profiles)} profiles")
+    if profiles:
+        log_debug(f"Sample mentor names: {[p['name'] for p in profiles[:5]]}")
+    
     # Find mentor by name using normalized matching (handles trailing spaces, case, etc.)
     target_norm = normalize_name(mentor_name)
-    mentor = next((m for m in profiles if normalize_name(m['name']) == target_norm), None)
+    log_debug(f"Normalized search name: '{target_norm}'")
+    
+    mentor = None
+    for m in profiles:
+        mentor_norm = normalize_name(m['name'])
+        log_debug(f"Comparing: '{target_norm}' vs '{mentor_norm}' (from '{m['name']}')")
+        if mentor_norm == target_norm:
+            mentor = m
+            break
     
     if not mentor:
+        log_debug(f"Mentor '{mentor_name}' not found. Available mentors: {[p['name'] for p in profiles]}")
         return jsonify({'error': 'Mentor not found'}), 404
     
     return jsonify(mentor), 200
