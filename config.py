@@ -32,6 +32,9 @@ MENTOR_MEI_SUMMARY_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRH719
 # MIT Alumni/Placed MITs Sheet (MIT graduates with placement information)
 PLACED_MITS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbdhuieyA-axzb4aLe8c7zdAYXBLPNrIxKRder6j1ZAlj2g4U1k0YzkZbm_dEcSwBik4CJ57FROJ/pub?gid=1835369405&single=true&output=csv'
 
+# Weekly Meeting Insights Sheet
+MEETING_INSIGHTS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSGsWrJ7HL1EreSYuF2595dGglPSXtKAMrhL064HfvFJPi9E_4Usz5Pr7HTJhAzBhRptNLxX-epCjV9/pub?gid=0&single=true&output=csv'
+
 # =============================================================================
 # TRAINING PROGRAM CONFIGURATION
 # =============================================================================
