@@ -259,6 +259,51 @@
             </table>
         </div>
 
+        <!-- Mentor Assessment Executive Summary -->
+        <div class="section mentor-summary-section">
+            <h2>Mentor Assessment Executive Summary</h2>
+            <p class="executive-summary">{{ assessment_summary }}</p>
+        </div>
+
+        <!-- Mentor Assessment Top/Bottom MITs -->
+        <div class="section mentor-assessment">
+            <h2>Top 2 MITs — Mentor Assessment Performance</h2>
+            {% if top_2_mits %}
+                {% for mit in top_2_mits %}
+                <div class="mit-block good">
+                    <h3>{{ mit.name }} — {{ "%.2f"|format(mit.overall) }} avg</h3>
+                    <ul>
+                        <li>Core Competencies: {{ "%.2f"|format(mit.section_1) }}</li>
+                        <li>Soft Skills: {{ "%.2f"|format(mit.section_2) }}</li>
+                        <li>Engagement: {{ "%.2f"|format(mit.section_3) }}</li>
+                        <li>Readiness: {{ "%.2f"|format(mit.section_4) }}</li>
+                    </ul>
+                    <p class="feedback">{{ mit.observations }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="no-data">No top performers available.</p>
+            {% endif %}
+
+            <h2>MITs Requiring Development Focus</h2>
+            {% if bottom_2_mits %}
+                {% for mit in bottom_2_mits %}
+                <div class="mit-block bad">
+                    <h3>{{ mit.name }} — {{ "%.2f"|format(mit.overall) }} avg</h3>
+                    <ul>
+                        <li>Core Competencies: {{ "%.2f"|format(mit.section_1) }}</li>
+                        <li>Soft Skills: {{ "%.2f"|format(mit.section_2) }}</li>
+                        <li>Engagement: {{ "%.2f"|format(mit.section_3) }}</li>
+                        <li>Readiness: {{ "%.2f"|format(mit.section_4) }}</li>
+                    </ul>
+                    <p class="feedback">{{ mit.observations }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="no-data">All MITs scored above 3.5, indicating strong overall performance. No development focus candidates at this time.</p>
+            {% endif %}
+        </div>
+
         <!-- Performance Insights -->
         <div class="section">
             <h2>Performance Insights</h2>
