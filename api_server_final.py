@@ -17,12 +17,13 @@ Author: AI Assistant
 Date: October 2025
 """
 
-from flask import Flask, jsonify, request, send_file, send_from_directory
+from flask import Flask, jsonify, request, send_file, send_from_directory, render_template
 from flask_cors import CORS
 from datetime import datetime, timedelta
 import logging
 import pandas as pd
 import os
+from io import BytesIO
 from typing import Dict, List, Any, Optional
 
 # Import our custom modules
@@ -44,6 +45,7 @@ from utils import (
     get_active_training_mentors,
     get_mit_alumni
 )
+from executive_report import collect_report_data
 
 # =============================================================================
 # FLASK APP SETUP
@@ -117,6 +119,12 @@ data_cache = DataCache()
 
 # Cache for merged candidate sources (most expensive operation - 3 HTTP requests + processing)
 merged_candidates_cache = {
+    'data': None,
+    'timestamp': None
+}
+
+# Cache for executive report data
+executive_report_cache = {
     'data': None,
     'timestamp': None
 }
@@ -767,6 +775,79 @@ def get_mit_alumni_endpoint():
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 # =============================================================================
+# EXECUTIVE REPORT ROUTES
+# =============================================================================
+
+@app.route('/api/executive-print', methods=['GET'])
+def api_executive_print():
+    """
+    API endpoint to get executive print report data as JSON (cached for performance)
+    """
+    try:
+        cache_duration = timedelta(minutes=10)
+        
+        if (executive_report_cache['data'] is not None and 
+            executive_report_cache['timestamp'] is not None and
+            datetime.now() - executive_report_cache['timestamp'] < cache_duration):
+            response = jsonify(executive_report_cache['data'])
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        data = collect_report_data()
+        
+        executive_report_cache['data'] = data
+        executive_report_cache['timestamp'] = datetime.now()
+        
+        response = jsonify(data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error("Error generating executive print report data", e)
+        return jsonify({'error': 'Failed to generate executive print report data'}), 500
+
+@app.route('/executive-print')
+def executive_print():
+    """
+    Render the clean print-optimized executive report HTML
+    """
+    try:
+        data = collect_report_data()
+        return render_template('executive_print.html', **data)
+    except Exception as e:
+        log_error("Error rendering executive print report", e)
+        return f"Error generating report: {str(e)}", 500
+
+@app.route('/executive-print/pdf')
+def executive_print_pdf():
+    """
+    Generate PDF version of executive report using WeasyPrint
+    """
+    try:
+        from weasyprint import HTML
+        import os
+        
+        data = collect_report_data()
+        html_string = render_template('executive_print.html', **data)
+        
+        css_path = os.path.join(os.path.dirname(__file__), 'static', 'print.css')
+        
+        pdf = HTML(string=html_string).write_pdf(stylesheets=[css_path])
+        
+        return send_file(
+            BytesIO(pdf),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'MIT_Executive_Report_{datetime.now().strftime("%Y%m%d")}.pdf'
+        )
+        
+    except ImportError:
+        return "WeasyPrint not installed. Install with: pip install weasyprint", 500
+    except Exception as e:
+        log_error("Error generating PDF", e)
+        return f"Error generating PDF: {str(e)}", 500
+
+# =============================================================================
 # MAIN APPLICATION
 # =============================================================================
 
@@ -798,6 +879,11 @@ if __name__ == '__main__':
     print("   - GET /api/mentors - All mentors with profiles")
     print("   - GET /api/mentor/<name> - Individual mentor profile")
     print("   - GET /api/mentor-metrics - Mentor dashboard metrics")
+    print("   - GET /api/training-mentors - Active training mentors")
+    print("   - GET /api/mit-alumni - MIT alumni data")
+    print("   - GET /api/executive-print - Executive report data (JSON)")
+    print("   - GET /executive-print - Executive report (HTML)")
+    print("   - GET /executive-print/pdf - Executive report (PDF)")
     print("   - GET /headshots/<filename> - Serve headshot images")
     print("   - GET /data/<filename> - Serve data files (JSON)")
     print("   - GET /api/health - Health check")
