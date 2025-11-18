@@ -276,7 +276,43 @@
     "assessments": []
   },
   "micah scherrei": {
-    "assessments": []
+    "assessments": [
+      {
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 4,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 4
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Exceeding Expectations",
+          "independent_responsibility": 5,
+          "observations": "Great engagement and willing to learn! He is ambitious and very professional to all! Fully encaged with all site activities."
+        }
+      }
+    ]
   },
   "kathy telford": {
     "assessments": [
