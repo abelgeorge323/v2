@@ -192,6 +192,224 @@ def generate_performance_insights(candidates: List[Dict], training_indicators: D
     return insights[:5]
 
 # =============================================================================
+# MENTOR ASSESSMENT PROCESSING
+# =============================================================================
+
+# MITs to exclude from assessment calculations
+EXCLUDED_MITS = [
+    'kathryn keillor',  # Exclude unfairly judged assessments
+    'ivves mullen',     # Placed/removed from program
+    'shaquille thompson'  # Placed/removed from program
+]
+
+# Threshold for showing bottom 2 MITs (only show if scores are below this)
+POOR_SCORE_THRESHOLD = 3.5
+
+def load_mentor_assessments() -> Dict[str, Any]:
+    """
+    Load mentor_assessments.json safely using json.load
+    
+    Returns:
+        Dictionary keyed by MIT name
+    """
+    try:
+        import json
+        import os
+        
+        # Get the path to mentor_assessments.json (same approach as bios.json)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        assessments_path = os.path.join(current_dir, 'data', 'mentor_assessments.json')
+        
+        # If file doesn't exist, try alternative path (handles nested folder structure)
+        if not os.path.exists(assessments_path):
+            assessments_path = os.path.join(os.path.dirname(current_dir), 'data', 'mentor_assessments.json')
+        
+        logger.info(f"Loading mentor assessments from: {assessments_path}")
+        
+        with open(assessments_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            logger.info(f"Successfully loaded {len(data)} MIT assessments")
+            return data
+    except FileNotFoundError as e:
+        logger.error(f"Mentor assessments file not found. Tried: {assessments_path}")
+        logger.error(f"Error: {str(e)}")
+        return {}
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in mentor assessments file: {str(e)}")
+        return {}
+    except Exception as e:
+        logger.error(f"Error loading mentor assessments: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return {}
+
+def compute_section_averages(assessment: Dict[str, Any]) -> Dict[str, float]:
+    """
+    Compute section averages and overall score from an assessment
+    
+    Args:
+        assessment: Single assessment dictionary
+        
+    Returns:
+        Dictionary with section averages and overall score
+    """
+    try:
+        # Section 1: Core Competencies
+        section_1_questions = assessment.get('section_1_core_competencies', {}).get('questions', {})
+        section_1_values = [v for v in section_1_questions.values() if isinstance(v, (int, float))]
+        section_1_avg = sum(section_1_values) / len(section_1_values) if section_1_values else 0.0
+        
+        # Section 2: Soft Skills & Leadership
+        section_2_questions = assessment.get('section_2_soft_skills_leadership', {}).get('questions', {})
+        section_2_values = [v for v in section_2_questions.values() if isinstance(v, (int, float))]
+        section_2_avg = sum(section_2_values) / len(section_2_values) if section_2_values else 0.0
+        
+        # Section 3: Engagement & Aptitude
+        section_3_questions = assessment.get('section_3_engagement_aptitude', {}).get('questions', {})
+        section_3_values = [v for v in section_3_questions.values() if isinstance(v, (int, float))]
+        section_3_avg = sum(section_3_values) / len(section_3_values) if section_3_values else 0.0
+        
+        # Section 4: Readiness & Confidence (use confidence_level)
+        section_4_data = assessment.get('section_4_readiness_confidence', {})
+        section_4_avg = float(section_4_data.get('confidence_level', 0))
+        
+        # Overall = average of all four sections
+        overall = (section_1_avg + section_2_avg + section_3_avg + section_4_avg) / 4.0
+        
+        return {
+            'section_1': round(section_1_avg, 2),
+            'section_2': round(section_2_avg, 2),
+            'section_3': round(section_3_avg, 2),
+            'section_4': round(section_4_avg, 2),
+            'overall': round(overall, 2)
+        }
+    except Exception as e:
+        logger.error(f"Error computing section averages: {str(e)}")
+        return {
+            'section_1': 0.0,
+            'section_2': 0.0,
+            'section_3': 0.0,
+            'section_4': 0.0,
+            'overall': 0.0
+        }
+
+def build_mit_assessment_summary() -> List[Dict[str, Any]]:
+    """
+    Build summary of all MIT assessments, excluding specified MITs
+    
+    Returns:
+        List of MIT assessment summaries, sorted by overall score descending
+    """
+    assessments_data = load_mentor_assessments()
+    logger.info(f"Loaded {len(assessments_data)} MITs from assessments file")
+    summary_list = []
+    
+    excluded_normalized = [e.lower().strip() for e in EXCLUDED_MITS]
+    
+    for mit_name_raw, mit_data in assessments_data.items():
+        mit_name = mit_name_raw.lower().strip()
+        
+        # Skip excluded MITs
+        if mit_name in excluded_normalized:
+            logger.info(f"Excluding {mit_name_raw} from assessment calculations")
+            continue
+        
+        assessments = mit_data.get('assessments', [])
+        if not assessments:
+            logger.debug(f"Skipping {mit_name_raw} - no assessments")
+            continue
+        
+        # Use the most recent assessment (last one in the list)
+        latest_assessment = assessments[-1]
+        
+        # Compute section averages
+        scores = compute_section_averages(latest_assessment)
+        
+        # Get observations
+        observations = latest_assessment.get('section_4_readiness_confidence', {}).get('observations', 'No observations provided.')
+        
+        summary_list.append({
+            'name': mit_name_raw.title(),  # Capitalize properly
+            'section_1': scores['section_1'],
+            'section_2': scores['section_2'],
+            'section_3': scores['section_3'],
+            'section_4': scores['section_4'],
+            'overall': scores['overall'],
+            'observations': observations
+        })
+        logger.debug(f"Added assessment for {mit_name_raw}: overall={scores['overall']}")
+    
+    # Sort by overall score descending
+    summary_list.sort(key=lambda x: x['overall'], reverse=True)
+    
+    logger.info(f"Built assessment summary for {len(summary_list)} MITs")
+    return summary_list
+
+def generate_assessment_executive_summary(top_2: List[Dict], bottom_2: List[Dict]) -> str:
+    """
+    Generate executive summary text from top and bottom MITs
+    
+    Args:
+        top_2: List of top 2 MIT assessment summaries
+        bottom_2: List of bottom 2 MIT assessment summaries
+        
+    Returns:
+        Formatted executive summary string
+    """
+    if not top_2 or not bottom_2:
+        return "Insufficient assessment data available for executive summary."
+    
+    # Calculate ranges
+    top_scores = [mit['overall'] for mit in top_2]
+    bottom_scores = [mit['overall'] for mit in bottom_2]
+    
+    top_range_low = min(top_scores)
+    top_range_high = max(top_scores)
+    bottom_range_low = min(bottom_scores)
+    bottom_range_high = max(bottom_scores)
+    
+    # Find highest-scoring section among top 2
+    top_section_1_avg = sum([mit['section_1'] for mit in top_2]) / len(top_2)
+    top_section_2_avg = sum([mit['section_2'] for mit in top_2]) / len(top_2)
+    top_section_3_avg = sum([mit['section_3'] for mit in top_2]) / len(top_2)
+    top_section_4_avg = sum([mit['section_4'] for mit in top_2]) / len(top_2)
+    
+    top_sections = {
+        'Core Competencies': top_section_1_avg,
+        'Soft Skills and Leadership': top_section_2_avg,
+        'Engagement and Aptitude': top_section_3_avg,
+        'Readiness and Confidence': top_section_4_avg
+    }
+    
+    top_best_section_name = max(top_sections, key=top_sections.get)
+    top_best_section_score = top_sections[top_best_section_name]
+    
+    # Find lowest-scoring section among bottom 2
+    bottom_section_1_avg = sum([mit['section_1'] for mit in bottom_2]) / len(bottom_2)
+    bottom_section_2_avg = sum([mit['section_2'] for mit in bottom_2]) / len(bottom_2)
+    bottom_section_3_avg = sum([mit['section_3'] for mit in bottom_2]) / len(bottom_2)
+    bottom_section_4_avg = sum([mit['section_4'] for mit in bottom_2]) / len(bottom_2)
+    
+    bottom_sections = {
+        'Core Competencies': bottom_section_1_avg,
+        'Soft Skills and Leadership': bottom_section_2_avg,
+        'Engagement and Aptitude': bottom_section_3_avg,
+        'Readiness and Confidence': bottom_section_4_avg
+    }
+    
+    bottom_low_section_name = min(bottom_sections, key=bottom_sections.get)
+    bottom_low_section_score = bottom_sections[bottom_low_section_name]
+    
+    # Format ranges
+    top_best_range = f"{top_best_section_score:.1f}"
+    bottom_low_range = f"{bottom_low_section_score:.1f}"
+    
+    # Build summary text
+    summary = f"Top MITs averaged {top_range_low:.1f}–{top_range_high:.1f} overall, with highest scores in {top_best_section_name} ({top_best_range}). Lower-scoring MITs averaged {bottom_range_low:.1f}–{bottom_range_high:.1f}, with the lowest ratings concentrated in {bottom_low_section_name} ({bottom_low_range})."
+    
+    return summary
+
+# =============================================================================
 # MAIN DATA COLLECTION
 # =============================================================================
 
@@ -282,6 +500,27 @@ def collect_report_data() -> Dict[str, Any]:
     # Get weekly meeting insights
     meeting_insights = fetch_meeting_insights()
     
+    # Build mentor assessment summary
+    assessment_data = build_mit_assessment_summary()
+    
+    # Get top 2 and bottom 2 MITs
+    top_2_mits = assessment_data[:2] if len(assessment_data) >= 2 else assessment_data
+    
+    # Only include MITs that are below the threshold
+    bottom_2_mits = []
+    if len(assessment_data) >= 2:
+        bottom_2 = assessment_data[-2:]
+        # Only show MITs that have a score below threshold
+        bottom_2_mits = [mit for mit in bottom_2 if mit['overall'] < POOR_SCORE_THRESHOLD]
+    
+    # Generate assessment executive summary
+    if len(top_2_mits) >= 2 and len(bottom_2_mits) >= 1:
+        assessment_summary = generate_assessment_executive_summary(top_2_mits, bottom_2_mits)
+    elif len(top_2_mits) >= 2:
+        assessment_summary = f"Top MITs averaged {top_2_mits[0]['overall']:.1f}–{top_2_mits[1]['overall']:.1f} overall. All remaining MITs scored above {POOR_SCORE_THRESHOLD}, indicating strong overall performance."
+    else:
+        assessment_summary = "Insufficient assessment data available."
+    
     # Build all MITs list for appendix
     all_mits = []
     for candidate in candidates:
@@ -320,6 +559,9 @@ def collect_report_data() -> Dict[str, Any]:
         'training_indicators': training_indicators,
         'performance_insights': performance_insights,
         'meeting_insights': meeting_insights,
+        'assessment_summary': assessment_summary,
+        'top_2_mits': top_2_mits,
+        'bottom_2_mits': bottom_2_mits,
         'all_mits': all_mits
     }
 
