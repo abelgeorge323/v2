@@ -576,6 +576,112 @@ def extract_real_scores(row: pd.Series) -> Dict[str, Any]:
     return scores
 
 # =============================================================================
+# AVERAGE CALCULATION UTILITIES (for Executive Report)
+# =============================================================================
+
+def calculate_avg_onboarding_completion(candidates: List[Dict[str, Any]]) -> float:
+    """
+    Calculate average onboarding completion percentage across candidates
+    
+    Args:
+        candidates: List of candidate dictionaries with onboarding_progress
+        
+    Returns:
+        float: Average onboarding completion percentage (0-100)
+    """
+    if not candidates:
+        return 0.0
+    
+    total_percentage = 0.0
+    count = 0
+    
+    for candidate in candidates:
+        onboarding = candidate.get('onboarding_progress', {})
+        if isinstance(onboarding, dict):
+            percentage = onboarding.get('percentage', 0)
+            if isinstance(percentage, (int, float)):
+                total_percentage += float(percentage)
+                count += 1
+    
+    return round(total_percentage / count, 1) if count > 0 else 0.0
+
+def calculate_avg_lessons_completion(candidates: List[Dict[str, Any]]) -> float:
+    """
+    Calculate average business lessons completion percentage across candidates
+    
+    Args:
+        candidates: List of candidate dictionaries with business_lessons_progress
+        
+    Returns:
+        float: Average lessons completion percentage (0-100)
+    """
+    if not candidates:
+        return 0.0
+    
+    total_percentage = 0.0
+    count = 0
+    
+    for candidate in candidates:
+        lessons = candidate.get('business_lessons_progress', {})
+        if isinstance(lessons, dict):
+            percentage = lessons.get('percentage', 0)
+            if isinstance(percentage, (int, float)):
+                total_percentage += float(percentage)
+                count += 1
+    
+    return round(total_percentage / count, 1) if count > 0 else 0.0
+
+def calculate_avg_qbr_score(candidates: List[Dict[str, Any]]) -> Optional[float]:
+    """
+    Calculate average Mock QBR score across candidates
+    
+    Args:
+        candidates: List of candidate dictionaries with scores
+        
+    Returns:
+        Optional[float]: Average Mock QBR score, or None if no valid scores
+    """
+    if not candidates:
+        return None
+    
+    total_score = 0.0
+    count = 0
+    
+    for candidate in candidates:
+        scores = candidate.get('scores', {})
+        qbr_score = scores.get('mock_qbr_score', 0)
+        if isinstance(qbr_score, (int, float)) and qbr_score > 0:
+            total_score += float(qbr_score)
+            count += 1
+    
+    return round(total_score / count, 2) if count > 0 else None
+
+def calculate_avg_perf_score(candidates: List[Dict[str, Any]]) -> Optional[float]:
+    """
+    Calculate average Performance Evaluation score across candidates
+    
+    Args:
+        candidates: List of candidate dictionaries with scores
+        
+    Returns:
+        Optional[float]: Average performance score, or None if no valid scores
+    """
+    if not candidates:
+        return None
+    
+    total_score = 0.0
+    count = 0
+    
+    for candidate in candidates:
+        scores = candidate.get('scores', {})
+        perf_score = scores.get('perf_evaluation_score', 0)
+        if isinstance(perf_score, (int, float)) and perf_score > 0:
+            total_score += float(perf_score)
+            count += 1
+    
+    return round(total_score / count, 2) if count > 0 else None
+
+# =============================================================================
 # DATA FETCHING UTILITIES
 # =============================================================================
 
@@ -1934,7 +2040,7 @@ def get_active_training_mentors() -> Dict[str, Any]:
             status = str(candidate.get('status', '')).strip().lower()
             # Include both "training" and candidates in weeks 0-22
             week = candidate.get('week', 0)
-            if status == 'training' or (week >= 0 and week < 22 and status not in ['pending start', 'ready'] and 'pending' not in status):
+            if status == 'training' or (week >= 0 and week <= 22 and status not in ['pending start', 'ready'] and 'pending' not in status):
                 mentor_name = str(candidate.get('mentor_name', '')).strip()
                 # Filter out invalid mentor names
                 if mentor_name and mentor_name.lower() not in ['nan', 'none', '', 'n/a', 'tbd', '—']:
@@ -2157,3 +2263,35 @@ def get_mit_alumni() -> Dict[str, Any]:
             'total_alumni': 0,
             'alumni': []
         }
+
+def fetch_meeting_insights() -> List[str]:
+    """
+    Fetch weekly meeting bullet points from Google Sheets
+    
+    Returns:
+        List of insight strings (bullet points from the sheet)
+    """
+    try:
+        import requests
+        response = requests.get(MEETING_INSIGHTS_URL, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        
+        # Read CSV into DataFrame
+        from io import StringIO
+        df = pd.read_csv(StringIO(response.text))
+        
+        insights = []
+        # Get the first column (should be "Meeting Notes")
+        first_column = df.columns[0]
+        
+        for _, row in df.iterrows():
+            insight = str(safe_get(row, first_column, '')).strip()
+            # Only add non-empty insights (skip header row and empty rows)
+            if insight and insight.lower() not in ['nan', 'none', '', 'n/a', 'meeting notes', 'meeting note']:
+                insights.append(insight)
+        
+        logger.info(f"Fetched {len(insights)} meeting insights")
+        return insights
+    except Exception as e:
+        logger.error(f"Error fetching meeting insights: {str(e)}")
+        return []
