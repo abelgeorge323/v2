@@ -80,6 +80,7 @@
   "lloyd harrisonhine": {
     "assessments": [
       {
+        "date": "Survey 1",
         "section_1_core_competencies": {
           "questions": {
             "q1_operations_knowledge": 5,
@@ -112,6 +113,42 @@
           "weekly_performance": "Progressing as Expected",
           "independent_responsibility": 4,
           "observations": "Lloyd has shown willingness to adapt to changes and schedules. He is consistently asking questions of proper department leads and expectations. Lloyd was also very engaged in the introduction call. Lloyd has also already begun taking on his own shift including managing the employees, speaking with the customer, and completing daily 4insite tasks."
+        }
+      },
+      {
+        "date": "11/24/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 3,
+            "q2_problem_solving": 4,
+            "q3_time_management": 3,
+            "q4_quality_standards": 4,
+            "q5_safety_protocols": 4
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 4,
+            "q3_adaptability": 4,
+            "q4_initiative": 4,
+            "q5_accountability": 4
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 4,
+            "q2_learning_drive": 4,
+            "q3_flexibility": 3,
+            "q4_curiosity": 4,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 3,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": ""
         }
       }
     ]
@@ -158,6 +195,7 @@
   "evan tichenor": {
     "assessments": [
       {
+        "date": "Survey 1",
         "section_1_core_competencies": {
           "questions": {
             "q1_operations_knowledge": 5,
@@ -191,12 +229,49 @@
           "independent_responsibility": 5,
           "observations": "Evan is exceeding expectations across the board. His journalism and editorial background translates into exceptional communication skills and meticulous attention to detail. He demonstrates outstanding adaptability and initiative, consistently volunteering for challenging assignments.\n\nThis week, Evan independently led a client walkthrough, proactively identified three process improvement opportunities, and mentored newer team members on quality control procedures. His perfect scores in soft skills reflect his natural leadership presence and collaborative spirit.\n\nKey Strengths:\n• Exceptional problem-solving under pressure\n• Strong operational knowledge and safety awareness\n• Natural communicator who builds rapport quickly\n• Takes initiative without prompting\n• Adapts seamlessly to changing priorities\n\nDevelopment Opportunities:\n• Continue building experience with budget management\n• Expand knowledge of advanced scheduling systems\n\nOverall Assessment: Evan is already taking on independent responsibilities with confidence and shows readiness for accelerated progression into site management. His consistent high performance, combined with his enthusiasm for learning, makes him an ideal candidate for priority placement opportunities. I have full confidence in his ability to succeed in an Assistant Operations Manager role or higher. Highly recommend for immediate consideration."
         }
+      },
+      {
+        "date": "11/26/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 5,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Exceeding Expectations",
+          "independent_responsibility": 4,
+          "observations": "One of the best hires I have ever done"
+        }
       }
     ]
   },
   "jesus garcia": {
     "assessments": [
       {
+        "date": "Survey 1",
         "section_1_core_competencies": {
           "questions": {
             "q1_operations_knowledge": 5,
@@ -229,6 +304,42 @@
           "weekly_performance": "Progressing as Expected",
           "independent_responsibility": 5,
           "observations": "Overall, Jesus is doing a great job. There are a couple of areas for improvement regarding leadership presence and communicating confidently. I know he is new to his role, but we need someone with a \"Voice\" that commands respect and demonstrates confidence in their ability to lead a team. Jesus is very hesitant/reluctant when making a decision, even when he knows it's the correct decision. Little by little, I will work with him to ensure he receives the support he needs and feels empowered to lead effectively."
+        }
+      },
+      {
+        "date": "11/24/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 4,
+            "q2_problem_solving": 4,
+            "q3_time_management": 4,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 4
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 4,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 4,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 4
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "Jesus is quickly adapting to and learning SBM Operations. He is doing a great job and has already started building positive relationships with clients and his team."
         }
       }
     ]
@@ -278,6 +389,7 @@
   "micah scherrei": {
     "assessments": [
       {
+        "date": "Survey 1",
         "section_1_core_competencies": {
           "questions": {
             "q1_operations_knowledge": 5,
@@ -310,6 +422,42 @@
           "weekly_performance": "Exceeding Expectations",
           "independent_responsibility": 5,
           "observations": "Great engagement and willing to learn! He is ambitious and very professional to all! Fully encaged with all site activities."
+        }
+      },
+      {
+        "date": "11/25/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 3,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 4
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 4,
+            "q3_adaptability": 5,
+            "q4_initiative": 4,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 3,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 3
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "Created fliers to help attract people to apply for open custodian positions."
         }
       }
     ]
@@ -356,6 +504,7 @@
   "stephany lopez cardona": {
     "assessments": [
       {
+        "date": "Survey 1",
         "section_1_core_competencies": {
           "questions": {
             "q1_operations_knowledge": 5,
@@ -389,6 +538,42 @@
           "independent_responsibility": 5,
           "observations": "Stephany has a high sense of urgency and so far is a great team player."
         }
+      },
+      {
+        "date": "11/23/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 4,
+            "q4_quality_standards": 4,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Exceeding Expectations",
+          "independent_responsibility": 5,
+          "observations": "Stephany has demonstrated strong leadership and great customer service skills. She is always taking notes and questions on every item, retaining the information and uses on daily basis. She is learning safety items and the importance on the company and keep learning the importance of 4insite"
+        }
       }
     ]
   },
@@ -396,7 +581,44 @@
     "assessments": []
   },
   "jeramiah nguyen": {
-    "assessments": []
+    "assessments": [
+      {
+        "date": "11/21/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 4,
+            "q3_time_management": 3,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 4
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 4,
+            "q3_adaptability": 4,
+            "q4_initiative": 4,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 4,
+            "q3_flexibility": 4,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "The mentee can navigate 4insite confidently and complete audits: Mentee has mastered the basic functions to-date. However a full understanding of all of 4insites tools takes time. 1 internal quality audit completed to date."
+        }
+      }
+    ]
   }
 }
 
