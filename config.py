@@ -83,8 +83,17 @@ COLUMN_MAPPING = {
     # Resume column
     "Resume": "Resume",  # Column AZ - Resume URLs
     # Graduation week column - exact name from Google Sheets
-    "Initial Expected Graduation Week": "Expected Graduation Week"  # Column AO - Exact name from your Google Sheets
+    "Initial Expected Graduation Week": "Expected Graduation Week",  # Column AO - Exact name from your Google Sheets
+    # OIG completion column - exact name from Google Sheets
+    "Mentor Certification of Trainee's OIG Completion": "OIG Completion"  # Column BB - "Yes" if completed
 }
+
+# =============================================================================
+# OIG (ON-SITE INTEGRATION) CONFIGURATION
+# =============================================================================
+
+# OIG program start date - candidates who started before this are exempt
+OIG_START_DATE = "2025-11-17"  # November 17, 2025
 
 # =============================================================================
 # ONBOARDING TASKS CONFIGURATION
@@ -135,7 +144,7 @@ IMPORTANT_COLUMNS = [
 
 # Cache duration in minutes (how long to keep data in memory)
 CACHE_DURATION_MINUTES = 2  # Cache for 2 minutes - balance between performance and freshness
-FORCE_FRESH_DATA = False  # Use cached data when available (reset after testing)
+FORCE_FRESH_DATA = False  # Use cached data when available for better performance
 
 # =============================================================================
 # DEBUG CONFIGURATION
