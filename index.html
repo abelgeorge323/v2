@@ -3638,34 +3638,6 @@
                 }
             }
             
-            // Add mock OIG progress data based on week (will be replaced with real data from Google Sheets)
-            if (!candidate.oig_progress) {
-                const total = 13;
-                let completed;
-                
-                // Week 4+: All tasks complete
-                // Week 0-3: Progressive completion based on week
-                const week = parseInt(candidate.week) || 0;
-                
-                if (week >= 4) {
-                    completed = 13; // 100% complete for week 4+
-                } else if (week === 3) {
-                    completed = 10; // ~77% complete
-                } else if (week === 2) {
-                    completed = 7; // ~54% complete
-                } else if (week === 1) {
-                    completed = 4; // ~31% complete
-                } else {
-                    completed = 2; // ~15% complete for week 0
-                }
-                
-                candidate.oig_progress = {
-                    completed: completed,
-                    total: total,
-                    percentage: Math.round((completed / total) * 100)
-                };
-            }
-            
             // Render image directly; onerror falls back to initials
             const showImage = !!candidate.profile_image;
             
@@ -3839,18 +3811,20 @@
                                 ${candidate.operation_details.vertical !== '—' && candidate.operation_details.vertical ? `<div><strong>Vertical:</strong> ${cleanDisplayValue(candidate.operation_details.vertical, 'TBD')}</div>` : ''}
                             </div>
                             
-                            <!-- OIG Task Completion Section -->
-                            <div class="oig-progress-section" onclick="showOIGTaskModal('${candidate.name}')" style="cursor: pointer; margin-top: 20px; padding: 20px; background: rgba(16, 185, 129, 0.1); border: 2px solid ${candidate.oig_progress?.percentage >= 70 ? 'rgba(16, 185, 129, 0.5)' : candidate.oig_progress?.percentage >= 40 ? 'rgba(245, 158, 11, 0.5)' : 'rgba(239, 68, 68, 0.5)'}; border-radius: 12px; transition: all 0.2s ease;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                    <h4 style="margin: 0; font-size: 1.1rem; color: #ffffff; font-weight: 600;">📋 On-Site Integration (OIG) Task Completion</h4>
-                                    <span style="font-size: 1.2rem; font-weight: 700; color: ${candidate.oig_progress?.percentage >= 70 ? '#10b981' : candidate.oig_progress?.percentage >= 40 ? '#f59e0b' : '#ef4444'};">${candidate.oig_progress?.percentage || 0}%</span>
+                            <!-- OIG Completion Section -->
+                            <div class="oig-progress-section" style="margin-top: 20px; padding: 20px; background: rgba(16, 185, 129, 0.1); border: 2px solid ${candidate.oig_completion?.completed ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)'}; border-radius: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <h4 style="margin: 0; font-size: 1.1rem; color: #ffffff; font-weight: 600;">📋 On-Site Integration (OIG) Completion</h4>
+                                    <span style="font-size: 1.2rem; font-weight: 700; color: ${candidate.oig_completion?.completed ? '#10b981' : '#ef4444'};">
+                                        ${candidate.oig_completion?.completed ? '✓ Complete' : '✗ Incomplete'}
+                                    </span>
                                 </div>
-                                <div class="assessment-progress-bar" style="height: 16px; margin-bottom: 10px;">
-                                    <div class="assessment-progress-fill ${getOIGProgressColor(candidate.oig_progress?.percentage || 0)}" style="width: ${candidate.oig_progress?.percentage || 0}%"></div>
+                                <div class="progress-bar" style="background: rgba(255, 255, 255, 0.1); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 10px;">
+                                    <div class="assessment-progress-fill ${candidate.oig_completion?.completed ? 'green' : 'red'}" style="width: ${candidate.oig_completion?.completed ? '100' : '0'}%"></div>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="color: #9ca3af; font-size: 0.95rem;">${candidate.oig_progress?.completed || 0} of ${candidate.oig_progress?.total || 13} tasks completed</span>
-                                    <span style="color: #8b5cf6; font-size: 0.9rem; text-decoration: underline;">View Details →</span>
+                                <div style="display: flex; flex-direction: column; gap: 5px;">
+                                    <span style="color: #9ca3af; font-size: 0.95rem;">${candidate.oig_completion?.status || 'Unknown'}</span>
+                                    ${candidate.oig_completion?.exempt ? '<span style="color: #10b981; font-size: 0.85rem; font-style: italic;">ⓘ Started before OIG program launch (11/17/2024)</span>' : ''}
                                 </div>
                             </div>
                         </div>
