@@ -510,6 +510,90 @@ def calculate_onboarding_progress(row: pd.Series) -> Dict[str, Any]:
         'percentage': percentage
     }
 
+def calculate_oig_completion(row: pd.Series) -> Dict[str, Any]:
+    """
+    Calculate OIG (On-Site Integration) completion status
+    
+    OIG started on 11/17/2024. Candidates who entered the program before this date
+    are automatically marked as completed (grandfathered in).
+    
+    For candidates after 11/17/2024, completion is determined by the 
+    "Mentor Certification of Trainee's OIG Completion" column (Column BB).
+    
+    Args:
+        row: Pandas Series containing candidate data
+        
+    Returns:
+        Dict containing OIG completion status:
+        {
+            'completed': bool,  # True if OIG is completed
+            'exempt': bool,     # True if candidate started before OIG program
+            'status': str       # 'Completed', 'Exempt', or 'Not Completed'
+        }
+    """
+    from datetime import datetime
+    from config import OIG_START_DATE
+    
+    candidate_name = safe_get(row, 'MIT Name', 'Unknown')
+    
+    # Get company start date (already converted to datetime in fetch_google_sheets_data)
+    company_start_date = safe_get(row, 'Company Start Date')
+    oig_completion_value = safe_get(row, 'OIG Completion', '')
+    
+    # Parse OIG start date
+    try:
+        oig_program_start = pd.to_datetime(OIG_START_DATE)
+    except Exception as e:
+        logger.warning(f"Could not parse OIG_START_DATE '{OIG_START_DATE}': {e}")
+        oig_program_start = pd.to_datetime("2024-11-17")
+    
+    # Check if candidate started before OIG program
+    # Company Start Date is already a Timestamp from fetch_google_sheets_data()
+    if pd.notna(company_start_date):
+        try:
+            # Convert to Timestamp if it's not already
+            if not isinstance(company_start_date, pd.Timestamp):
+                candidate_start = pd.to_datetime(company_start_date)
+            else:
+                candidate_start = company_start_date
+            
+            logger.debug(f"OIG Check for {candidate_name}: Start date = {candidate_start}, OIG start = {oig_program_start}")
+            
+            if candidate_start < oig_program_start:
+                # Grandfathered in - exempt from OIG
+                logger.info(f"{candidate_name} exempt from OIG (started {candidate_start} before {oig_program_start})")
+                return {
+                    'completed': True,
+                    'exempt': True,
+                    'status': 'Exempt (Started before OIG program)'
+                }
+        except Exception as e:
+            logger.error(f"Error parsing date for {candidate_name}: {e}, date value: {company_start_date}")
+            # Continue to check OIG Completion column
+    else:
+        logger.warning(f"{candidate_name}: No Company Start Date found for OIG exemption check")
+    
+    # Check OIG Completion column (Column BB)
+    if pd.notna(oig_completion_value):
+        oig_value_str = str(oig_completion_value).strip().lower()
+        
+        # Check for "Yes" or other completion keywords
+        if oig_value_str in ['yes', 'y', 'true', '1', 'completed', 'complete', 'x']:
+            logger.info(f"{candidate_name}: OIG marked as completed in Column BB")
+            return {
+                'completed': True,
+                'exempt': False,
+                'status': 'Completed'
+            }
+    
+    # Not completed
+    logger.debug(f"{candidate_name}: OIG not completed")
+    return {
+        'completed': False,
+        'exempt': False,
+        'status': 'Not Completed'
+    }
+
 # =============================================================================
 # SCORE PROCESSING UTILITIES
 # =============================================================================
@@ -1361,6 +1445,7 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
     # Calculate progress metrics
     onboarding_progress = calculate_onboarding_progress(row)
     business_lessons_progress = calculate_business_lessons_progress(row)
+    oig_completion = calculate_oig_completion(row)
     
     # Resolve headshot path from candidate name
     candidate_name = str(safe_get(row, 'MIT Name', 'Unknown'))
@@ -1389,6 +1474,7 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
         'scores': {k: convert_numpy_types(v) for k, v in real_scores.items()},
         'onboarding_progress': {k: convert_numpy_types(v) for k, v in onboarding_progress.items()},
         'business_lessons_progress': {k: convert_numpy_types(v) for k, v in business_lessons_progress.items()},
+        'oig_completion': {k: convert_numpy_types(v) for k, v in oig_completion.items()},
         'operation_details': {
             'company_start_date': str(safe_get(row, 'Company Start Date Original', 'TBD')),  # Display original string
             'training_start_date': str(safe_get(row, 'Training Start Date', 'TBD')),  # Display only
