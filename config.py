@@ -85,7 +85,9 @@ COLUMN_MAPPING = {
     # Graduation week column - exact name from Google Sheets
     "Initial Expected Graduation Week": "Expected Graduation Week",  # Column AO - Exact name from your Google Sheets
     # OIG completion column - exact name from Google Sheets
-    "Mentor Certification of Trainee's OIG Completion": "OIG Completion"  # Column BB - "Yes" if completed
+    "Mentor Certification of Trainee's OIG Completion": "OIG Completion",  # Column BB - "Yes" if completed
+    # Mock QBR scheduling
+    "Mock QBR Date (MIT Only)": "Mock QBR Date"  # Column AD - Date of scheduled Mock QBR
 }
 
 # =============================================================================
