@@ -131,13 +131,14 @@ def filter_training_indicators_by_assessments(candidates: List[Dict]) -> Dict[st
 # PERFORMANCE INSIGHTS
 # =============================================================================
 
-def generate_performance_insights(candidates: List[Dict], training_indicators: Dict[str, Any]) -> List[str]:
+def generate_performance_insights(candidates: List[Dict], training_indicators: Dict[str, Any], mits_by_week_band: Dict = None) -> List[str]:
     """
     Generate 3-5 performance insights based on rule-based logic
     
     Args:
         candidates: List of all candidate dictionaries
         training_indicators: Dictionary from filter_training_indicators_by_assessments()
+        mits_by_week_band: Optional pre-computed week bands
     
     Returns:
         List of insight strings (3-5 bullets)
@@ -148,47 +149,43 @@ def generate_performance_insights(candidates: List[Dict], training_indicators: D
     critical_window = [c for c in candidates if 6 <= c.get('week', 0) <= 7]
     critical_count = len([c for c in critical_window if 'pending' not in str(c.get('status', '')).lower()])
     if critical_count > 0:
-        insights.append(f"<strong>{critical_count} MIT(s)</strong> in critical placement window (Weeks 6-7) requiring immediate placement attention.")
+        insights.append(f"🚨 <strong>{critical_count} MIT(s)</strong> in critical placement window (Weeks 6-7) — immediate placement attention required.")
     
-    # 2. Lesson Completion Gaps
-    lessons_pct = training_indicators.get('lessons_completion', 0)
-    if lessons_pct < 50:
-        insights.append(f"Business lessons completion at <strong>{lessons_pct:.1f}%</strong> — below target threshold. Accelerated lesson completion needed.")
-    elif lessons_pct < 70:
-        insights.append(f"Business lessons completion at <strong>{lessons_pct:.1f}%</strong> — approaching target but needs improvement.")
+    # 2. Extended Week MITs (Week 8+) - URGENT
+    extended = [c for c in candidates if c.get('week', 0) >= 8]
+    extended_count = len([c for c in extended if 'pending' not in str(c.get('status', '')).lower()])
+    if extended_count > 0:
+        max_week = max([c.get('week', 0) for c in extended])
+        if max_week >= 12:
+            insights.append(f"⚠️ <strong>{extended_count} MIT(s)</strong> at Week 8+ (longest: Week {max_week}) — escalate placement urgency.")
+        else:
+            insights.append(f"✅ <strong>{extended_count} MIT(s)</strong> at Week 8+ — placement ready and awaiting assignment.")
     
-    # 3. Strong QBR Performers
-    avg_qbr = training_indicators.get('avg_qbr_score')
+    # 3. New Starts needing first survey
+    new_starts = [c for c in candidates if 0 <= c.get('week', 0) <= 3 and 'pending' not in str(c.get('status', '')).lower()]
+    if new_starts:
+        insights.append(f"🌱 <strong>{len(new_starts)} MIT(s)</strong> in onboarding phase (Weeks 0-3) — monitor first mentor surveys.")
+    
+    # 4. Strong QBR Performers
     strong_qbr = [c for c in candidates 
                   if c.get('scores', {}).get('mock_qbr_score', 0) and 
                      c.get('scores', {}).get('mock_qbr_score', 0) >= 3.0]
     strong_qbr_count = len(strong_qbr)
     if strong_qbr_count > 0:
-        insights.append(f"<strong>{strong_qbr_count} MIT(s)</strong> scoring 3.0+ on Mock QBR — strong performers ready for placement priority.")
-    
-    if avg_qbr and avg_qbr >= 3.0:
-        insights.append(f"Average Mock QBR score at <strong>{avg_qbr:.2f}/4.0</strong> — above target, indicating strong program performance.")
-    
-    # 4. Extended Week MITs (Week 8+)
-    extended = [c for c in candidates if c.get('week', 0) >= 8]
-    extended_count = len([c for c in extended if 'pending' not in str(c.get('status', '')).lower()])
-    if extended_count > 0:
-        insights.append(f"<strong>{extended_count} MIT(s)</strong> at Week 8+ — placement ready and awaiting assignment.")
+        insights.append(f"⭐ <strong>{strong_qbr_count} MIT(s)</strong> scoring 3.0+ on Mock QBR — top performers ready for priority placement.")
     
     # 5. Onboarding Trends
     onboarding_pct = training_indicators.get('onboarding_completion', 0)
     if onboarding_pct >= 80:
-        insights.append(f"Onboarding completion at <strong>{onboarding_pct:.1f}%</strong> — strong onboarding execution.")
+        insights.append(f"📋 Onboarding completion at <strong>{onboarding_pct:.1f}%</strong> — strong execution.")
     elif onboarding_pct < 60:
-        insights.append(f"Onboarding completion at <strong>{onboarding_pct:.1f}%</strong> — below target, requires immediate action.")
+        insights.append(f"📋 Onboarding completion at <strong>{onboarding_pct:.1f}%</strong> — needs improvement.")
     
     # Ensure we have 3-5 insights
     if len(insights) < 3:
-        # Add general insights if needed
         total_active = len([c for c in candidates if 'pending' not in str(c.get('status', '')).lower()])
-        insights.append(f"Total active pipeline: <strong>{total_active} MIT(s)</strong> in training across all week bands.")
+        insights.append(f"📊 Total active pipeline: <strong>{total_active} MIT(s)</strong> in training.")
     
-    # Return top 5 insights
     return insights[:5]
 
 # =============================================================================
@@ -451,12 +448,38 @@ def collect_report_data() -> Dict[str, Any]:
                 'location': candidate.get('training_site', 'TBD')
             })
     
-    # Group MITs by week bands
+    # Load mentor assessments for integration
+    mentor_assessments = load_mentor_assessments()
+    
+    # Helper to get latest mentor score for a candidate
+    def get_mentor_score(name):
+        normalized = name.lower().strip().replace("'", "").replace("-", " ")
+        for key in mentor_assessments.keys():
+            if key.lower().strip() == normalized or normalized in key.lower():
+                assessments = mentor_assessments[key].get('assessments', [])
+                if assessments:
+                    latest = assessments[-1]  # Get latest
+                    scores = compute_section_averages(latest)
+                    return scores.get('overall', 0)
+        return None
+    
+    # Helper to get mentor observations
+    def get_mentor_observations(name):
+        normalized = name.lower().strip().replace("'", "").replace("-", " ")
+        for key in mentor_assessments.keys():
+            if key.lower().strip() == normalized or normalized in key.lower():
+                assessments = mentor_assessments[key].get('assessments', [])
+                if assessments:
+                    latest = assessments[-1]
+                    return latest.get('section_4_readiness_confidence', {}).get('observations', '')
+        return ''
+    
+    # Group MITs by NEW week bands: 0-3 Onboarding, 4-5 Mid, 6-7 Critical, 8+ Ready
     mits_by_week_band = {
-        'weeks_0_3': [],
-        'weeks_4_6': [],
-        'week_7': [],
-        'weeks_8_plus': []
+        'weeks_0_3': [],      # Onboarding / New Starts
+        'weeks_4_5': [],      # Mid-Training
+        'weeks_6_7': [],      # Critical Window (placement priority)
+        'weeks_8_plus': []    # Placement Ready
     }
     
     for candidate in candidates:
@@ -465,6 +488,21 @@ def collect_report_data() -> Dict[str, Any]:
         
         if 'pending' in status:
             continue
+        
+        # Get mentor score and determine status indicator
+        mentor_score = get_mentor_score(candidate.get('name', ''))
+        mentor_obs = get_mentor_observations(candidate.get('name', ''))
+        
+        # Determine readiness status based on mentor score
+        if mentor_score:
+            if mentor_score >= 4.5:
+                readiness_status = 'Strong'
+            elif mentor_score >= 3.5:
+                readiness_status = 'On Track'
+            else:
+                readiness_status = 'Monitor'
+        else:
+            readiness_status = 'Pending'
             
         mit_data = {
             'name': candidate.get('name', 'Unknown'),
@@ -472,30 +510,60 @@ def collect_report_data() -> Dict[str, Any]:
             'vertical': candidate.get('operation_details', {}).get('vertical', 'TBD'),
             'week': week,
             'mentor': candidate.get('mentor_name', 'TBD'),
-            'status': candidate.get('status', 'TBD')
+            'status': candidate.get('status', 'TBD'),
+            'mock_qbr_date': candidate.get('mock_qbr_date', ''),
+            'mock_qbr_score': candidate.get('scores', {}).get('mock_qbr_score', ''),
+            'mentor_score': mentor_score,
+            'mentor_observations': mentor_obs[:150] + '...' if len(mentor_obs) > 150 else mentor_obs,
+            'readiness_status': readiness_status,
+            'oig_status': candidate.get('oig_completion', {}).get('status', 'Unknown'),
+            'first_survey_submitted': mentor_score is not None
         }
         
         if 0 <= week <= 3:
             mits_by_week_band['weeks_0_3'].append(mit_data)
-        elif 4 <= week <= 6:
-            mits_by_week_band['weeks_4_6'].append(mit_data)
-        elif week == 7:
-            mits_by_week_band['week_7'].append(mit_data)
+        elif 4 <= week <= 5:
+            mits_by_week_band['weeks_4_5'].append(mit_data)
+        elif 6 <= week <= 7:
+            mits_by_week_band['weeks_6_7'].append(mit_data)
         elif week >= 8:
             mits_by_week_band['weeks_8_plus'].append(mit_data)
     
-    # Sort each band
+    # Sort each band by week then name
     for band in mits_by_week_band.values():
         band.sort(key=lambda x: (x['week'], x['name']))
     
     # Get critical window mentors (Week 6-7)
     critical_window_mentors = get_critical_window_mentors(candidates, active_mentors)
     
+    # Build upcoming Mock QBR schedule (only FUTURE dates)
+    upcoming_mock_qbrs = []
+    today = datetime.now().date()
+    
+    for candidate in candidates:
+        mock_qbr_date = candidate.get('mock_qbr_date', '')
+        if mock_qbr_date and str(mock_qbr_date).strip() and str(mock_qbr_date).lower() not in ['nan', 'none', '']:
+            # Try to parse the date and check if it's in the future
+            try:
+                import pandas as pd
+                parsed_date = pd.to_datetime(str(mock_qbr_date), errors='coerce')
+                if pd.notna(parsed_date) and parsed_date.date() >= today:
+                    upcoming_mock_qbrs.append({
+                        'name': candidate.get('name', 'Unknown'),
+                        'date': parsed_date.strftime('%m/%d/%Y'),
+                        'week': candidate.get('week', 0)
+                    })
+            except:
+                pass  # Skip if date can't be parsed
+    
+    # Sort by date
+    upcoming_mock_qbrs.sort(key=lambda x: x['date'])
+    
     # Filter training indicators to only MITs with assessments
     training_indicators = filter_training_indicators_by_assessments(candidates)
     
-    # Generate performance insights
-    performance_insights = generate_performance_insights(candidates, training_indicators)
+    # Generate performance insights with week band data
+    performance_insights = generate_performance_insights(candidates, training_indicators, mits_by_week_band)
     
     # Get weekly meeting insights
     meeting_insights = fetch_meeting_insights()
@@ -545,6 +613,14 @@ def collect_report_data() -> Dict[str, Any]:
         'open_roles': f"{DASHBOARD_BASE_URL}/#/open-positions"
     }
     
+    # Calculate band counts for KPI boxes
+    band_counts = {
+        'new_starts': len(mits_by_week_band['weeks_0_3']),
+        'mid_training': len(mits_by_week_band['weeks_4_5']),
+        'critical_window': len(mits_by_week_band['weeks_6_7']),
+        'placement_ready': len(mits_by_week_band['weeks_8_plus'])
+    }
+    
     return {
         'timestamp': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
         'dashboard_url': DASHBOARD_BASE_URL,
@@ -555,7 +631,9 @@ def collect_report_data() -> Dict[str, Any]:
         'open_positions_count': len(open_positions),
         'ready_in_30_days': ready_in_30_days,
         'mits_by_week_band': mits_by_week_band,
+        'band_counts': band_counts,
         'critical_window_mentors': critical_window_mentors,
+        'upcoming_mock_qbrs': upcoming_mock_qbrs[:5],  # Next 5 upcoming
         'training_indicators': training_indicators,
         'performance_insights': performance_insights,
         'meeting_insights': meeting_insights,
