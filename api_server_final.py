@@ -591,6 +591,61 @@ def debug_columns():
         log_error("Error debugging columns", e)
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/debug-oig/<candidate_name>', methods=['GET'])
+def debug_oig(candidate_name):
+    """Debug OIG calculation for a specific candidate."""
+    try:
+        from utils import normalize_name
+        import pandas as pd
+        
+        # Get all candidates
+        candidates = get_cached_merged_candidates()
+        
+        # Find the candidate
+        target_norm = normalize_name(candidate_name)
+        target_candidate = None
+        
+        for c in candidates:
+            if normalize_name(c.get('name', '')) == target_norm:
+                target_candidate = c
+                break
+        
+        if not target_candidate:
+            return jsonify({'error': f'Candidate {candidate_name} not found'}), 404
+        
+        # Get raw data from Google Sheets
+        df = fetch_google_sheets_data()
+        target_row = None
+        
+        for idx, row in df.iterrows():
+            if normalize_name(str(row.get('MIT Name', ''))) == target_norm:
+                target_row = row
+                break
+        
+        debug_info = {
+            'candidate_name': target_candidate.get('name'),
+            'oig_completion_object': target_candidate.get('oig_completion'),
+            'company_start_date_raw': str(target_candidate.get('operation_details', {}).get('company_start_date')),
+            'week': target_candidate.get('week'),
+            'status': target_candidate.get('status'),
+        }
+        
+        if target_row is not None:
+            debug_info['raw_sheet_data'] = {
+                'company_start_date': str(target_row.get('Company Start Date')),
+                'company_start_date_type': str(type(target_row.get('Company Start Date'))),
+                'company_start_date_original': str(target_row.get('Company Start Date Original')),
+                'oig_completion_column': str(target_row.get('OIG Completion', 'NOT FOUND')),
+                'mit_name': str(target_row.get('MIT Name')),
+            }
+        
+        return jsonify(debug_info), 200
+        
+    except Exception as e:
+        log_error(f"Error debugging OIG for {candidate_name}", e)
+        import traceback
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
 @app.route('/api/debug-mentor-relationships', methods=['GET'])
 def debug_mentor_relationships():
     """Debug endpoint to see mentor relationships data and columns."""
