@@ -469,6 +469,35 @@
         </div>
         {% endif %}
 
+        <!-- APPENDIX: Complete MIT Roster -->
+        <div class="section">
+            <h2>📑 Appendix: Complete MIT Roster</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Vertical</th>
+                        <th>Week</th>
+                        <th>Location</th>
+                        <th>Mentor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mit in all_mits %}
+                    <tr>
+                        <td>{{ mit.name }}</td>
+                        <td>{{ mit.vertical }}</td>
+                        <td>{{ mit.week }}</td>
+                        <td>{{ mit.location }}</td>
+                        <td>{{ mit.mentor }}</td>
+                        <td>{{ mit.status }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
         <!-- Footer -->
         <div class="footer">
             <p>Full dashboard: <a href="{{ dashboard_url }}" target="_blank">{{ dashboard_url }}</a></p>
