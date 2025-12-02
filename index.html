@@ -3712,13 +3712,35 @@
                             console.log(`🔍 Looking for assessment: "${candidate.name}" → normalized: "${normalizedName}"`);
                             const assessmentData = mentorAssessments[normalizedName];
                             console.log(`📊 Assessment found:`, !!assessmentData);
-                            const latestAssessment = assessmentData?.assessments?.[0]; // Most recent assessment
+                            
+                            // Get LATEST assessment (last in array) and previous for trends
+                            const assessments = assessmentData?.assessments || [];
+                            const latestAssessment = assessments.length > 0 ? assessments[assessments.length - 1] : null;
+                            const previousAssessment = assessments.length > 1 ? assessments[assessments.length - 2] : null;
+                            const surveyCount = assessments.length;
+                            
+                            console.log(`📊 Survey count: ${surveyCount}, showing latest`);
                             
                             // Calculate progress percentages (auto-calculate from questions)
                             const coreCompetencyAvg = latestAssessment ? calculateSectionAverage(latestAssessment.section_1_core_competencies) : 0;
                             const softSkillsAvg = latestAssessment ? calculateSectionAverage(latestAssessment.section_2_soft_skills_leadership) : 0;
                             const engagementAvg = latestAssessment ? calculateSectionAverage(latestAssessment.section_3_engagement_aptitude) : 0;
                             const readinessScore = latestAssessment?.section_4_readiness_confidence?.confidence_level || 0;
+                            
+                            // Calculate previous scores for trends
+                            const prevCoreAvg = previousAssessment ? calculateSectionAverage(previousAssessment.section_1_core_competencies) : 0;
+                            const prevSoftAvg = previousAssessment ? calculateSectionAverage(previousAssessment.section_2_soft_skills_leadership) : 0;
+                            const prevEngagementAvg = previousAssessment ? calculateSectionAverage(previousAssessment.section_3_engagement_aptitude) : 0;
+                            const prevReadiness = previousAssessment?.section_4_readiness_confidence?.confidence_level || 0;
+                            
+                            // Trend helper function
+                            const getTrend = (current, previous) => {
+                                if (!previousAssessment) return '';
+                                const diff = current - previous;
+                                if (diff > 0.1) return '<span style="color: #10b981; margin-left: 6px;">↑</span>';
+                                if (diff < -0.1) return '<span style="color: #ef4444; margin-left: 6px;">↓</span>';
+                                return '<span style="color: #6b7280; margin-left: 6px;">→</span>';
+                            };
                             
                             const coreCompetencyPercent = (coreCompetencyAvg / 5 * 100);
                             const softSkillsPercent = (softSkillsAvg / 5 * 100);
@@ -3728,7 +3750,7 @@
                             const hasAssessment = !!latestAssessment && coreCompetencyAvg > 0;
                             
                             return `
-                                <h3>⭐ Weekly Mentor Assessment</h3>
+                                <h3>⭐ Weekly Mentor Assessment ${surveyCount > 1 ? '<span style="font-size: 0.75rem; color: #6b7280; font-weight: normal;">(Survey ' + surveyCount + ')</span>' : ''}</h3>
                                 <div class="assessment-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px;">
                                     <!-- Core Competency -->
                                     <div class="assessment-tile" style="background: rgba(239, 68, 68, 0.1); padding: 16px; border-radius: 10px; border-left: 4px solid #ef4444;">
@@ -3739,8 +3761,8 @@
                                         <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
                                             <div style="background: ${hasAssessment ? '#ef4444' : '#4b5563'}; height: 100%; width: ${coreCompetencyPercent}%; transition: width 0.3s;"></div>
                                         </div>
-                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
-                                            ${hasAssessment ? coreCompetencyAvg.toFixed(1) + '/5.0' : 'Available soon'}
+                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); display: flex; align-items: center;">
+                                            ${hasAssessment ? coreCompetencyAvg.toFixed(1) + '/5.0' + getTrend(coreCompetencyAvg, prevCoreAvg) : 'Available soon'}
                                         </div>
                                     </div>
                                     
@@ -3753,8 +3775,8 @@
                                         <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
                                             <div style="background: ${hasAssessment ? '#8b5cf6' : '#4b5563'}; height: 100%; width: ${softSkillsPercent}%; transition: width 0.3s;"></div>
                                         </div>
-                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
-                                            ${hasAssessment ? softSkillsAvg.toFixed(1) + '/5.0' : 'Available soon'}
+                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); display: flex; align-items: center;">
+                                            ${hasAssessment ? softSkillsAvg.toFixed(1) + '/5.0' + getTrend(softSkillsAvg, prevSoftAvg) : 'Available soon'}
                                         </div>
                                     </div>
                                     
@@ -3767,8 +3789,8 @@
                                         <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
                                             <div style="background: ${hasAssessment ? '#10b981' : '#4b5563'}; height: 100%; width: ${readinessPercent}%; transition: width 0.3s;"></div>
                                         </div>
-                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
-                                            ${hasAssessment ? readinessScore + '/5' : 'Available soon'}
+                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); display: flex; align-items: center;">
+                                            ${hasAssessment ? readinessScore + '/5' + getTrend(readinessScore, prevReadiness) : 'Available soon'}
                                         </div>
                                     </div>
                                     
@@ -3781,8 +3803,8 @@
                                         <div style="background: rgba(0,0,0,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
                                             <div style="background: ${hasAssessment ? '#f59e0b' : '#4b5563'}; height: 100%; width: ${engagementPercent}%; transition: width 0.3s;"></div>
                                         </div>
-                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">
-                                            ${hasAssessment ? engagementAvg.toFixed(1) + '/5.0' : 'Available soon'}
+                                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); display: flex; align-items: center;">
+                                            ${hasAssessment ? engagementAvg.toFixed(1) + '/5.0' + getTrend(engagementAvg, prevEngagementAvg) : 'Available soon'}
                                         </div>
                                     </div>
                                 </div>
