@@ -1482,6 +1482,8 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
             'operation_location': str(safe_get(row, 'Ops Account- Location', 'TBD')),
             'vertical': str(safe_get(row, 'Vertical', 'TBD'))
         },
+        # Mock QBR scheduling
+        'mock_qbr_date': str(safe_get(row, 'Mock QBR Date', '')),
         # Local file paths
         'resume_link': str(safe_get(row, 'Resume', '')),
         'profile_image': profile_image_path
