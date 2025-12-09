@@ -246,9 +246,26 @@ def get_dashboard_data():
         # Calculate week-based categories first
         categorized = categorize_candidates_by_week(candidates)
         
-        # Calculate dashboard metrics (exclude offer pending from total)
-        offer_pending_candidates = categorized['offer_pending']
-        offer_pending = len(offer_pending_candidates)
+        # Calculate dashboard metrics - use same logic as endpoint to ensure consistency
+        # Count offer_pending using the same filtering logic as the endpoint
+        offer_list = []
+        for c in candidates:
+            status = str(c.get('status', '')).lower()
+            week = c.get('week', 0)
+            # Convert week to int
+            try:
+                if week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', '']):
+                    week = 0
+                else:
+                    week = int(week)
+            except (ValueError, TypeError):
+                week = 0
+            is_pending_status = 'pending' in status or 'offer' in status
+            has_not_started = week == 0
+            
+            if is_pending_status and has_not_started:
+                offer_list.append(c)
+        offer_pending = len(offer_list)
         # Active MITs = sum of all active week bands (same logic as executive report)
         total_candidates = (len(categorized['weeks_0_3']) + 
                            len(categorized['weeks_4_6']) + 
@@ -369,14 +386,22 @@ def get_offer_pending_candidates():
     """
     try:
         unified = get_cached_merged_candidates()
-        # Use same logic as categorize_candidates_by_week: only include week 0/N/A candidates with pending/offer status
+        # Use same logic as categorize_candidates_by_week: only include week 0 candidates with pending/offer status
         offer_list = []
         for c in unified:
             status = str(c.get('status', '')).lower()
             week = c.get('week', 0)
-            # Only include if they haven't started (week 0 or N/A) AND have pending/offer status
+            # Convert week to int
+            try:
+                if week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', '']):
+                    week = 0
+                else:
+                    week = int(week)
+            except (ValueError, TypeError):
+                week = 0
+            # Only include if they haven't started (week 0) AND have pending/offer status
             is_pending_status = 'pending' in status or 'offer' in status
-            has_not_started = week == 0 or week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', ''])
+            has_not_started = week == 0
             
             if is_pending_status and has_not_started:
                 offer_list.append(c)
