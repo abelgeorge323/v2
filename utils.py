@@ -1394,14 +1394,29 @@ def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict
         status = candidate.get('status', '').lower()
         week = candidate.get('week', 0)
         
-        # Pending start takes priority (incoming MITs with future start dates)
-        if 'pending' in status:
+        # Convert week to int if it's a string or ensure it's numeric
+        try:
+            if week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', '']):
+                week = 0
+            else:
+                week = int(week)
+        except (ValueError, TypeError):
+            week = 0
+        
+        # Incoming MITs: Only candidates who haven't started (week = 0) 
+        # AND have pending/offer status should be in offer_pending
+        # Candidates with week >= 1 should go to their week band, even if status has "pending"
+        is_pending_status = 'pending' in status or 'offer' in status
+        has_not_started = week == 0
+        
+        if is_pending_status and has_not_started:
+            # Only include if they haven't started training yet
             offer_pending.append(candidate)
-        elif 0 <= week <= 2:
+        elif 1 <= week <= 2:  # Exclude week 0 from active bands
             weeks_0_3.append(candidate)
-        elif 3 <= week <= 5:  # Fixed: Changed from 3-7 to 3-5
+        elif 3 <= week <= 5:
             weeks_4_6.append(candidate)
-        elif 6 <= week <= 7:  # Now reachable! Critical placement window
+        elif 6 <= week <= 7:  # Critical placement window
             week_7_only.append(candidate)
         elif week >= 8:
             weeks_8_plus.append(candidate)
@@ -1484,6 +1499,8 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
         },
         # Mock QBR scheduling
         'mock_qbr_date': str(safe_get(row, 'Mock QBR Date', '')),
+        # Notes column
+        'placement_info': str(safe_get(row, 'Notes', '')).strip(),
         # Local file paths
         'resume_link': str(safe_get(row, 'Resume', '')),
         'profile_image': profile_image_path
