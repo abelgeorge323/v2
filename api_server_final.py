@@ -249,7 +249,11 @@ def get_dashboard_data():
         # Calculate dashboard metrics (exclude offer pending from total)
         offer_pending_candidates = categorized['offer_pending']
         offer_pending = len(offer_pending_candidates)
-        total_candidates = len(candidates) - offer_pending  # Exclude offer pending from total
+        # Active MITs = sum of all active week bands (same logic as executive report)
+        total_candidates = (len(categorized['weeks_0_3']) + 
+                           len(categorized['weeks_4_6']) + 
+                           len(categorized['week_7_only']) + 
+                           len(categorized['weeks_8_plus']))
         in_training = len([c for c in candidates if str(c.get('status','')).lower() == 'training'])
         ready_for_placement = len([c for c in candidates if str(c.get('status','')).lower() == 'ready'])
         
@@ -316,8 +320,18 @@ def get_all_candidates():
     """
     try:
         all_candidates = get_cached_merged_candidates()
-        # Filter out pending start (incoming MITs who haven't started yet)
-        active_only = [c for c in all_candidates if 'pending' not in str(c.get('status', '')).lower()]
+        # Use same logic as categorize_candidates_by_week: exclude only week 0 candidates with pending/offer status
+        active_only = []
+        for c in all_candidates:
+            status = str(c.get('status', '')).lower()
+            week = c.get('week', 0)
+            # Only exclude if they haven't started (week 0 or N/A) AND have pending/offer status
+            is_pending_status = 'pending' in status or 'offer' in status
+            has_not_started = week == 0 or week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', ''])
+            
+            if not (is_pending_status and has_not_started):
+                active_only.append(c)
+        
         response = jsonify(active_only)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
@@ -355,8 +369,18 @@ def get_offer_pending_candidates():
     """
     try:
         unified = get_cached_merged_candidates()
-        # Changed from 'offer' to 'pending' to match new "Pending Start" status
-        offer_list = [c for c in unified if 'pending' in str(c.get('status','')).lower()]
+        # Use same logic as categorize_candidates_by_week: only include week 0/N/A candidates with pending/offer status
+        offer_list = []
+        for c in unified:
+            status = str(c.get('status', '')).lower()
+            week = c.get('week', 0)
+            # Only include if they haven't started (week 0 or N/A) AND have pending/offer status
+            is_pending_status = 'pending' in status or 'offer' in status
+            has_not_started = week == 0 or week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', ''])
+            
+            if is_pending_status and has_not_started:
+                offer_list.append(c)
+        
         response = jsonify(offer_list)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
@@ -822,6 +846,7 @@ def get_mit_alumni_endpoint():
     """Get MIT alumni with placement information"""
     try:
         alumni_data = get_mit_alumni()
+        log_debug(f"MIT Alumni endpoint: returning {alumni_data.get('total_alumni', 0)} alumni")
         response = jsonify(alumni_data)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response, 200
@@ -901,6 +926,243 @@ def executive_print_pdf():
     except Exception as e:
         log_error("Error generating PDF", e)
         return f"Error generating PDF: {str(e)}", 500
+
+# =============================================================================
+# INDIVIDUAL CANDIDATE REPORT ROUTES
+# =============================================================================
+
+def get_micah_survey_data():
+    """
+    Hardcoded survey data for Micah Scherrei
+    In the future, this could be fetched from a Google Sheet or database
+    """
+    return [
+        {
+            'date': '11/18/2025',
+            'section1': [
+                {'name': 'Completes tasks accurately and on schedule', 'score': 5},
+                {'name': 'Understands daily site operations', 'score': 5},
+                {'name': 'Navigates 4insite and completes audits', 'score': 4},
+                {'name': 'Follows safety and site standards', 'score': 5},
+                {'name': 'Attention to detail and quality', 'score': 5},
+            ],
+            'section1_avg': 4.8,
+            'section2': [
+                {'name': 'Sense of urgency and initiative', 'score': 5},
+                {'name': 'Adapts to schedule/task changes', 'score': 5},
+                {'name': 'Communicates with peers and leadership', 'score': 5},
+                {'name': 'Coachable and applies feedback', 'score': 5},
+                {'name': 'Professional appearance and PPE', 'score': 5},
+            ],
+            'section2_avg': 5.0,
+            'section3': [
+                {'name': 'Actively engaged in learning', 'score': 5},
+                {'name': 'Learns quickly and retains info', 'score': 5},
+                {'name': 'Applies new skills confidently', 'score': 5},
+                {'name': 'Builds positive relationships', 'score': 5},
+                {'name': 'Willingness to work multiple shifts', 'score': 4},
+            ],
+            'section3_avg': 4.8,
+            'section4': {
+                'confidence': 5,
+                'responsibility': 5,
+                'status': 'Exceeding Expectations'
+            },
+            'overall_avg': 4.9,
+            'observations': 'Great engagement and willing to learn! He is ambitious and very professional to all! Fully engaged with all site activities.'
+        },
+        {
+            'date': '11/25/2025',
+            'section1': [
+                {'name': 'Completes tasks accurately and on schedule', 'score': 5},
+                {'name': 'Understands daily site operations', 'score': 5},
+                {'name': 'Navigates 4insite and completes audits', 'score': 3},
+                {'name': 'Follows safety and site standards', 'score': 5},
+                {'name': 'Attention to detail and quality', 'score': 4},
+            ],
+            'section1_avg': 4.4,
+            'section2': [
+                {'name': 'Sense of urgency and initiative', 'score': 4},
+                {'name': 'Adapts to schedule/task changes', 'score': 4},
+                {'name': 'Communicates with peers and leadership', 'score': 5},
+                {'name': 'Coachable and applies feedback', 'score': 4},
+                {'name': 'Professional appearance and PPE', 'score': 5},
+            ],
+            'section2_avg': 4.4,
+            'section3': [
+                {'name': 'Actively engaged in learning', 'score': 5},
+                {'name': 'Learns quickly and retains info', 'score': 5},
+                {'name': 'Applies new skills confidently', 'score': 3},
+                {'name': 'Builds positive relationships', 'score': 5},
+                {'name': 'Willingness to work multiple shifts', 'score': 3},
+            ],
+            'section3_avg': 4.2,
+            'section4': {
+                'confidence': 4,
+                'responsibility': 4,
+                'status': 'Progressing as Expected'
+            },
+            'overall_avg': 4.25,
+            'observations': 'Created fliers to help attract people to apply for open custodian positions.'
+        }
+    ]
+
+def calculate_cohort_averages(candidates):
+    """Calculate cohort averages for comparison"""
+    if not candidates:
+        return {
+            'total_candidates': 0,
+            'avg_week': 0,
+            'avg_onboarding': 0,
+            'avg_lessons': 0,
+            'avg_assessment': 3.5  # Default average
+        }
+    
+    # Filter out pending candidates
+    active = [c for c in candidates if 'pending' not in str(c.get('status', '')).lower()]
+    
+    if not active:
+        return {
+            'total_candidates': 0,
+            'avg_week': 0,
+            'avg_onboarding': 0,
+            'avg_lessons': 0,
+            'avg_assessment': 3.5
+        }
+    
+    total = len(active)
+    avg_week = sum(c.get('week', 0) for c in active) / total
+    avg_onboarding = sum(c.get('onboarding_progress', {}).get('percentage', 0) or 0 for c in active) / total
+    avg_lessons = sum(c.get('business_lessons_progress', {}).get('percentage', 0) or 0 for c in active) / total
+    
+    return {
+        'total_candidates': total,
+        'avg_week': avg_week,
+        'avg_onboarding': avg_onboarding,
+        'avg_lessons': avg_lessons,
+        'avg_assessment': 3.8  # Estimated cohort average for mentor assessments
+    }
+
+def generate_candidate_insights(candidate, surveys, cohort):
+    """Generate key insights for the candidate report"""
+    insights = []
+    
+    # Overall performance
+    latest_avg = surveys[-1]['overall_avg']
+    if latest_avg >= 4.5:
+        insights.append(f"<strong>{candidate.get('name')}</strong> is performing at an <strong>exceptional level</strong> with an overall assessment score of {latest_avg}/5.")
+    elif latest_avg >= 4.0:
+        insights.append(f"<strong>{candidate.get('name')}</strong> is performing <strong>above expectations</strong> with an overall assessment score of {latest_avg}/5.")
+    elif latest_avg >= 3.5:
+        insights.append(f"<strong>{candidate.get('name')}</strong> is <strong>progressing well</strong> with an overall assessment score of {latest_avg}/5.")
+    else:
+        insights.append(f"<strong>{candidate.get('name')}</strong> has opportunities for improvement with an overall assessment score of {latest_avg}/5.")
+    
+    # Week-over-week trend
+    if len(surveys) >= 2:
+        first_avg = surveys[0]['overall_avg']
+        change = latest_avg - first_avg
+        if change > 0.2:
+            insights.append(f"Showing <strong>positive improvement</strong> from Survey 1 ({first_avg}/5) to Survey 2 ({latest_avg}/5).")
+        elif change < -0.2:
+            insights.append(f"Scores have <strong>decreased slightly</strong> from Survey 1 ({first_avg}/5) to Survey 2 ({latest_avg}/5) — recommend mentor follow-up.")
+        else:
+            insights.append(f"Maintaining <strong>consistent performance</strong> across both survey periods.")
+    
+    # Strengths
+    strengths = []
+    latest = surveys[-1]
+    if latest['section2_avg'] >= 4.5:
+        strengths.append("Leadership & Soft Skills")
+    if latest['section3_avg'] >= 4.5:
+        strengths.append("Engagement & Learning Aptitude")
+    if latest['section1_avg'] >= 4.5:
+        strengths.append("Core Competencies")
+    
+    if strengths:
+        insights.append(f"Key strengths identified: <strong>{', '.join(strengths)}</strong>.")
+    
+    # Areas for development
+    areas = []
+    if latest['section1_avg'] < 4.0:
+        areas.append("Core Competencies")
+    if latest['section2_avg'] < 4.0:
+        areas.append("Leadership Skills")
+    if latest['section3_avg'] < 4.0:
+        areas.append("Engagement & Aptitude")
+    
+    if areas:
+        insights.append(f"Areas for continued development: <strong>{', '.join(areas)}</strong>.")
+    
+    # Status
+    status = latest['section4']['status']
+    if status == 'Exceeding Expectations':
+        insights.append(f"Mentor assessment: <strong>Exceeding Expectations</strong> — candidate is ready for increased responsibility.")
+    elif status == 'Progressing as Expected':
+        insights.append(f"Mentor assessment: <strong>Progressing as Expected</strong> — on track for graduation timeline.")
+    else:
+        insights.append(f"Mentor assessment: <strong>{status}</strong> — may require additional support or extended training.")
+    
+    return insights
+
+@app.route('/candidate-report/<candidate_name>')
+def candidate_report(candidate_name):
+    """
+    Render individual candidate report HTML page
+    """
+    try:
+        # Get candidate data
+        candidates = get_cached_merged_candidates()
+        target_norm = normalize_name(candidate_name)
+        candidate = None
+        
+        for c in candidates:
+            if normalize_name(c.get('name', '')) == target_norm:
+                candidate = c
+                break
+        
+        if not candidate:
+            return f"Candidate '{candidate_name}' not found", 404
+        
+        # Get survey data (currently hardcoded for Micah)
+        if 'micah' in target_norm:
+            surveys = get_micah_survey_data()
+        else:
+            # Default empty surveys for other candidates
+            surveys = [
+                {
+                    'date': 'N/A',
+                    'section1': [{'name': 'No data', 'score': 0}] * 5,
+                    'section1_avg': 0,
+                    'section2': [{'name': 'No data', 'score': 0}] * 5,
+                    'section2_avg': 0,
+                    'section3': [{'name': 'No data', 'score': 0}] * 5,
+                    'section3_avg': 0,
+                    'section4': {'confidence': 0, 'responsibility': 0, 'status': 'No Data'},
+                    'overall_avg': 0,
+                    'observations': 'No survey data available for this candidate.'
+                }
+            ] * 2
+        
+        # Calculate cohort averages
+        cohort = calculate_cohort_averages(candidates)
+        
+        # Generate insights
+        insights = generate_candidate_insights(candidate, surveys, cohort)
+        
+        # Render template
+        return render_template('candidate_report.html',
+            candidate=candidate,
+            surveys=surveys,
+            cohort=cohort,
+            insights=insights,
+            timestamp=datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+            dashboard_url='https://mit-training-dashboard-dd693bfc9f5a.herokuapp.com'
+        )
+        
+    except Exception as e:
+        log_error(f"Error generating candidate report for {candidate_name}", e)
+        return f"Error generating report: {str(e)}", 500
 
 # =============================================================================
 # MAIN APPLICATION
