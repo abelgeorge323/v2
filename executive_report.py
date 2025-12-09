@@ -432,8 +432,8 @@ def collect_report_data() -> Dict[str, Any]:
     active_mentors = get_active_training_mentors()
     
     # Calculate metrics
+    # Note: active_mits will be calculated after week band categorization to ensure consistency
     total_mits = len(candidates)
-    active_mits = len([c for c in candidates if 'pending' not in str(c.get('status', '')).lower()])
     ready_mits = len(categorized.get('weeks_8_plus', []))
     
     # Calculate readiness (next 30 days) - weeks 5-7
@@ -486,8 +486,12 @@ def collect_report_data() -> Dict[str, Any]:
         week = candidate.get('week', 0)
         status = str(candidate.get('status', '')).lower()
         
-        if 'pending' in status:
-            continue
+        # Skip incoming MITs who haven't started yet (week = 0 with pending/offer status)
+        is_pending_status = 'pending' in status or 'offer' in status
+        has_not_started = week == 0 or week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', ''])
+        
+        if is_pending_status and has_not_started:
+            continue  # Skip incoming MITs who haven't started
         
         # Get mentor score and determine status indicator
         mentor_score = get_mentor_score(candidate.get('name', ''))
@@ -590,10 +594,18 @@ def collect_report_data() -> Dict[str, Any]:
         assessment_summary = "Insufficient assessment data available."
     
     # Build all MITs list for appendix
+    # Include all candidates except those who haven't started (week 0/N/A with pending/offer status)
     all_mits = []
     for candidate in candidates:
         status = str(candidate.get('status', '')).lower()
-        if 'pending' not in status:
+        week = candidate.get('week', 0)
+        
+        # Only exclude incoming MITs who haven't started (same logic as week categorization)
+        is_pending_status = 'pending' in status or 'offer' in status
+        has_not_started = week == 0 or week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', ''])
+        
+        # Include all candidates who have started (week >= 1) or don't match the incoming MIT criteria
+        if not (is_pending_status and has_not_started):
             all_mits.append({
                 'name': candidate.get('name', 'Unknown'),
                 'vertical': candidate.get('operation_details', {}).get('vertical', 'TBD'),
@@ -620,6 +632,9 @@ def collect_report_data() -> Dict[str, Any]:
         'critical_window': len(mits_by_week_band['weeks_6_7']),
         'placement_ready': len(mits_by_week_band['weeks_8_plus'])
     }
+    
+    # Calculate active_mits as sum of all week bands (ensures consistency)
+    active_mits = sum(band_counts.values())
     
     return {
         'timestamp': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
