@@ -453,7 +453,14 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <p style="font-size: 10px; color: #94a3b8; margin-top: 10px; font-style: italic;">* See meeting notes for context on development focus candidates.</p>
+            {% for mit in bottom_2_mits %}
+                {% if mit.observations and mit.observations.strip() %}
+                <div style="margin-top: 15px; padding: 12px; background: #f8fafc; border-left: 3px solid #f59e0b; border-radius: 6px;">
+                    <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">{{ mit.name }} — Latest Mentor Feedback</div>
+                    <div style="font-size: 12px; color: #475569; line-height: 1.5; font-style: italic;">"{{ mit.observations }}"</div>
+                </div>
+                {% endif %}
+            {% endfor %}
         </div>
         {% endif %}
 
