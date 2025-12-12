@@ -476,6 +476,52 @@
         </div>
         {% endif %}
 
+        <!-- JOB OPENINGS BY REGION -->
+        {% if positions_by_region %}
+        <div class="section">
+            <h2>💼 Job Openings by Region</h2>
+            {% for region, positions in positions_by_region.items() %}
+            <div style="margin-bottom: 30px;">
+                <h3 style="font-size: 14pt; color: #1e293b; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0;">
+                    {{ region }} ({{ positions|length }} position{{ 's' if positions|length != 1 else '' }})
+                </h3>
+                <table style="width: 100%; margin-bottom: 20px;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Job Title</th>
+                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Account</th>
+                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Location</th>
+                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Vertical</th>
+                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Salary</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for position in positions %}
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px; color: #334155; font-weight: 500;">{{ position.title }}</td>
+                            <td style="padding: 10px; color: #64748b;">{{ position.account }}</td>
+                            <td style="padding: 10px; color: #64748b;">{{ position.city }}{% if position.state %}, {{ position.state }}{% endif %}</td>
+                            <td style="padding: 10px; color: #64748b;">{{ position.vertical }}</td>
+                            <td style="padding: 10px; color: #64748b;">
+                                {% if position.salary %}
+                                    {% if position.salary is string %}
+                                        {{ position.salary }}
+                                    {% else %}
+                                        ${{ "{:,.0f}".format(position.salary) }}
+                                    {% endif %}
+                                {% else %}
+                                    TBD
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <!-- APPENDIX: Complete MIT Roster -->
         <div class="section">
             <h2>📑 Appendix: Complete MIT Roster</h2>
