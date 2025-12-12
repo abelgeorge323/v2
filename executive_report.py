@@ -608,13 +608,40 @@ def collect_report_data() -> Dict[str, Any]:
         
         # Include all candidates who have started (week >= 1) or don't match the incoming MIT criteria
         if not (is_pending_status and has_not_started):
+            # Get scores with priority: Mock QBR score > Mentor score > Assessment score > Mock QBR date
+            mock_qbr_score = candidate.get('scores', {}).get('mock_qbr_score', 0)
+            assessment_score = candidate.get('scores', {}).get('assessment_score', 0)
+            mentor_score = get_mentor_score(candidate.get('name', ''))
+            mock_qbr_date = candidate.get('mock_qbr_date', '')
+            
+            # Determine what to show: Mock QBR score, then mentor score, then assessment score, then date
+            score_display = None
+            if mock_qbr_score and mock_qbr_score > 0:
+                score_display = f"QBR: {mock_qbr_score}/4"
+            elif mentor_score and mentor_score > 0:
+                score_display = f"Mentor: {mentor_score:.1f}/5"
+            elif assessment_score and assessment_score > 0:
+                score_display = f"Assessment: {assessment_score}/100"
+            elif mock_qbr_date and str(mock_qbr_date).strip() and str(mock_qbr_date).lower() not in ['nan', 'none', '']:
+                # Format the date nicely
+                try:
+                    import pandas as pd
+                    parsed_date = pd.to_datetime(str(mock_qbr_date), errors='coerce')
+                    if pd.notna(parsed_date):
+                        score_display = parsed_date.strftime('%m/%d/%Y')
+                    else:
+                        score_display = str(mock_qbr_date)
+                except:
+                    score_display = str(mock_qbr_date)
+            
             all_mits.append({
                 'name': candidate.get('name', 'Unknown'),
                 'vertical': candidate.get('operation_details', {}).get('vertical', 'TBD'),
                 'week': candidate.get('week', 0),
                 'location': candidate.get('training_site', 'TBD'),
                 'mentor': candidate.get('mentor_name', 'TBD'),
-                'status': candidate.get('status', 'TBD')
+                'status': candidate.get('status', 'TBD'),
+                'scores': score_display or 'TBD'
             })
     
     all_mits.sort(key=lambda x: (x['week'], x['name']))
