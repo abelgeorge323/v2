@@ -18,6 +18,7 @@ from utils import (
     merge_candidate_sources,
     categorize_candidates_by_week,
     fetch_open_positions_data,
+    group_positions_by_region,
     get_active_training_mentors,
     calculate_avg_onboarding_completion,
     calculate_avg_lessons_completion,
@@ -425,8 +426,9 @@ def collect_report_data() -> Dict[str, Any]:
     # Categorize by week
     categorized = categorize_candidates_by_week(candidates)
     
-    # Get open positions
+    # Get open positions and group by region
     open_positions = fetch_open_positions_data()
+    positions_by_region = group_positions_by_region(open_positions)
     
     # Get mentor data
     active_mentors = get_active_training_mentors()
@@ -644,6 +646,7 @@ def collect_report_data() -> Dict[str, Any]:
         'active_mits': active_mits,
         'ready_mits': ready_mits,
         'open_positions_count': len(open_positions),
+        'positions_by_region': positions_by_region,
         'ready_in_30_days': ready_in_30_days,
         'mits_by_week_band': mits_by_week_band,
         'band_counts': band_counts,
