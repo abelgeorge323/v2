@@ -799,6 +799,115 @@ def derive_status(row: pd.Series) -> str:
         else:
             return "training"
 
+def get_region_from_state(state: str) -> str:
+    """
+    Map US state abbreviation to region
+    
+    Args:
+        state: Two-letter state abbreviation (e.g., 'CA', 'TX')
+        
+    Returns:
+        Region name: 'West', 'Midwest', 'South', 'Northeast', or 'Other'
+    """
+    if not state or not isinstance(state, str):
+        return 'Other'
+    
+    state_upper = state.upper().strip()
+    
+    # West
+    west_states = ['CA', 'OR', 'WA', 'NV', 'AZ', 'CO', 'UT', 'ID', 'MT', 'WY', 'NM', 'AK', 'HI']
+    if state_upper in west_states:
+        return 'West'
+    
+    # Midwest
+    midwest_states = ['IL', 'IN', 'MI', 'OH', 'WI', 'MN', 'IA', 'MO', 'ND', 'SD', 'NE', 'KS']
+    if state_upper in midwest_states:
+        return 'Midwest'
+    
+    # South
+    south_states = ['TX', 'FL', 'GA', 'NC', 'SC', 'VA', 'TN', 'AL', 'MS', 'AR', 'LA', 'OK', 'KY', 'WV']
+    if state_upper in south_states:
+        return 'South'
+    
+    # Northeast
+    northeast_states = ['NY', 'PA', 'NJ', 'MA', 'CT', 'RI', 'VT', 'NH', 'ME', 'MD', 'DE']
+    if state_upper in northeast_states:
+        return 'Northeast'
+    
+    return 'Other'
+
+def group_positions_by_region(positions: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Group positions by region
+    
+    Args:
+        positions: List of position dictionaries
+        
+    Returns:
+        Dictionary with region names as keys and lists of positions as values
+    """
+    grouped = {}
+    for position in positions:
+        region = position.get('region', 'Other')
+        if region not in grouped:
+            grouped[region] = []
+        grouped[region].append(position)
+    
+    # Sort regions in a consistent order
+    region_order = ['West', 'Midwest', 'South', 'Northeast', 'Other']
+    sorted_grouped = {}
+    for region in region_order:
+        if region in grouped:
+            sorted_grouped[region] = grouped[region]
+    # Add any remaining regions
+    for region, positions_list in grouped.items():
+        if region not in sorted_grouped:
+            sorted_grouped[region] = positions_list
+    
+    return sorted_grouped
+
+def filter_positions(positions: List[Dict[str, Any]], vertical: str = None, salary_min: int = None, salary_max: int = None) -> List[Dict[str, Any]]:
+    """
+    Filter positions by vertical and/or salary range
+    
+    Args:
+        positions: List of position dictionaries
+        vertical: Vertical to filter by (case-insensitive, None for all)
+        salary_min: Minimum salary (None for no minimum)
+        salary_max: Maximum salary (None for no maximum)
+        
+    Returns:
+        Filtered list of positions
+    """
+    filtered = positions
+    
+    # Filter by vertical
+    if vertical and vertical.lower() != 'all':
+        filtered = [p for p in filtered if p.get('vertical', '').lower() == vertical.lower()]
+    
+    # Filter by salary range
+    if salary_min is not None or salary_max is not None:
+        salary_filtered = []
+        for p in filtered:
+            salary = p.get('salary', 0)
+            if isinstance(salary, str):
+                # Try to extract number from salary string like "$85,000" or "85000"
+                try:
+                    salary = int(''.join(filter(str.isdigit, salary)))
+                except (ValueError, TypeError):
+                    salary = 0
+            elif not isinstance(salary, (int, float)):
+                salary = 0
+            
+            if salary_min is not None and salary < salary_min:
+                continue
+            if salary_max is not None and salary > salary_max:
+                continue
+            salary_filtered.append(p)
+        filtered = salary_filtered
+    
+    return filtered
+
 def fetch_open_positions_data() -> List[Dict[str, Any]]:
     """
     Fetch open positions data from Google Sheets
@@ -869,6 +978,9 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
             except (ValueError, TypeError):
                 job_id = 0
             
+            # Determine region from state
+            region = get_region_from_state(state)
+            
             position = {
                 'id': job_id,
                 'title': job_title,
@@ -878,6 +990,7 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
                 'account': str(safe_get(row, 'Account', '')).strip(),
                 'city': city,
                 'state': state,
+                'region': region,
                 'salary': parse_salary(safe_get(row, 'Salary', 0))
             }
             positions.append(position)
