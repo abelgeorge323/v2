@@ -3015,6 +3015,10 @@
         function renderCandidates() {
             const candidatesList = document.getElementById('candidatesList');
             
+            // Restore grid layout for candidates
+            candidatesList.className = 'candidates-grid';
+            candidatesList.style.cssText = '';
+            
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
@@ -3053,6 +3057,10 @@
         // Render all candidates
         function renderAllCandidates() {
             const candidatesList = document.getElementById('candidatesList');
+            
+            // Restore grid layout for candidates
+            candidatesList.className = 'candidates-grid';
+            candidatesList.style.cssText = '';
             
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
@@ -3111,6 +3119,10 @@
         function renderInTrainingCandidates() {
             const candidatesList = document.getElementById('candidatesList');
             
+            // Restore grid layout for candidates
+            candidatesList.className = 'candidates-grid';
+            candidatesList.style.cssText = '';
+            
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
@@ -3161,6 +3173,10 @@
         // Render offer pending candidates
         function renderOfferPendingCandidates() {
             const candidatesList = document.getElementById('candidatesList');
+            
+            // Restore grid layout for candidates
+            candidatesList.className = 'candidates-grid';
+            candidatesList.style.cssText = '';
             
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
@@ -3215,6 +3231,10 @@
         function renderWeeks0to3() {
             const candidatesList = document.getElementById('candidatesList');
             
+            // Restore grid layout for candidates
+            candidatesList.className = 'candidates-grid';
+            candidatesList.style.cssText = '';
+            
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
@@ -3261,6 +3281,10 @@
         // Render weeks 3-7 candidates
         function renderWeeks4to6() {
             const candidatesList = document.getElementById('candidatesList');
+            
+            // Restore grid layout for candidates
+            candidatesList.className = 'candidates-grid';
+            candidatesList.style.cssText = '';
             
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
@@ -3309,6 +3333,10 @@
         function renderWeek7Priority() {
             const candidatesList = document.getElementById('candidatesList');
             
+            // Restore grid layout for candidates
+            candidatesList.className = 'candidates-grid';
+            candidatesList.style.cssText = '';
+            
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
@@ -3356,6 +3384,10 @@
         function renderWeeks8Plus() {
             const candidatesList = document.getElementById('candidatesList');
             
+            // Restore grid layout for candidates
+            candidatesList.className = 'candidates-grid';
+            candidatesList.style.cssText = '';
+            
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
                     <div class="no-candidates">
@@ -3401,6 +3433,10 @@
 
         function renderOfferPending() {
             const candidatesList = document.getElementById('candidatesList');
+            
+            // Restore grid layout for candidates
+            candidatesList.className = 'candidates-grid';
+            candidatesList.style.cssText = '';
             
             if (candidates.length === 0) {
                 candidatesList.innerHTML = `
@@ -3572,6 +3608,28 @@
             candidatesList.style.cssText = 'display: block; width: 100%;';
             candidatesList.innerHTML = html;
             
+            // Update sticky filter with actual verticals from loaded data
+            const stickyFilter = document.getElementById('stickyVerticalFilter');
+            if (stickyFilter && verticals.length > 0) {
+                // Preserve the currently selected value
+                const currentValue = stickyFilter.value;
+                
+                // Clear existing options except "All"
+                stickyFilter.innerHTML = '<option value="all">All Verticals</option>';
+                // Add actual verticals from data
+                verticals.forEach(v => {
+                    const option = document.createElement('option');
+                    option.value = v;
+                    option.textContent = v;
+                    stickyFilter.appendChild(option);
+                });
+                
+                // Restore the selected value if it still exists in the new options
+                if (currentValue && Array.from(stickyFilter.options).some(opt => opt.value === currentValue)) {
+                    stickyFilter.value = currentValue;
+                }
+            }
+            
             // Cache the rendered content
             cachedListContent = candidatesList.innerHTML;
             cachedListTitle = '💼 Open Positions';
@@ -3602,24 +3660,32 @@
 
         // Filter positions by vertical and salary
         function applyPositionFilters() {
-            const verticalFilter = document.getElementById('verticalFilter');
+            // Check sticky nav filter first, then fallback
+            const verticalFilter = document.getElementById('stickyVerticalFilter') || document.getElementById('verticalFilter');
             const salaryFilter = document.getElementById('salaryFilter');
             
-            if (!verticalFilter || !salaryFilter) return;
+            if (!verticalFilter) {
+                console.error('Vertical filter not found!');
+                return;
+            }
             
             const vertical = verticalFilter.value;
-            const salaryRange = salaryFilter.value;
+            const salaryRange = salaryFilter ? salaryFilter.value : 'all';
             
             // Start with original unfiltered data
             let filtered = [...originalPositions];
             
-            // Filter by vertical
-            if (vertical !== 'all') {
-                filtered = filtered.filter(p => p.vertical.toLowerCase() === vertical.toLowerCase());
+            // Filter by vertical (case-insensitive, trim whitespace)
+            if (vertical && vertical !== 'all') {
+                filtered = filtered.filter(p => {
+                    const pVertical = (p.vertical || '').toString().trim().toLowerCase();
+                    const filterVertical = vertical.trim().toLowerCase();
+                    return pVertical === filterVertical;
+                });
             }
             
             // Filter by salary
-            if (salaryRange !== 'all') {
+            if (salaryRange && salaryRange !== 'all') {
                 filtered = filtered.filter(p => {
                     let salary = p.salary;
                     if (typeof salary === 'string') {
@@ -3643,6 +3709,14 @@
             // Update positions array and re-render
             positions = filtered;
             renderOpenPositions();
+            
+            // Preserve the selected filter value after re-render
+            setTimeout(() => {
+                const stickyFilter = document.getElementById('stickyVerticalFilter');
+                if (stickyFilter && vertical) {
+                    stickyFilter.value = vertical;
+                }
+            }, 100);
             
             console.log(`🔍 Filtered positions: ${filtered.length} of ${originalPositions.length} total`);
         }
@@ -3857,8 +3931,34 @@
                             // Get assessment data for this candidate
                             const normalizedName = candidate.name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
                             console.log(`🔍 Looking for assessment: "${candidate.name}" → normalized: "${normalizedName}"`);
-                            const assessmentData = mentorAssessments[normalizedName];
+                            
+                            // Try exact match first
+                            let assessmentData = mentorAssessments[normalizedName];
+                            
+                            // If no exact match, try fuzzy matching (token containment)
+                            if (!assessmentData) {
+                                const nameTokens = normalizedName.split(' ').filter(t => t.length > 0);
+                                for (const key in mentorAssessments) {
+                                    const keyTokens = key.split(' ').filter(t => t.length > 0);
+                                    // Check if all tokens from normalized name are in the key (or vice versa)
+                                    if (nameTokens.length >= 2 && keyTokens.length >= 2) {
+                                        const allMatch = nameTokens.every(t => keyTokens.some(kt => kt.includes(t) || t.includes(kt)));
+                                        if (allMatch) {
+                                            console.log(`🔍 Fuzzy match found: "${key}" for "${normalizedName}"`);
+                                            assessmentData = mentorAssessments[key];
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
                             console.log(`📊 Assessment found:`, !!assessmentData);
+                            if (assessmentData) {
+                                console.log(`📊 Assessment count:`, assessmentData.assessments?.length || 0);
+                            } else {
+                                console.warn(`⚠️ No assessment found for "${candidate.name}" (normalized: "${normalizedName}")`);
+                                console.log(`📋 Available keys:`, Object.keys(mentorAssessments));
+                            }
                             
                             // Get LATEST assessment (last in array) and previous for trends
                             const assessments = assessmentData?.assessments || [];
@@ -4097,24 +4197,14 @@
             // Build filters HTML based on page type
             let filtersHTML = '';
             if (filterType === 'positions') {
+                // Get unique verticals from loaded positions (will be updated after data loads)
+                const verticals = [...new Set((positions || []).map(p => p.vertical).filter(v => v))];
+                
                 filtersHTML = `
                     <div class="filter-pills">
-                        <select class="filter-select" id="verticalFilter" onchange="applyPositionFilters()">
+                        <select class="filter-select" id="stickyVerticalFilter" onchange="applyPositionFilters()">
                             <option value="all">All Verticals</option>
-                            <option value="distribution">Distribution</option>
-                            <option value="tech">Tech</option>
-                            <option value="aviation">Aviation</option>
-                            <option value="manufacturing">Manufacturing</option>
-                            <option value="auto">Auto</option>
-                            <option value="life science">Life Science</option>
-                            <option value="finance">Finance</option>
-                        </select>
-                        <select class="filter-select" id="salaryFilter" onchange="applyPositionFilters()">
-                            <option value="all">All Salaries</option>
-                            <option value="50-60">$50-60K</option>
-                            <option value="60-70">$60-70K</option>
-                            <option value="70-80">$70-80K</option>
-                            <option value="80">$80K+</option>
+                            ${verticals.length > 0 ? verticals.map(v => `<option value="${v}">${v}</option>`).join('') : ''}
                         </select>
                     </div>
                 `;
@@ -4150,7 +4240,7 @@
         function showOpenPositions() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton(); // Just back button, no filters
+            ensureStickyBackButton('positions'); // Enable sticky filter
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading positions...</div>';
             document.querySelector('.candidates-container h2').textContent = '💼 Placement Roles';
@@ -5340,8 +5430,29 @@
         // Mentor Feedback Modal Functions
         function showMentorFeedback(candidateName) {
             const normalizedName = candidateName.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
-            const assessmentData = mentorAssessments[normalizedName];
-            const latestAssessment = assessmentData?.assessments?.[0];
+            
+            // Try exact match first
+            let assessmentData = mentorAssessments[normalizedName];
+            
+            // If no exact match, try fuzzy matching (token containment)
+            if (!assessmentData) {
+                const nameTokens = normalizedName.split(' ').filter(t => t.length > 0);
+                for (const key in mentorAssessments) {
+                    const keyTokens = key.split(' ').filter(t => t.length > 0);
+                    // Check if all tokens from normalized name are in the key (or vice versa)
+                    if (nameTokens.length >= 2 && keyTokens.length >= 2) {
+                        const allMatch = nameTokens.every(t => keyTokens.some(kt => kt.includes(t) || t.includes(kt)));
+                        if (allMatch) {
+                            console.log(`🔍 Fuzzy match found in modal: "${key}" for "${normalizedName}"`);
+                            assessmentData = mentorAssessments[key];
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            const assessments = assessmentData?.assessments || [];
+            const latestAssessment = assessments.length > 0 ? assessments[assessments.length - 1] : null;
             
             // Check if assessment has actual data
             const hasData = latestAssessment && calculateSectionAverage(latestAssessment.section_1_core_competencies) > 0;
