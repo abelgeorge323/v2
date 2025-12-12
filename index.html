@@ -2931,8 +2931,19 @@
                 
                 if (cached && (now - cached.timestamp) < OPEN_POSITIONS_CACHE_DURATION) {
                     console.log('✅ Using cached open positions');
-                    positions = cached.data;
-                    originalPositions = [...cached.data]; // Store original unfiltered data
+                    const cachedData = cached.data;
+                    // Handle both grouped and flat cached data
+                    if (cachedData.grouped) {
+                        const allPositions = [];
+                        for (const regionPositions of Object.values(cachedData.regions)) {
+                            allPositions.push(...regionPositions);
+                        }
+                        originalPositions = allPositions;
+                        positions = allPositions;
+                    } else {
+                        positions = Array.isArray(cachedData) ? cachedData : [];
+                        originalPositions = [...positions];
+                    }
                     renderOpenPositions();
                     return;
                 }
@@ -2946,11 +2957,25 @@
                 `;
                 
                 console.log('🔄 Fetching fresh open positions');
-                const response = await fetch(`${API_BASE_URL}/api/open-positions`);
+                const response = await fetch(`${API_BASE_URL}/api/open-positions?group_by_region=true`);
                 const data = await response.json();
                 
                 if (data.error) {
                     throw new Error(data.error);
+                }
+                
+                // Handle grouped response
+                if (data.grouped) {
+                    // Flatten for originalPositions
+                    const allPositions = [];
+                    for (const regionPositions of Object.values(data.regions)) {
+                        allPositions.push(...regionPositions);
+                    }
+                    originalPositions = allPositions;
+                    positions = allPositions;
+                } else {
+                    positions = data;
+                    originalPositions = [...data];
                 }
                 
                 // Cache the results
@@ -2959,8 +2984,6 @@
                     timestamp: Date.now()
                 };
                 
-                positions = data;
-                originalPositions = [...data]; // Store original unfiltered data
                 renderOpenPositions();
                 
             } catch (error) {
@@ -3423,6 +3446,15 @@
         }
 
         // Render open positions
+        // Region color mapping (subtle colors)
+        const regionColors = {
+            'West': { bg: '#E3F2FD', border: '#BBDEFB', text: '#1565C0' },
+            'Midwest': { bg: '#E8F5E9', border: '#C8E6C9', text: '#2E7D32' },
+            'South': { bg: '#FFF3E0', border: '#FFE0B2', text: '#E65100' },
+            'Northeast': { bg: '#F3E5F5', border: '#E1BEE7', text: '#6A1B9A' },
+            'Other': { bg: '#F5F5F5', border: '#E0E0E0', text: '#424242' }
+        };
+        
         function renderOpenPositions() {
             const candidatesList = document.getElementById('candidatesList');
             
@@ -3435,37 +3467,133 @@
                 cachedListContent = candidatesList.innerHTML;
                 cachedListTitle = '💼 Open Positions';
                 cacheTimestamp = Date.now();
-                console.log('💾 Cached empty list content with timestamp:', cacheTimestamp);
                 return;
             }
             
-            const renderedContent = positions.map(position => `
-                <div class="candidate-card">
-                    <div class="candidate-info">
-                        <h3>${position.title}</h3>
-                        <div class="candidate-details">
-                            <div><strong>Account:</strong> ${position.account}</div>
-                            <div><strong>Location:</strong> ${position.city}, ${position.state}</div>
-                            <div><strong>Vertical:</strong> ${position.vertical}</div>
-                            <div><strong>Salary:</strong> ${position.salary}</div>
+            // Group positions by region (ensure region field exists)
+            const groupedByRegion = {};
+            positions.forEach(pos => {
+                // If region doesn't exist, try to determine from state
+                let region = pos.region;
+                if (!region && pos.state) {
+                    // Quick region mapping
+                    const state = pos.state.toUpperCase().trim();
+                    const west = ['CA', 'OR', 'WA', 'NV', 'AZ', 'CO', 'UT', 'ID', 'MT', 'WY', 'NM', 'AK', 'HI'];
+                    const midwest = ['IL', 'IN', 'MI', 'OH', 'WI', 'MN', 'IA', 'MO', 'ND', 'SD', 'NE', 'KS'];
+                    const south = ['TX', 'FL', 'GA', 'NC', 'SC', 'VA', 'TN', 'AL', 'MS', 'AR', 'LA', 'OK', 'KY', 'WV'];
+                    const northeast = ['NY', 'PA', 'NJ', 'MA', 'CT', 'RI', 'VT', 'NH', 'ME', 'MD', 'DE'];
+                    if (west.includes(state)) region = 'West';
+                    else if (midwest.includes(state)) region = 'Midwest';
+                    else if (south.includes(state)) region = 'South';
+                    else if (northeast.includes(state)) region = 'Northeast';
+                    else region = 'Other';
+                }
+                region = region || 'Other';
+                
+                if (!groupedByRegion[region]) {
+                    groupedByRegion[region] = [];
+                }
+                groupedByRegion[region].push(pos);
+            });
+            
+            // Get unique verticals and calculate stats
+            const verticals = [...new Set(positions.map(p => p.vertical).filter(v => v))];
+            const totalPositions = positions.length;
+            const totalRegions = Object.keys(groupedByRegion).length;
+            
+            // Build HTML
+            let html = `
+                <div style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: center;">
+                        <div style="font-size: 14px; color: rgba(255,255,255,0.8);">
+                            <strong style="color: #fff; font-size: 16px;">${totalPositions}</strong> Open Positions
+                        </div>
+                        <div style="font-size: 14px; color: rgba(255,255,255,0.8);">
+                            <strong style="color: #fff; font-size: 16px;">${totalRegions}</strong> Regions
+                        </div>
+                        <div style="font-size: 14px; color: rgba(255,255,255,0.8);">
+                            <strong style="color: #fff; font-size: 16px;">${verticals.length}</strong> Verticals
                         </div>
                     </div>
-                    <div class="view-profile-btn" onclick="showJobMatches(${position.id})">🔍 View Top Matches</div>
                 </div>
-            `).join('');
+                
+            `;
             
-            candidatesList.innerHTML = renderedContent;
+            // Render each region
+            const regionOrder = ['West', 'Midwest', 'South', 'Northeast', 'Other'];
+            regionOrder.forEach(region => {
+                if (!groupedByRegion[region]) return;
+                
+                const regionPositions = groupedByRegion[region];
+                const color = regionColors[region] || regionColors['Other'];
+                const regionId = `region-${region.toLowerCase().replace(/\s+/g, '-')}`;
+                
+                html += `
+                    <div style="margin-bottom: 20px; background: ${color.bg}; border: 2px solid ${color.border}; border-radius: 12px; overflow: hidden;">
+                        <div onclick="toggleRegion('${regionId}')" 
+                             style="padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+                                    background: linear-gradient(135deg, ${color.bg}, ${color.bg}dd);"
+                             onmouseover="this.style.background='linear-gradient(135deg, ${color.bg}dd, ${color.bg})'"
+                             onmouseout="this.style.background='linear-gradient(135deg, ${color.bg}, ${color.bg}dd)'">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <h3 style="margin: 0; color: ${color.text}; font-size: 18px; font-weight: 600;">${region}</h3>
+                                <span style="background: ${color.text}; color: #fff; padding: 4px 12px; border-radius: 12px; 
+                                            font-size: 12px; font-weight: 600;">${regionPositions.length}</span>
+                            </div>
+                            <span id="${regionId}-icon" style="color: ${color.text}; font-size: 20px; transition: transform 0.3s;">▼</span>
+                        </div>
+                        <div id="${regionId}-content" style="display: none; padding: 16px;">
+                            ${regionPositions.map(position => `
+                                <div style="margin-top: 10px; background: rgba(255,255,255,0.95); border: 1px solid ${color.border}; border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <h3 style="color: #1e293b; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">${position.title || 'N/A'}</h3>
+                                        <div style="color: #64748b; font-size: 13px; line-height: 1.5;">
+                                            <div style="margin-bottom: 3px;"><strong style="color: #475569;">Account:</strong> ${position.account || 'TBD'}</div>
+                                            <div style="margin-bottom: 3px;"><strong style="color: #475569;">Location:</strong> ${position.city || ''}${position.state ? ', ' + position.state : ''}</div>
+                                            <div style="margin-bottom: 3px;"><strong style="color: #475569;">Vertical:</strong> ${position.vertical || 'TBD'}</div>
+                                            <div><strong style="color: #475569;">Salary:</strong> ${typeof position.salary === 'string' ? position.salary : (position.salary ? '$' + position.salary.toLocaleString() : 'TBD')}</div>
+                                        </div>
+                                    </div>
+                                    <button onclick="showJobMatches(${position.id || 0})" 
+                                            style="background: ${color.text}; border: none; padding: 8px 14px; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; flex-shrink: 0; transition: opacity 0.2s;"
+                                            onmouseover="this.style.opacity='0.85'"
+                                            onmouseout="this.style.opacity='1'">
+                                        🔍 Matches
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
             
-            // Cache the rendered content for instant back navigation
-            cachedListContent = renderedContent;
+            // Clear grid layout for region-based view
+            candidatesList.className = '';
+            candidatesList.style.cssText = 'display: block; width: 100%;';
+            candidatesList.innerHTML = html;
+            
+            // Cache the rendered content
+            cachedListContent = candidatesList.innerHTML;
             cachedListTitle = '💼 Open Positions';
             cacheTimestamp = Date.now();
-            console.log('💾 Cached list content with timestamp:', cacheTimestamp);
             
-            // Preload job matches in background after rendering
+            // Preload job matches in background
             setTimeout(() => {
                 preloadJobMatches(positions);
             }, 500);
+        }
+        
+        // Toggle region expand/collapse
+        function toggleRegion(regionId) {
+            const content = document.getElementById(regionId + '-content');
+            const icon = document.getElementById(regionId + '-icon');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▲';
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▼';
+            }
         }
 
         // ==========================================
@@ -3492,12 +3620,24 @@
             
             // Filter by salary
             if (salaryRange !== 'all') {
-                if (salaryRange === '80') {
-                    filtered = filtered.filter(p => p.salary >= 80000);
-                } else {
-                    const [min, max] = salaryRange.split('-').map(v => parseInt(v) * 1000);
-                    filtered = filtered.filter(p => p.salary >= min && p.salary < max);
-                }
+                filtered = filtered.filter(p => {
+                    let salary = p.salary;
+                    if (typeof salary === 'string') {
+                        // Extract number from string like "$85,000"
+                        salary = parseInt(salary.replace(/[^0-9]/g, '')) || 0;
+                    } else if (typeof salary !== 'number') {
+                        salary = 0;
+                    }
+                    
+                    if (salaryRange === '60-80') {
+                        return salary >= 60000 && salary < 80000;
+                    } else if (salaryRange === '80-100') {
+                        return salary >= 80000 && salary < 100000;
+                    } else if (salaryRange === '100') {
+                        return salary >= 100000;
+                    }
+                    return true;
+                });
             }
             
             // Update positions array and re-render
@@ -3656,6 +3796,13 @@
                             ${candidate.data_quality === 'archive' ? '<span class="data-quality-badge info">Archive Data</span>' : ''}
                         </h1>
                         <p class="profile-bio">${candidate.bio || ''}</p>
+                        ${candidate.placement_info && candidate.placement_info.trim() && candidate.placement_info !== 'TBD' && candidate.placement_info.toLowerCase() !== 'nan' ? 
+                            `<div style="margin-top: 12px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 6px;">
+                                <div style="font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">📋 Placement Info</div>
+                                <div style="font-size: 0.95rem; color: #e2e8f0; line-height: 1.5;">${candidate.placement_info}</div>
+                            </div>` 
+                            : ''
+                        }
                         <p>${candidate.training_site} • ${candidate.location}</p>
                         <p class="status-badge">${candidate.status} • ${candidate.training_program}</p>
                     </div>
@@ -4003,7 +4150,7 @@
         function showOpenPositions() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton('positions'); // ✅ Add filters for positions
+            ensureStickyBackButton(); // Just back button, no filters
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading positions...</div>';
             document.querySelector('.candidates-container h2').textContent = '💼 Placement Roles';
