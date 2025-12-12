@@ -482,15 +482,44 @@ def get_candidate_profile(name: str):
 @app.route('/api/open-positions', methods=['GET'])
 def get_open_positions():
     """
-    Get open job positions from Google Sheets
+    Get open job positions from Google Sheets with optional filtering and grouping
+    
+    Query Parameters:
+        vertical: Filter by vertical (case-insensitive)
+        salary_min: Minimum salary (integer)
+        salary_max: Maximum salary (integer)
+        group_by_region: If 'true', return positions grouped by region
     
     Returns:
-        JSON response with open positions data
+        JSON response with open positions data (grouped or flat list)
     """
     try:
+        from utils import filter_positions, group_positions_by_region
+        
         open_positions = fetch_open_positions_data()
         
-        response = jsonify(open_positions)
+        # Get filter parameters
+        vertical = request.args.get('vertical', None)
+        salary_min = request.args.get('salary_min', None, type=int)
+        salary_max = request.args.get('salary_max', None, type=int)
+        group_by_region = request.args.get('group_by_region', 'false').lower() == 'true'
+        
+        # Apply filters
+        if vertical or salary_min is not None or salary_max is not None:
+            open_positions = filter_positions(open_positions, vertical, salary_min, salary_max)
+        
+        # Group by region if requested
+        if group_by_region:
+            grouped = group_positions_by_region(open_positions)
+            response_data = {
+                'grouped': True,
+                'regions': grouped,
+                'total': len(open_positions)
+            }
+        else:
+            response_data = open_positions
+        
+        response = jsonify(response_data)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
         
