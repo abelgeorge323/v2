@@ -430,6 +430,25 @@ def collect_report_data() -> Dict[str, Any]:
     open_positions = fetch_open_positions_data()
     positions_by_region = group_positions_by_region(open_positions)
     
+    # Calculate job openings summary statistics
+    total_positions = len(open_positions)
+    salaries = [p.get('salary', 0) for p in open_positions if isinstance(p.get('salary'), (int, float)) and p.get('salary', 0) > 0]
+    avg_salary = sum(salaries) / len(salaries) if salaries else 0
+    
+    # Calculate vertical distribution
+    vertical_counts = {}
+    for pos in open_positions:
+        vertical = pos.get('vertical', 'Unknown').strip()
+        if vertical:
+            vertical_counts[vertical] = vertical_counts.get(vertical, 0) + 1
+    
+    # Get top 3 verticals
+    top_verticals = sorted(vertical_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+    
+    # Sort positions by salary (highest first) within each region
+    for region in positions_by_region:
+        positions_by_region[region].sort(key=lambda p: p.get('salary', 0) if isinstance(p.get('salary'), (int, float)) else 0, reverse=True)
+    
     # Get mentor data
     active_mentors = get_active_training_mentors()
     
@@ -674,6 +693,12 @@ def collect_report_data() -> Dict[str, Any]:
         'ready_mits': ready_mits,
         'open_positions_count': len(open_positions),
         'positions_by_region': positions_by_region,
+        'job_openings_stats': {
+            'total_positions': total_positions,
+            'avg_salary': avg_salary,
+            'top_verticals': top_verticals,
+            'total_regions': len(positions_by_region)
+        },
         'ready_in_30_days': ready_in_30_days,
         'mits_by_week_band': mits_by_week_band,
         'band_counts': band_counts,
