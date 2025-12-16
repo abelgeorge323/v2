@@ -2216,6 +2216,25 @@
                 border-left: 3px solid #60a5fa;
             }
         }
+        
+        /* Search input placeholder styling */
+        #positionSearchInput::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+            opacity: 1;
+        }
+        
+        #positionSearchInput::-webkit-input-placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        #positionSearchInput::-moz-placeholder {
+            color: rgba(255, 255, 255, 0.5);
+            opacity: 1;
+        }
+        
+        #positionSearchInput:-ms-input-placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -3537,26 +3556,97 @@
             const totalPositions = positions.length;
             const totalRegions = Object.keys(groupedByRegion).length;
             
-            // Build HTML
+            // Calculate enhanced stats for executives
+            const calculateAverageSalary = (positions) => {
+                const salaries = positions.map(p => {
+                    let salary = p.salary;
+                    if (typeof salary === 'string') {
+                        salary = parseInt(salary.replace(/[^0-9]/g, '')) || 0;
+                    } else if (typeof salary !== 'number') {
+                        salary = 0;
+                    }
+                    return salary;
+                }).filter(s => s > 0);
+                
+                if (salaries.length === 0) return 'N/A';
+                const avg = salaries.reduce((a, b) => a + b, 0) / salaries.length;
+                return '$' + Math.round(avg / 1000) + 'k';
+            };
+            
+            const getTopVertical = (positions) => {
+                const verticalCounts = {};
+                positions.forEach(p => {
+                    const v = p.vertical || 'Unknown';
+                    verticalCounts[v] = (verticalCounts[v] || 0) + 1;
+                });
+                const sorted = Object.entries(verticalCounts).sort((a, b) => b[1] - a[1]);
+                return sorted.length > 0 ? sorted[0][0] : 'N/A';
+            };
+            
+            const avgSalary = calculateAverageSalary(positions);
+            const topVertical = getTopVertical(positions);
+            
+            // Define region order BEFORE using it in template
+            const regionOrder = ['West', 'Midwest', 'South', 'Northeast', 'Other'];
+            
+            // Build HTML with enhanced executive summary
             let html = `
-                <div style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-                    <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: center;">
-                        <div style="font-size: 14px; color: rgba(255,255,255,0.8);">
-                            <strong style="color: #fff; font-size: 16px;">${totalPositions}</strong> Open Positions
+                <div style="margin-bottom: 24px; padding: 20px; background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05)); border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 4px;">${totalPositions}</div>
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Open Positions</div>
                         </div>
-                        <div style="font-size: 14px; color: rgba(255,255,255,0.8);">
-                            <strong style="color: #fff; font-size: 16px;">${totalRegions}</strong> Regions
+                        <div style="text-align: center;">
+                            <div style="font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 4px;">${totalRegions}</div>
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Regions</div>
                         </div>
-                        <div style="font-size: 14px; color: rgba(255,255,255,0.8);">
-                            <strong style="color: #fff; font-size: 16px;">${verticals.length}</strong> Verticals
+                        <div style="text-align: center;">
+                            <div style="font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 4px;">${verticals.length}</div>
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Verticals</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 28px; font-weight: 700; color: #10b981; margin-bottom: 4px;">${avgSalary}</div>
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Avg Salary</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 20px; font-weight: 600; color: #3b82f6; margin-bottom: 4px;">${topVertical}</div>
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Top Vertical</div>
                         </div>
                     </div>
                 </div>
                 
+                <!-- Quick Filter Pills for Regions -->
+                <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                    <span style="color: rgba(255,255,255,0.8); font-size: 13px; font-weight: 600; margin-right: 8px;">Filter by Region:</span>
+                    ${regionOrder.map(region => {
+                        const regionCount = groupedByRegion[region]?.length || 0;
+                        if (regionCount === 0) return '';
+                        const color = regionColors[region] || regionColors['Other'];
+                        return `
+                            <button onclick="filterByRegion('${region}')" 
+                                    style="background: ${color.bg}; color: ${color.text}; border: 2px solid ${color.border}; 
+                                           padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; 
+                                           cursor: pointer; transition: all 0.2s; white-space: nowrap;"
+                                    onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)'"
+                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">
+                                ${region} (${regionCount})
+                            </button>
+                        `;
+                    }).join('')}
+                    <button onclick="filterByRegion('all')" 
+                            style="background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); border: 2px solid rgba(255,255,255,0.3); 
+                                   padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; 
+                                   cursor: pointer; transition: all 0.2s; white-space: nowrap;"
+                            onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)'"
+                            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">
+                        All Regions
+                    </button>
+                </div>
+                
             `;
             
-            // Render each region
-            const regionOrder = ['West', 'Midwest', 'South', 'Northeast', 'Other'];
+            // Render each region (regionOrder already defined above)
             regionOrder.forEach(region => {
                 if (!groupedByRegion[region]) return;
                 
@@ -3658,11 +3748,18 @@
         // FILTER FUNCTIONS
         // ==========================================
 
-        // Filter positions by vertical and salary
+        // Global filter state
+        let currentRegionFilter = 'all';
+        let currentSearchQuery = '';
+        let currentSortBy = 'default';
+        
+        // Filter positions by vertical, salary, region, search, and sort
         function applyPositionFilters() {
             // Check sticky nav filter first, then fallback
             const verticalFilter = document.getElementById('stickyVerticalFilter') || document.getElementById('verticalFilter');
-            const salaryFilter = document.getElementById('salaryFilter');
+            const salaryFilter = document.getElementById('stickySalaryFilter');
+            const searchInput = document.getElementById('positionSearchInput');
+            const sortSelect = document.getElementById('positionSortSelect');
             
             if (!verticalFilter) {
                 console.error('Vertical filter not found!');
@@ -3671,6 +3768,12 @@
             
             const vertical = verticalFilter.value;
             const salaryRange = salaryFilter ? salaryFilter.value : 'all';
+            const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const sortBy = sortSelect ? sortSelect.value : 'default';
+            
+            // Update global state
+            currentSearchQuery = searchQuery;
+            currentSortBy = sortBy;
             
             // Start with original unfiltered data
             let filtered = [...originalPositions];
@@ -3689,7 +3792,6 @@
                 filtered = filtered.filter(p => {
                     let salary = p.salary;
                     if (typeof salary === 'string') {
-                        // Extract number from string like "$85,000"
                         salary = parseInt(salary.replace(/[^0-9]/g, '')) || 0;
                     } else if (typeof salary !== 'number') {
                         salary = 0;
@@ -3706,19 +3808,95 @@
                 });
             }
             
+            // Filter by region
+            if (currentRegionFilter && currentRegionFilter !== 'all') {
+                filtered = filtered.filter(p => {
+                    let region = p.region;
+                    if (!region && p.state) {
+                        const state = p.state.toUpperCase().trim();
+                        const west = ['CA', 'OR', 'WA', 'NV', 'AZ', 'CO', 'UT', 'ID', 'MT', 'WY', 'NM', 'AK', 'HI'];
+                        const midwest = ['IL', 'IN', 'MI', 'OH', 'WI', 'MN', 'IA', 'MO', 'ND', 'SD', 'NE', 'KS'];
+                        const south = ['TX', 'FL', 'GA', 'NC', 'SC', 'VA', 'TN', 'AL', 'MS', 'AR', 'LA', 'OK', 'KY', 'WV'];
+                        const northeast = ['NY', 'PA', 'NJ', 'MA', 'CT', 'RI', 'VT', 'NH', 'ME', 'MD', 'DE'];
+                        if (west.includes(state)) region = 'West';
+                        else if (midwest.includes(state)) region = 'Midwest';
+                        else if (south.includes(state)) region = 'South';
+                        else if (northeast.includes(state)) region = 'Northeast';
+                        else region = 'Other';
+                    }
+                    region = region || 'Other';
+                    return region === currentRegionFilter;
+                });
+            }
+            
+            // Filter by search query
+            if (searchQuery) {
+                filtered = filtered.filter(p => {
+                    const title = (p.title || '').toLowerCase();
+                    const account = (p.account || '').toLowerCase();
+                    const city = (p.city || '').toLowerCase();
+                    const state = (p.state || '').toLowerCase();
+                    const vertical = (p.vertical || '').toLowerCase();
+                    
+                    return title.includes(searchQuery) || 
+                           account.includes(searchQuery) || 
+                           city.includes(searchQuery) || 
+                           state.includes(searchQuery) ||
+                           vertical.includes(searchQuery);
+                });
+            }
+            
+            // Sort positions
+            if (sortBy === 'salary-high') {
+                filtered.sort((a, b) => {
+                    const salaryA = typeof a.salary === 'string' ? parseInt(a.salary.replace(/[^0-9]/g, '')) || 0 : (a.salary || 0);
+                    const salaryB = typeof b.salary === 'string' ? parseInt(b.salary.replace(/[^0-9]/g, '')) || 0 : (b.salary || 0);
+                    return salaryB - salaryA;
+                });
+            } else if (sortBy === 'salary-low') {
+                filtered.sort((a, b) => {
+                    const salaryA = typeof a.salary === 'string' ? parseInt(a.salary.replace(/[^0-9]/g, '')) || 0 : (a.salary || 0);
+                    const salaryB = typeof b.salary === 'string' ? parseInt(b.salary.replace(/[^0-9]/g, '')) || 0 : (b.salary || 0);
+                    return salaryA - salaryB;
+                });
+            } else if (sortBy === 'title') {
+                filtered.sort((a, b) => {
+                    const titleA = (a.title || '').toLowerCase();
+                    const titleB = (b.title || '').toLowerCase();
+                    return titleA.localeCompare(titleB);
+                });
+            } else if (sortBy === 'region') {
+                filtered.sort((a, b) => {
+                    const regionA = a.region || 'Other';
+                    const regionB = b.region || 'Other';
+                    return regionA.localeCompare(regionB);
+                });
+            }
+            
             // Update positions array and re-render
             positions = filtered;
             renderOpenPositions();
             
-            // Preserve the selected filter value after re-render
+            // Preserve the selected filter values after re-render
             setTimeout(() => {
                 const stickyFilter = document.getElementById('stickyVerticalFilter');
-                if (stickyFilter && vertical) {
-                    stickyFilter.value = vertical;
-                }
+                const stickySalary = document.getElementById('stickySalaryFilter');
+                const search = document.getElementById('positionSearchInput');
+                const sort = document.getElementById('positionSortSelect');
+                
+                if (stickyFilter && vertical) stickyFilter.value = vertical;
+                if (stickySalary && salaryRange) stickySalary.value = salaryRange;
+                if (search && searchQuery) search.value = searchQuery;
+                if (sort && sortBy) sort.value = sortBy;
             }, 100);
             
             console.log(`🔍 Filtered positions: ${filtered.length} of ${originalPositions.length} total`);
+        }
+        
+        // Filter by region (quick filter button)
+        function filterByRegion(region) {
+            currentRegionFilter = region;
+            applyPositionFilters();
         }
 
         // Filter candidates by week
@@ -4201,10 +4379,30 @@
                 const verticals = [...new Set((positions || []).map(p => p.vertical).filter(v => v))];
                 
                 filtersHTML = `
-                    <div class="filter-pills">
-                        <select class="filter-select" id="stickyVerticalFilter" onchange="applyPositionFilters()">
+                    <div class="filter-pills" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <select class="filter-select" id="stickyVerticalFilter" onchange="applyPositionFilters()" style="min-width: 140px;">
                             <option value="all">All Verticals</option>
                             ${verticals.length > 0 ? verticals.map(v => `<option value="${v}">${v}</option>`).join('') : ''}
+                        </select>
+                        <select class="filter-select" id="stickySalaryFilter" onchange="applyPositionFilters()" style="min-width: 140px;">
+                            <option value="all">All Salaries</option>
+                            <option value="60-80">$60k - $80k</option>
+                            <option value="80-100">$80k - $100k</option>
+                            <option value="100">$100k+</option>
+                        </select>
+                        <input type="text" id="positionSearchInput" placeholder="Search positions..." 
+                               oninput="applyPositionFilters()" 
+                               style="padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); 
+                                      background: rgba(255,255,255,0.1); color: #fff; font-size: 13px; min-width: 200px;"
+                               value=""
+                               onfocus="this.style.borderColor='rgba(59, 130, 246, 0.6)'"
+                               onblur="this.style.borderColor='rgba(255,255,255,0.3)'">
+                        <select class="filter-select" id="positionSortSelect" onchange="applyPositionFilters()" style="min-width: 140px;">
+                            <option value="default">Sort: Default</option>
+                            <option value="salary-high">Sort: Salary (High)</option>
+                            <option value="salary-low">Sort: Salary (Low)</option>
+                            <option value="title">Sort: Title</option>
+                            <option value="region">Sort: Region</option>
                         </select>
                     </div>
                 `;
