@@ -150,12 +150,49 @@
           "independent_responsibility": 4,
           "observations": ""
         }
+      },
+      {
+        "date": "12/8/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 3,
+            "q2_problem_solving": 4,
+            "q3_time_management": 4,
+            "q4_quality_standards": 4,
+            "q5_safety_protocols": 4
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 4,
+            "q3_adaptability": 4,
+            "q4_initiative": 4,
+            "q5_accountability": 3
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 4,
+            "q3_flexibility": 4,
+            "q4_curiosity": 4,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "Lloyd did miss one of the mandatory 6 meetings for the MIT program. However, Lloyd did immediately reach out to Renee West and explained the situation. Lloyd will now be on the January meeting."
+        }
       }
     ]
   },
   "agrein turner": {
     "assessments": [
       {
+        "date": "Survey 1",
         "section_1_core_competencies": {
           "questions": {
             "q1_operations_knowledge": 4,
@@ -188,6 +225,42 @@
           "weekly_performance": "Progressing as Expected",
           "independent_responsibility": 3,
           "observations": "Agrein just started the MIT program yesterday. She has not been introduced to audits. Being new to janitorial she does seem a little overwhelmed with the site size and number of employees."
+        }
+      },
+      {
+        "date": "12/8/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 3,
+            "q2_problem_solving": 3,
+            "q3_time_management": 3,
+            "q4_quality_standards": 3,
+            "q5_safety_protocols": 4
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 2,
+            "q2_teamwork": 3,
+            "q3_adaptability": 2,
+            "q4_initiative": 3,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 3,
+            "q2_learning_drive": 3,
+            "q3_flexibility": 3,
+            "q4_curiosity": 2,
+            "q5_growth_mindset": 3
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 3,
+          "weekly_performance": "Off Track",
+          "independent_responsibility": 3,
+          "observations": "mentee forgot about our one on one Team's meeting to follow up on progress. Has lots of questions where it appears she's trying to get me to give her the answer"
         }
       }
     ]
@@ -340,6 +413,42 @@
           "weekly_performance": "Progressing as Expected",
           "independent_responsibility": 4,
           "observations": "Jesus is quickly adapting to and learning SBM Operations. He is doing a great job and has already started building positive relationships with clients and his team."
+        }
+      },
+      {
+        "date": "12/8/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 5,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 5,
+            "q3_adaptability": 4,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 4,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Exceeding Expectations",
+          "independent_responsibility": 5,
+          "observations": "Jesus is doing a phenomenal job leading his team and driving results. His confidence when speaking to his team or the customer can sometimes come across as shy or intimidated, even when he has the correct answers or the right game plan. He needs to be more confident in his communication and delivery."
         }
       }
     ]
@@ -574,6 +683,42 @@
           "independent_responsibility": 5,
           "observations": "Stephany has demonstrated strong leadership and great customer service skills. She is always taking notes and questions on every item, retaining the information and uses on daily basis. She is learning safety items and the importance on the company and keep learning the importance of 4insite"
         }
+      },
+      {
+        "date": "12/8/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 5,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Exceeding Expectations",
+          "independent_responsibility": 5,
+          "observations": ""
+        }
       }
     ]
   },
@@ -616,6 +761,42 @@
           "weekly_performance": "Progressing as Expected",
           "independent_responsibility": 4,
           "observations": "The mentee can navigate 4insite confidently and complete audits: Mentee has mastered the basic functions to-date. However a full understanding of all of 4insites tools takes time. 1 internal quality audit completed to date."
+        }
+      },
+      {
+        "date": "12/8/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 4,
+            "q3_time_management": 3,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 4
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 4,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 4,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "The mentee had a set back due to a sudden illness and death in thier family. This put us a few days behind on our interally developed schedule for site level goals. However, the mentee has shown willingness to learn, retain knowledge and support various shifts and sites durring thier time otherwise."
         }
       }
     ]
