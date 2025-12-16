@@ -480,29 +480,91 @@
         {% if positions_by_region %}
         <div class="section">
             <h2>💼 Job Openings by Region</h2>
+            
+            <!-- Summary Statistics Box -->
+            {% if job_openings_stats %}
+            <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 24px; border-radius: 10px; margin-bottom: 30px; border-left: 5px solid #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px; margin-bottom: 20px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">{{ job_openings_stats.total_positions }}</div>
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Total Positions</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #10b981; margin-bottom: 6px;">
+                            {% if job_openings_stats.avg_salary > 0 %}
+                                ${{ "{:,.0f}".format(job_openings_stats.avg_salary) }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Average Salary</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #3b82f6; margin-bottom: 6px;">{{ job_openings_stats.total_regions }}</div>
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Regions</div>
+                    </div>
+                    {% if job_openings_stats.top_verticals %}
+                    <div style="text-align: center;">
+                        <div style="font-size: 18px; font-weight: 600; color: #6366f1; margin-bottom: 6px;">
+                            {{ job_openings_stats.top_verticals[0][0] if job_openings_stats.top_verticals else 'N/A' }}
+                        </div>
+                        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Top Vertical</div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Top Verticals Breakdown -->
+                {% if job_openings_stats.top_verticals %}
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                    <div style="font-size: 12px; color: #475569; font-weight: 600; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Top Verticals by Position Count</div>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                        {% for vertical, count in job_openings_stats.top_verticals %}
+                        <div style="background: white; padding: 10px 16px; border-radius: 6px; border: 1px solid #e2e8f0; flex: 1; min-width: 120px;">
+                            <div style="font-size: 20px; font-weight: 700; color: #1e293b;">{{ count }}</div>
+                            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">{{ vertical }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <!-- Regional Tables (sorted by salary, highest first) -->
             {% for region, positions in positions_by_region.items() %}
-            <div style="margin-bottom: 30px;">
-                <h3 style="font-size: 14pt; color: #1e293b; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0;">
-                    {{ region }} ({{ positions|length }} position{{ 's' if positions|length != 1 else '' }})
+            <div style="margin-bottom: 35px;">
+                <h3 style="font-size: 15pt; color: #1e293b; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 3px solid #3b82f6; font-weight: 600;">
+                    {{ region }} <span style="color: #64748b; font-weight: 500; font-size: 13pt;">({{ positions|length }} position{{ 's' if positions|length != 1 else '' }})</span>
                 </h3>
-                <table style="width: 100%; margin-bottom: 20px;">
+                <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
                     <thead>
                         <tr style="background: #f8fafc;">
-                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Job Title</th>
-                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Account</th>
-                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Location</th>
-                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Vertical</th>
-                            <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Salary</th>
+                            <th style="text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 11pt;">Job Title</th>
+                            <th style="text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 11pt;">Account</th>
+                            <th style="text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 11pt;">Location</th>
+                            <th style="text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 11pt;">Vertical</th>
+                            <th style="text-align: right; padding: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 600; color: #475569; font-size: 11pt;">Salary</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for position in positions %}
-                        <tr style="border-bottom: 1px solid #f1f5f9;">
-                            <td style="padding: 10px; color: #334155; font-weight: 500;">{{ position.title }}</td>
-                            <td style="padding: 10px; color: #64748b;">{{ position.account }}</td>
-                            <td style="padding: 10px; color: #64748b;">{{ position.city }}{% if position.state %}, {{ position.state }}{% endif %}</td>
-                            <td style="padding: 10px; color: #64748b;">{{ position.vertical }}</td>
-                            <td style="padding: 10px; color: #64748b;">
+                        {% set salary_val = position.salary if position.salary is number else 0 %}
+                        {% if salary_val >= 80000 %}
+                            {% set row_bg = '#f0fdf4' %}
+                            {% set salary_color = '#10b981' %}
+                        {% elif salary_val >= 60000 %}
+                            {% set row_bg = '#fffbeb' %}
+                            {% set salary_color = '#f59e0b' %}
+                        {% else %}
+                            {% set row_bg = '#ffffff' %}
+                            {% set salary_color = '#64748b' %}
+                        {% endif %}
+                        <tr style="border-bottom: 1px solid #f1f5f9; background: {{ row_bg }};">
+                            <td style="padding: 12px; color: #334155; font-weight: 500; font-size: 11pt;">{{ position.title }}</td>
+                            <td style="padding: 12px; color: #64748b; font-size: 11pt;">{{ position.account }}</td>
+                            <td style="padding: 12px; color: #64748b; font-size: 11pt;">{{ position.city }}{% if position.state %}, {{ position.state }}{% endif %}</td>
+                            <td style="padding: 12px; color: #64748b; font-size: 11pt;">{{ position.vertical }}</td>
+                            <td style="padding: 12px; text-align: right; font-weight: 600; font-size: 11pt; color: {{ salary_color }};">
                                 {% if position.salary %}
                                     {% if position.salary is string %}
                                         {{ position.salary }}
@@ -510,7 +572,7 @@
                                         ${{ "{:,.0f}".format(position.salary) }}
                                     {% endif %}
                                 {% else %}
-                                    TBD
+                                    <span style="color: #94a3b8;">TBD</span>
                                 {% endif %}
                             </td>
                         </tr>
