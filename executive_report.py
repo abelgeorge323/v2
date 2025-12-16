@@ -197,7 +197,8 @@ def generate_performance_insights(candidates: List[Dict], training_indicators: D
 EXCLUDED_MITS = [
     'kathryn keillor',  # Exclude unfairly judged assessments
     'ivves mullen',     # Placed/removed from program
-    'shaquille thompson'  # Placed/removed from program
+    'shaquille thompson',  # Placed/removed from program
+    'agrein turner'  # Removed from program for ethics-related issues
 ]
 
 # Threshold for showing bottom 2 MITs (only show if scores are below this)
@@ -529,6 +530,17 @@ def collect_report_data() -> Dict[str, Any]:
         else:
             readiness_status = 'Pending'
             
+        # Get all Performance Snapshot scores
+        scores = candidate.get('scores', {})
+        skill_ranking = scores.get('skill_ranking', 'TBD')
+        assessment_score = scores.get('assessment_score', 0)
+        confidence_score = scores.get('confidence_score', 0)
+        perf_eval_score = scores.get('perf_eval_score', 0)
+        
+        # Determine primary score: Skill Ranking if available, otherwise Mentor Score
+        primary_score_type = 'Skill Ranking' if skill_ranking and skill_ranking != 'TBD' and str(skill_ranking).strip().lower() not in ['nan', 'none', ''] else 'Mentor Score'
+        primary_score_value = skill_ranking if primary_score_type == 'Skill Ranking' else mentor_score
+        
         mit_data = {
             'name': candidate.get('name', 'Unknown'),
             'location': candidate.get('training_site', 'TBD'),
@@ -537,8 +549,14 @@ def collect_report_data() -> Dict[str, Any]:
             'mentor': candidate.get('mentor_name', 'TBD'),
             'status': candidate.get('status', 'TBD'),
             'mock_qbr_date': candidate.get('mock_qbr_date', ''),
-            'mock_qbr_score': candidate.get('scores', {}).get('mock_qbr_score', ''),
+            'mock_qbr_score': scores.get('mock_qbr_score', ''),
             'mentor_score': mentor_score,
+            'skill_ranking': skill_ranking,
+            'assessment_score': assessment_score,
+            'confidence_score': confidence_score,
+            'perf_eval_score': perf_eval_score,
+            'primary_score_type': primary_score_type,
+            'primary_score_value': primary_score_value,
             'mentor_observations': mentor_obs[:150] + '...' if len(mentor_obs) > 150 else mentor_obs,
             'readiness_status': readiness_status,
             'oig_status': candidate.get('oig_completion', {}).get('status', 'Unknown'),
@@ -605,6 +623,75 @@ def collect_report_data() -> Dict[str, Any]:
         bottom_2 = assessment_data[-2:]
         # Only show MITs that have a score below threshold
         bottom_2_mits = [mit for mit in bottom_2 if mit['overall'] < POOR_SCORE_THRESHOLD]
+    
+    # Manually add Evan Tichenor and Lloyd Harrison-Hine to Development Focus
+    # (Evan: Mock QBR redo, scored low; Lloyd: scoring low on everything)
+    manual_development_focus = ['evan tichenor', 'lloyd harrison hine']
+    
+    for mit_name in manual_development_focus:
+        # Find in assessment_data
+        found_mit = None
+        for mit in assessment_data:
+            if mit['name'].lower().strip().replace("'", "").replace("-", " ") == mit_name.lower().strip().replace("'", "").replace("-", " "):
+                found_mit = mit.copy()
+                break
+        
+        # If not found in assessment_data, create from candidate data
+        if not found_mit:
+            for candidate in candidates:
+                candidate_name_normalized = candidate.get('name', '').lower().strip().replace("'", "").replace("-", " ")
+                if candidate_name_normalized == mit_name.lower().strip().replace("'", "").replace("-", " "):
+                    # Create a basic assessment entry from candidate data
+                    mentor_score = get_mentor_score(candidate.get('name', ''))
+                    mentor_obs = get_mentor_observations(candidate.get('name', ''))
+                    # Always add them even if no mentor score (they're manually flagged)
+                    found_mit = {
+                        'name': candidate.get('name', 'Unknown'),
+                        'section_1': 0.0,
+                        'section_2': 0.0,
+                        'section_3': 0.0,
+                        'section_4': mentor_score if mentor_score else 0.0,
+                        'overall': mentor_score if mentor_score else 0.0,
+                        'observations': mentor_obs if mentor_obs else ''
+                    }
+                    break
+        
+        # Add to bottom_2_mits if found and not already included
+        if found_mit:
+            # Check if already in list
+            already_included = any(
+                mit['name'].lower().strip().replace("'", "").replace("-", " ") == found_mit['name'].lower().strip().replace("'", "").replace("-", " ")
+                for mit in bottom_2_mits
+            )
+            if not already_included:
+                bottom_2_mits.append(found_mit)
+    
+    # Enrich bottom_2_mits with Performance Snapshot scores from candidate data
+    # Create a lookup dictionary for candidate scores by normalized name
+    candidate_scores_lookup = {}
+    for candidate in candidates:
+        candidate_name = candidate.get('name', '')
+        normalized_name = candidate_name.lower().strip().replace("'", "").replace("-", " ")
+        candidate_scores_lookup[normalized_name] = {
+            'mock_qbr_score': candidate.get('scores', {}).get('mock_qbr_score', 0),
+            'assessment_score': candidate.get('scores', {}).get('assessment_score', 0),
+            'confidence_score': candidate.get('scores', {}).get('confidence_score', 0),
+            'perf_eval_score': candidate.get('scores', {}).get('perf_eval_score', 0),
+            'skill_ranking': candidate.get('scores', {}).get('skill_ranking', 'TBD')
+        }
+    
+    # Add Performance Snapshot scores to bottom_2_mits
+    for mit in bottom_2_mits:
+        mit_name_normalized = mit['name'].lower().strip().replace("'", "").replace("-", " ")
+        if mit_name_normalized in candidate_scores_lookup:
+            mit.update(candidate_scores_lookup[mit_name_normalized])
+        else:
+            # Default values if candidate not found
+            mit['mock_qbr_score'] = 0
+            mit['assessment_score'] = 0
+            mit['confidence_score'] = 0
+            mit['perf_eval_score'] = 0
+            mit['skill_ranking'] = 'TBD'
     
     # Generate assessment executive summary
     if len(top_2_mits) >= 2 and len(bottom_2_mits) >= 1:
