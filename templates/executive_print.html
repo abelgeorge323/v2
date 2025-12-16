@@ -95,7 +95,7 @@
             font-weight: 600; 
         }
         .status-strong { background: #dcfce7; color: #166534; }
-        .status-ontrack { background: #dbeafe; color: #1e40af; }
+        .status-ontrack { background: #fef3c7; color: #92400e; }  /* Changed to yellow */
         .status-monitor { background: #fef3c7; color: #92400e; }
         .status-pending { background: #f1f5f9; color: #64748b; }
         
@@ -237,19 +237,46 @@
                         <th>Name</th>
                         <th>Week</th>
                         <th>Location</th>
-                        <th>Mentor Score</th>
+                        <th>Primary Score</th>
+                        <th>Other Scores</th>
                         <th>Mock QBR</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for mit in mits_by_week_band.weeks_6_7 %}
+                    {% set has_other_scores = (mit.assessment_score and mit.assessment_score > 0) or (mit.perf_eval_score and mit.perf_eval_score > 0) or (mit.confidence_score and mit.confidence_score > 0) %}
                     <tr>
                         <td><strong>{{ mit.name }}</strong></td>
                         <td>{{ mit.week }}</td>
                         <td>{{ mit.location }}</td>
-                        <td class="score {% if mit.mentor_score and mit.mentor_score >= 4.0 %}score-high{% elif mit.mentor_score and mit.mentor_score >= 3.0 %}score-mid{% elif mit.mentor_score %}score-low{% endif %}">
-                            {% if mit.mentor_score %}{{ "%.1f"|format(mit.mentor_score) }}/5{% else %}Pending{% endif %}
+                        <td class="score {% if mit.primary_score_type == 'Skill Ranking' %}{% if 'low' in mit.skill_ranking.lower() %}score-low{% elif 'mid' in mit.skill_ranking.lower() %}score-mid{% else %}score-high{% endif %}{% elif mit.mentor_score and mit.mentor_score >= 4.0 %}score-high{% elif mit.mentor_score and mit.mentor_score >= 3.0 %}score-mid{% elif mit.mentor_score %}score-low{% endif %}">
+                            {% if mit.primary_score_type == 'Skill Ranking' %}
+                                <div style="font-size: 10pt; color: #64748b; font-weight: 400;">{{ mit.primary_score_type }}:</div>
+                                <div style="font-weight: 600; {% if 'low' in mit.skill_ranking.lower() %}color: #ef4444;{% elif 'mid' in mit.skill_ranking.lower() %}color: #f59e0b;{% else %}color: #10b981;{% endif %}">
+                                    {{ mit.skill_ranking }}
+                                </div>
+                            {% else %}
+                                <div style="font-size: 10pt; color: #64748b; font-weight: 400;">{{ mit.primary_score_type }}:</div>
+                                <div style="font-weight: 600; {% if mit.mentor_score and mit.mentor_score >= 4.0 %}color: #10b981;{% elif mit.mentor_score and mit.mentor_score >= 3.0 %}color: #f59e0b;{% elif mit.mentor_score %}color: #ef4444;{% else %}color: #64748b;{% endif %}">
+                                    {% if mit.mentor_score %}{{ "%.1f"|format(mit.mentor_score) }}/5{% else %}Pending{% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 10pt; color: #64748b;">
+                            {% if has_other_scores %}
+                                {% if mit.assessment_score and mit.assessment_score > 0 %}
+                                    <div>Assessment: {{ "%.0f"|format(mit.assessment_score) }}/100</div>
+                                {% endif %}
+                                {% if mit.perf_eval_score and mit.perf_eval_score > 0 %}
+                                    <div>Perf Eval: {{ "%.0f"|format(mit.perf_eval_score) }}/60</div>
+                                {% endif %}
+                                {% if mit.confidence_score and mit.confidence_score > 0 %}
+                                    <div>Confidence: {{ "%.0f"|format(mit.confidence_score) }}/100</div>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #94a3b8;">—</span>
+                            {% endif %}
                         </td>
                         <td>{% if mit.mock_qbr_date and mit.mock_qbr_date != 'nan' %}{{ mit.mock_qbr_date }}{% else %}TBD{% endif %}</td>
                         <td>
@@ -274,19 +301,46 @@
                         <th>Name</th>
                         <th>Week</th>
                         <th>Vertical</th>
-                        <th>Mentor Score</th>
+                        <th>Primary Score</th>
+                        <th>Other Scores</th>
                         <th>Mock QBR</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for mit in mits_by_week_band.weeks_8_plus %}
+                    {% set has_other_scores = (mit.assessment_score and mit.assessment_score > 0) or (mit.perf_eval_score and mit.perf_eval_score > 0) or (mit.confidence_score and mit.confidence_score > 0) %}
                     <tr>
                         <td><strong>{{ mit.name }}</strong></td>
                         <td>{% if mit.week >= 12 %}<span style="color: #dc2626; font-weight: 600;">{{ mit.week }} ⚠️</span>{% else %}{{ mit.week }}{% endif %}</td>
                         <td>{{ mit.vertical }}</td>
-                        <td class="score {% if mit.mentor_score and mit.mentor_score >= 4.0 %}score-high{% elif mit.mentor_score and mit.mentor_score >= 3.0 %}score-mid{% elif mit.mentor_score %}score-low{% endif %}">
-                            {% if mit.mentor_score %}{{ "%.1f"|format(mit.mentor_score) }}/5{% else %}—{% endif %}
+                        <td class="score {% if mit.primary_score_type == 'Skill Ranking' %}{% if 'low' in mit.skill_ranking.lower() %}score-low{% elif 'mid' in mit.skill_ranking.lower() %}score-mid{% else %}score-high{% endif %}{% elif mit.mentor_score and mit.mentor_score >= 4.0 %}score-high{% elif mit.mentor_score and mit.mentor_score >= 3.0 %}score-mid{% elif mit.mentor_score %}score-low{% endif %}">
+                            {% if mit.primary_score_type == 'Skill Ranking' %}
+                                <div style="font-size: 10pt; color: #64748b; font-weight: 400;">{{ mit.primary_score_type }}:</div>
+                                <div style="font-weight: 600; {% if 'low' in mit.skill_ranking.lower() %}color: #ef4444;{% elif 'mid' in mit.skill_ranking.lower() %}color: #f59e0b;{% else %}color: #10b981;{% endif %}">
+                                    {{ mit.skill_ranking }}
+                                </div>
+                            {% else %}
+                                <div style="font-size: 10pt; color: #64748b; font-weight: 400;">{{ mit.primary_score_type }}:</div>
+                                <div style="font-weight: 600; {% if mit.mentor_score and mit.mentor_score >= 4.0 %}color: #10b981;{% elif mit.mentor_score and mit.mentor_score >= 3.0 %}color: #f59e0b;{% elif mit.mentor_score %}color: #ef4444;{% else %}color: #64748b;{% endif %}">
+                                    {% if mit.mentor_score %}{{ "%.1f"|format(mit.mentor_score) }}/5{% else %}—{% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 10pt; color: #64748b;">
+                            {% if has_other_scores %}
+                                {% if mit.assessment_score and mit.assessment_score > 0 %}
+                                    <div>Assessment: {{ "%.0f"|format(mit.assessment_score) }}/100</div>
+                                {% endif %}
+                                {% if mit.perf_eval_score and mit.perf_eval_score > 0 %}
+                                    <div>Perf Eval: {{ "%.0f"|format(mit.perf_eval_score) }}/60</div>
+                                {% endif %}
+                                {% if mit.confidence_score and mit.confidence_score > 0 %}
+                                    <div>Confidence: {{ "%.0f"|format(mit.confidence_score) }}/100</div>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #94a3b8;">—</span>
+                            {% endif %}
                         </td>
                         <td>{% if mit.mock_qbr_score %}{{ mit.mock_qbr_score }}/4 ✓{% elif mit.mock_qbr_date and mit.mock_qbr_date != 'nan' %}{{ mit.mock_qbr_date }}{% else %}Pending{% endif %}</td>
                         <td>
@@ -425,11 +479,14 @@
         </div>
         {% endif %}
 
-        <!-- NEEDS DEVELOPMENT - No observations shown to avoid outdated context -->
+        <!-- DEVELOPMENT FOCUS - Enhanced with Performance Snapshot Scores -->
         {% if bottom_2_mits %}
         <div class="section">
             <h2>📈 Development Focus</h2>
-            <table>
+            
+            <!-- Mentor Assessment Scores Table -->
+            <h3 style="font-size: 12pt; color: #475569; margin-top: 0; margin-bottom: 12px; font-weight: 600;">Mentor Assessment Scores</h3>
+            <table style="margin-bottom: 20px;">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -453,6 +510,72 @@
                     {% endfor %}
                 </tbody>
             </table>
+            
+            <!-- Performance Snapshot Scores Table -->
+            <h3 style="font-size: 12pt; color: #475569; margin-top: 20px; margin-bottom: 12px; font-weight: 600;">Performance Snapshot Scores</h3>
+            <table style="margin-bottom: 20px;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Assessment</th>
+                        <th>Confidence</th>
+                        <th>Perf Eval</th>
+                        <th>Skill Ranking</th>
+                        <th>Mock QBR</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mit in bottom_2_mits %}
+                    {% set is_evan_or_lloyd = (mit.name.lower() | replace("'", "") | replace("-", " ") == "evan tichenor") or (mit.name.lower() | replace("'", "") | replace("-", " ") == "lloyd harrison hine") %}
+                    <tr {% if is_evan_or_lloyd %}style="background: #fef3c7; border-left: 4px solid #f59e0b;"{% endif %}>
+                        <td><strong>{{ mit.name }}</strong>{% if is_evan_or_lloyd %} <span style="color: #92400e; font-size: 10pt; font-weight: 600;">⚠️</span>{% endif %}</td>
+                        <td>
+                            {% if mit.assessment_score and mit.assessment_score > 0 %}
+                                {{ "%.0f"|format(mit.assessment_score) }}/100
+                            {% else %}
+                                <span style="color: #94a3b8;">TBD</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if mit.confidence_score and mit.confidence_score > 0 %}
+                                <span style="{% if mit.confidence_score < 50 %}color: #ef4444; font-weight: 600;{% elif mit.confidence_score < 70 %}color: #f59e0b;{% else %}color: #10b981;{% endif %}">
+                                    {{ "%.0f"|format(mit.confidence_score) }}/100
+                                </span>
+                            {% else %}
+                                <span style="color: #94a3b8;">TBD</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if mit.perf_eval_score and mit.perf_eval_score > 0 %}
+                                {{ "%.0f"|format(mit.perf_eval_score) }}/60
+                            {% else %}
+                                <span style="color: #94a3b8;">TBD</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if mit.skill_ranking and mit.skill_ranking != 'TBD' and mit.skill_ranking != '' %}
+                                <span style="{% if 'low' in mit.skill_ranking.lower() %}color: #ef4444; font-weight: 600;{% elif 'mid' in mit.skill_ranking.lower() %}color: #f59e0b;{% else %}color: #10b981;{% endif %}">
+                                    {{ mit.skill_ranking }}
+                                </span>
+                            {% else %}
+                                <span style="color: #94a3b8;">TBD</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if mit.mock_qbr_score and mit.mock_qbr_score > 0 %}
+                                <span style="{% if mit.mock_qbr_score < 2 %}color: #ef4444; font-weight: 600;{% elif mit.mock_qbr_score < 3 %}color: #f59e0b;{% else %}color: #10b981;{% endif %}">
+                                    {{ "%.1f"|format(mit.mock_qbr_score) }}/4
+                                </span>
+                            {% else %}
+                                <span style="color: #94a3b8;">TBD</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <!-- Mentor Feedback -->
             {% for mit in bottom_2_mits %}
                 {% if mit.observations and mit.observations.strip() %}
                 <div style="margin-top: 15px; padding: 12px; background: #f8fafc; border-left: 3px solid #f59e0b; border-radius: 6px;">
