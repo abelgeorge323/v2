@@ -952,6 +952,140 @@ def executive_print():
         log_error("Error rendering executive print report", e)
         return f"Error generating report: {str(e)}", 500
 
+@app.route('/pipeline')
+def pipeline_view():
+    """
+    Render the Placement & Pipeline View page
+    """
+    try:
+        from utils import merge_candidate_sources, get_mit_alumni
+        from datetime import datetime
+        
+        # Get real active MITs
+        candidates = merge_candidate_sources()
+        active_mits = [c for c in candidates if c.get('week', 0) >= 1]
+        
+        # Fetch graduated MITs and add them to Tier 1 Managers
+        alumni_data = get_mit_alumni()
+        graduated_mits = alumni_data.get('alumni', [])
+        
+        # Convert graduated MITs to Tier 1 Managers format
+        tier1_managers_from_alumni = []
+        for alumni in graduated_mits:
+            # Calculate months in role from placement_start_date
+            months = 0
+            placement_date = alumni.get('placement_start_date', '')
+            if placement_date and placement_date not in ['TBD', 'nan', '']:
+                try:
+                    import pandas as pd
+                    start_date = pd.to_datetime(str(placement_date), errors='coerce')
+                    if pd.notna(start_date):
+                        months = (datetime.now() - start_date.to_pydatetime()).days // 30
+                except:
+                    months = 0
+            
+            # Mock CSAT (in real implementation, fetch from 4insite)
+            csat = 4.0  # Default, should be fetched from actual data
+            
+            tier1_managers_from_alumni.append({
+                'name': alumni.get('name', 'Unknown'),
+                'site': alumni.get('placement_site', 'TBD'),
+                'months': max(1, months),  # At least 1 month
+                'csat': csat,
+                'headcount': 20,  # Default Tier 1 headcount (should be fetched from site data)
+                'revenue': '$85K/mo',  # Default Tier 1 revenue (should be fetched from site data)
+                'trend': 'Stable'  # Default trend
+            })
+        
+        # Mock data for additional Tier 1 Managers (for testing)
+        tier1_managers_mock = [
+            {'name': 'TestUser1', 'site': 'Ford - Dearborn, MI', 'months': 8, 'csat': 4.2, 'headcount': 25, 'revenue': '$85K/mo', 'trend': 'Up'},
+            {'name': 'TestUser2', 'site': 'Intel - Chandler, AZ', 'months': 6, 'csat': 3.8, 'headcount': 18, 'revenue': '$72K/mo', 'trend': 'Stable'},
+        ]
+        
+        # Combine graduated MITs with mock data
+        tier1_managers = tier1_managers_from_alumni + tier1_managers_mock
+        
+        # Mock data for Tier 2 Managers (can move to Tier 3)
+        tier2_managers = [
+            {'name': 'TestUser5', 'site': 'Apple - Austin, TX', 'months': 14, 'csat': 4.4, 'headcount': 35, 'revenue': '$320K/mo', 'trend': 'Up'},
+            {'name': 'TestUser6', 'site': 'Google - Reston, VA', 'months': 12, 'csat': 4.1, 'headcount': 32, 'revenue': '$280K/mo', 'trend': 'Stable'},
+            {'name': 'TestUser7', 'site': 'Meta - Austin, TX', 'months': 18, 'csat': 3.9, 'headcount': 38, 'revenue': '$450K/mo', 'trend': 'Down'},
+        ]
+        
+        # Mock data for Tier 3 Managers (can move to Tier 4)
+        tier3_managers = [
+            {'name': 'TestUser8', 'site': 'Amazon - Nashville, TN', 'months': 24, 'csat': 4.6, 'headcount': 45, 'revenue': '$680K/mo', 'trend': 'Up'},
+            {'name': 'TestUser9', 'site': 'Microsoft - Redmond, WA', 'months': 20, 'csat': 4.3, 'headcount': 48, 'revenue': '$720K/mo', 'trend': 'Stable'},
+        ]
+        
+        # Mock data for Tier 4 Managers (can move to Tier 5)
+        tier4_managers = [
+            {'name': 'TestUser10', 'site': 'Tesla - Fremont, CA', 'months': 30, 'csat': 4.7, 'headcount': 85, 'revenue': '$950K/mo', 'trend': 'Up'},
+        ]
+        
+        # Mock data for Tier 5 Managers (can move to Tier 6)
+        tier5_managers = [
+            {'name': 'TestUser11', 'site': 'Amazon - JFK8, NY', 'months': 36, 'csat': 4.8, 'headcount': 220, 'revenue': '$1.3M/mo', 'trend': 'Up'},
+        ]
+        
+        # Mock openings for Tier 1 (1-28 HC, <$100K/mo)
+        tier1_openings = [
+            {'site': 'Boeing - Everett, WA', 'role': 'Site Manager', 'headcount': 22, 'revenue': '$78K/mo', 'programs': 1, 'type': 'Growth', 'matched': None, 'urgent': False, 'target': '02/01/2025'},
+            {'site': 'Lockheed - Fort Worth, TX', 'role': 'Area Manager', 'headcount': 18, 'revenue': '$65K/mo', 'programs': 1, 'type': 'Backfill', 'matched': 'Evan Tichenor', 'urgent': False, 'target': None},
+            {'site': 'SpaceX - Hawthorne, CA', 'role': 'Site Manager', 'headcount': 25, 'revenue': '$92K/mo', 'programs': 1, 'type': 'Growth', 'matched': None, 'urgent': True, 'target': '01/15/2025'},
+        ]
+        
+        # Mock openings for Tier 2 (29-39 HC, $100K-$500K/mo)
+        tier2_openings = [
+            {'site': 'Tesla - Austin, TX', 'role': 'Site Manager', 'headcount': 35, 'revenue': '$380K/mo', 'programs': 2, 'type': 'Growth', 'matched': None, 'urgent': False, 'target': '02/15/2025'},
+            {'site': 'Apple - Cupertino, CA', 'role': 'Operations Manager', 'headcount': 32, 'revenue': '$420K/mo', 'programs': 2, 'type': 'Backfill', 'matched': None, 'urgent': True, 'target': '01/20/2025'},
+        ]
+        
+        # Mock openings for Tier 3 (40-50 HC, $500K-$750K/mo)
+        tier3_openings = [
+            {'site': 'Amazon - Seattle, WA', 'role': 'Senior Site Manager', 'headcount': 45, 'revenue': '$680K/mo', 'programs': 3, 'type': 'Growth', 'matched': None, 'urgent': False, 'target': '03/01/2025'},
+            {'site': 'Google - Mountain View, CA', 'role': 'Site Director', 'headcount': 48, 'revenue': '$720K/mo', 'programs': 3, 'type': 'Backfill', 'matched': 'TestUser8', 'urgent': False, 'target': None},
+            {'site': 'Microsoft - Bellevue, WA', 'role': 'Operations Director', 'headcount': 42, 'revenue': '$650K/mo', 'programs': 3, 'type': 'Growth', 'matched': None, 'urgent': True, 'target': '01/25/2025'},
+        ]
+        
+        # Mock openings for Tier 4 (51-100 HC, $750K-$1M/mo)
+        tier4_openings = [
+            {'site': 'Amazon - Nashville, TN', 'role': 'Regional Manager', 'headcount': 85, 'revenue': '$950K/mo', 'programs': 5, 'type': 'Growth', 'matched': None, 'urgent': False, 'target': '04/01/2025'},
+            {'site': 'Tesla - Fremont, CA', 'role': 'Site Manager', 'headcount': 72, 'revenue': '$880K/mo', 'programs': 6, 'type': 'Backfill', 'matched': None, 'urgent': True, 'target': '01/30/2025'},
+        ]
+        
+        # Mock openings for Tier 5 (101-250 HC, $1M-$1.5M/mo)
+        tier5_openings = [
+            {'site': 'Amazon - JFK8, NY', 'role': 'Regional Manager', 'headcount': 220, 'revenue': '$1.3M/mo', 'programs': 9, 'type': 'Growth', 'matched': None, 'urgent': False, 'target': '05/01/2025'},
+        ]
+        
+        # Mock openings for Tier 6 (250+ HC, >$1.5M/mo)
+        tier6_openings = [
+            {'site': 'Amazon - DFW7, TX', 'role': 'Senior Regional Manager', 'headcount': 380, 'revenue': '$2.1M/mo', 'programs': 12, 'type': 'Growth', 'matched': None, 'urgent': False, 'target': '06/01/2025'},
+        ]
+        
+        total_openings = len(tier1_openings) + len(tier2_openings) + len(tier3_openings) + len(tier4_openings) + len(tier5_openings) + len(tier6_openings)
+        
+        return render_template('pipeline_view.html',
+            active_mits=active_mits,
+            tier1_managers=tier1_managers,
+            tier2_managers=tier2_managers,
+            tier3_managers=tier3_managers,
+            tier4_managers=tier4_managers,
+            tier5_managers=tier5_managers,
+            tier1_openings=tier1_openings,
+            tier2_openings=tier2_openings,
+            tier3_openings=tier3_openings,
+            tier4_openings=tier4_openings,
+            tier5_openings=tier5_openings,
+            tier6_openings=tier6_openings,
+            total_openings=total_openings
+        )
+    except Exception as e:
+        log_error("Error rendering pipeline view", e)
+        return f"Error generating pipeline view: {str(e)}", 500
+
 @app.route('/executive-print/pdf')
 def executive_print_pdf():
     """
