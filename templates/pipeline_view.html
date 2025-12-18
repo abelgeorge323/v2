@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIT Placement & Pipeline View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .header p {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #94a3b8;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        
+        /* Summary Stats */
+        .summary-bar {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 32px;
+            padding: 20px 24px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        
+        .summary-stat {
+            text-align: center;
+        }
+        
+        .summary-stat .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .summary-stat .label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+        
+        /* Progression Section */
+        .progression-section {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        
+        .progression-header {
+            padding: 16px 24px;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        
+        .progression-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .progression-title h2 {
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .progression-title .arrow {
+            color: #3b82f6;
+            font-size: 18px;
+        }
+        
+        .tier-info {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 8px;
+        }
+        
+        .tier-info-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .tier-badge {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        
+        .mit-eligible { color: #4ade80; }
+        .mit-not-eligible { color: #f87171; }
+        .risk-low { color: #4ade80; }
+        .risk-medium { color: #fbbf24; }
+        .risk-high { color: #f87171; }
+        .risk-very-high { color: #dc2626; }
+        
+        .progression-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+        }
+        
+        .people-column {
+            padding: 20px 24px;
+            border-right: 1px solid rgba(255,255,255,0.06);
+        }
+        
+        .openings-column {
+            padding: 20px 24px;
+            background: rgba(59, 130, 246, 0.02);
+        }
+        
+        .column-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        
+        /* Filters */
+        .filters-bar {
+            background: rgba(255,255,255,0.03);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .filter-select, .filter-input {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            min-width: 120px;
+        }
+        
+        .filter-input {
+            min-width: 200px;
+        }
+        
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        /* Person Card */
+        .person-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .person-card:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.15);
+        }
+        
+        .person-card.expanded {
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        .person-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+        }
+        
+        .person-name {
+            font-weight: 600;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .person-meta {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        
+        .person-status {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .status-ready { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+        .status-soon { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+        .status-training { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        
+        /* Expanded Performance Panel */
+        .person-details {
+            display: none;
+            padding: 16px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            background: rgba(0,0,0,0.2);
+        }
+        
+        .person-card.expanded .person-details {
+            display: block;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        
+        .metric-box {
+            background: rgba(255,255,255,0.03);
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .metric-label {
+            font-size: 10px;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        
+        .metric-value.good { color: #4ade80; }
+        .metric-value.warning { color: #fbbf24; }
+        .metric-value.poor { color: #f87171; }
+        
+        .tier-info-detail {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 11px;
+            color: #64748b;
+        }
+        
+        /* Openings Table */
+        .openings-table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .openings-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .openings-table thead {
+            position: sticky;
+            top: 0;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 10;
+        }
+        
+        .openings-table th {
+            text-align: left;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.05);
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+        
+        .openings-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .openings-table th.sortable:hover {
+            background: rgba(255,255,255,0.08);
+        }
+        
+        .openings-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 13px;
+        }
+        
+        .openings-table tbody tr {
+            transition: background 0.2s;
+        }
+        
+        .openings-table tbody tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+        
+        .openings-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .status-open { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .status-matched { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+        .status-urgent { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+        
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        
+        .pagination-info {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .pagination-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .pagination-btn:hover:not(:disabled) {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .pagination-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            color: #475569;
+            font-size: 13px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        /* Expand icon */
+        .expand-icon {
+            color: #475569;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+        
+        .person-card.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>📊 Placement & Pipeline View</h1>
+                <p>Manager progression tracking • Supply → Demand matching</p>
+            </div>
+            <a href="/" class="back-btn">← Back to Dashboard</a>
+        </div>
+        
+        <!-- Summary Stats -->
+        <div class="summary-bar">
+            <div class="summary-stat">
+                <div class="value">{{ active_mits|length }}</div>
+                <div class="label">Active MITs</div>
+            </div>
+            <div class="summary-stat">
+                <div class="value">{{ tier1_managers|length }}</div>
+                <div class="label">Tier 1 Managers</div>
+            </div>
+            <div class="summary-stat">
+                <div class="value">{{ tier2_managers|length }}</div>
+                <div class="label">Tier 2 Managers</div>
+            </div>
+            <div class="summary-stat">
+                <div class="value">{{ tier3_managers|length }}</div>
+                <div class="label">Tier 3 Managers</div>
+            </div>
+            <div class="summary-stat">
+                <div class="value">{{ total_openings }}</div>
+                <div class="label">Total Openings</div>
+            </div>
+        </div>
+        
+        <!-- MITs → Tier 1 Locations -->
+        <div class="progression-section">
+            <div class="progression-header">
+                <div class="progression-title">
+                    <h2>MITs (In Training)</h2>
+                    <span class="arrow">→</span>
+                    <h2>Tier 1 Locations</h2>
+                </div>
+                <div class="tier-info">
+                    <span class="tier-info-item">📊 <strong>HC:</strong> 1-28</span>
+                    <span class="tier-info-item">💰 <strong>Revenue:</strong> &lt;$100K/mo</span>
+                    <span class="tier-info-item">⚠️ <strong>Risk:</strong> <span class="risk-low">Low</span></span>
+                    <span class="tier-info-item mit-eligible">✓ <strong>MIT Eligible</strong></span>
+                </div>
+                <span class="tier-badge">{{ tier1_openings|length }} Openings</span>
+            </div>
+            <div class="progression-body">
+                <div class="people-column">
+                    <div class="column-label">People ({{ active_mits|length }})</div>
+                    {% for person in active_mits %}
+                    <div class="person-card" onclick="toggleCard(this)">
+                        <div class="person-header">
+                            <div>
+                                <div class="person-name">{{ person.name }}</div>
+                                <div class="person-meta">Week {{ person.week }} • {{ person.training_site or 'TBD' }}</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                {% if person.week >= 8 %}
+                                <span class="person-status status-ready">Ready</span>
+                                {% elif person.week >= 6 %}
+                                <span class="person-status status-soon">Soon</span>
+                                {% else %}
+                                <span class="person-status status-training">Training</span>
+                                {% endif %}
+                                <span class="expand-icon">▼</span>
+                            </div>
+                        </div>
+                        <div class="person-details">
+                            <div class="metrics-grid">
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.week }}</div>
+                                    <div class="metric-label">Week</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.mentor_name or 'TBD' }}</div>
+                                    <div class="metric-label">Mentor</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.scores.mock_qbr_score and person.scores.mock_qbr_score >= 3 %}good{% elif person.scores.mock_qbr_score %}warning{% endif %}">
+                                        {{ person.scores.mock_qbr_score or '—' }}{% if person.scores.mock_qbr_score %}/4{% endif %}
+                                    </div>
+                                    <div class="metric-label">Mock QBR</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.scores.assessment_score and person.scores.assessment_score >= 80 %}good{% elif person.scores.assessment_score and person.scores.assessment_score >= 60 %}warning{% elif person.scores.assessment_score %}poor{% endif %}">
+                                        {{ person.scores.assessment_score or '—' }}{% if person.scores.assessment_score %}/100{% endif %}
+                                    </div>
+                                    <div class="metric-label">Assessment</div>
+                                </div>
+                            </div>
+                            <div class="tier-info-detail">
+                                <strong>Eligible for:</strong> Tier 1 sites (1-28 HC, &lt;$100K/mo) • Ideal entry placement
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">No MITs currently in training</div>
+                    {% endfor %}
+                </div>
+                <div class="openings-column">
+                    <div class="column-label">Available Locations ({{ tier1_openings|length }})</div>
+                    
+                    <!-- Filters -->
+                    <div class="filters-bar">
+                        <div class="filter-group">
+                            <span class="filter-label">Tier:</span>
+                            <select class="filter-select" id="tier1-tier-filter" onchange="filterOpenings('tier1')">
+                                <option value="all">All</option>
+                                <option value="Tier 1">Tier 1</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Status:</span>
+                            <select class="filter-select" id="tier1-status-filter" onchange="filterOpenings('tier1')">
+                                <option value="all">All</option>
+                                <option value="open">Open</option>
+                                <option value="matched">Matched</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Search:</span>
+                            <input type="text" class="filter-input" id="tier1-search-filter" placeholder="Site name..." onkeyup="filterOpenings('tier1')">
+                        </div>
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="openings-table-container">
+                        <table class="openings-table" id="tier1-openings-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="sortTable('tier1', 0)">Site Name</th>
+                                    <th class="sortable" onclick="sortTable('tier1', 1)">HC</th>
+                                    <th class="sortable" onclick="sortTable('tier1', 2)">Revenue</th>
+                                    <th class="sortable" onclick="sortTable('tier1', 3)">Target Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tier1-openings-tbody">
+                                {% for opening in tier1_openings %}
+                                <tr data-tier="Tier 1" data-status="{% if opening.matched %}matched{% elif opening.urgent %}urgent{% else %}open{% endif %}" data-site="{{ opening.site|lower }}">
+                                    <td style="font-weight: 500; color: white;">{{ opening.site }}</td>
+                                    <td>{{ opening.headcount }}</td>
+                                    <td>{{ opening.revenue }}</td>
+                                    <td>{{ opening.target or '—' }}</td>
+                                    <td>
+                                        {% if opening.matched %}
+                                        <span class="status-badge status-matched">✓ Matched: {{ opening.matched }}</span>
+                                        {% elif opening.urgent %}
+                                        <span class="status-badge status-urgent">⚠ Urgent</span>
+                                        {% else %}
+                                        <span class="status-badge status-open">○ Open</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="tier1-pagination">
+                        <div class="pagination-info">Showing <span id="tier1-showing">0</span> of {{ tier1_openings|length }} openings</div>
+                        <div class="pagination-controls">
+                            <button class="pagination-btn" onclick="changePage('tier1', -1)">← Prev</button>
+                            <button class="pagination-btn" onclick="changePage('tier1', 1)">Next →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tier 1 Managers → Tier 2 Locations -->
+        <div class="progression-section">
+            <div class="progression-header">
+                <div class="progression-title">
+                    <h2>Tier 1 Managers</h2>
+                    <span class="arrow">→</span>
+                    <h2>Tier 2 Locations</h2>
+                </div>
+                <div class="tier-info">
+                    <span class="tier-info-item">📊 <strong>HC:</strong> 29-39</span>
+                    <span class="tier-info-item">💰 <strong>Revenue:</strong> $100K-$500K/mo</span>
+                    <span class="tier-info-item">⚠️ <strong>Risk:</strong> <span class="risk-medium">Medium</span></span>
+                    <span class="tier-info-item mit-not-eligible">✗ <strong>MIT: Very Strong Only</strong></span>
+                </div>
+                <span class="tier-badge">{{ tier2_openings|length }} Openings</span>
+            </div>
+            <div class="progression-body">
+                <div class="people-column">
+                    <div class="column-label">People ({{ tier1_managers|length }})</div>
+                    {% for person in tier1_managers %}
+                    <div class="person-card" onclick="toggleCard(this)">
+                        <div class="person-header">
+                            <div>
+                                <div class="person-name">{{ person.name }}</div>
+                                <div class="person-meta">{{ person.site }} • {{ person.months }} months</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="person-status {% if person.csat >= 4.0 %}status-ready{% elif person.csat >= 3.5 %}status-soon{% else %}status-training{% endif %}">
+                                    {{ person.csat }}/5
+                                </span>
+                                <span class="expand-icon">▼</span>
+                            </div>
+                        </div>
+                        <div class="person-details">
+                            <div class="metrics-grid">
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.csat >= 4.0 %}good{% elif person.csat >= 3.5 %}warning{% else %}poor{% endif %}">{{ person.csat }}</div>
+                                    <div class="metric-label">CSAT</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.months }}</div>
+                                    <div class="metric-label">Months</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.headcount }}</div>
+                                    <div class="metric-label">Headcount</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.trend == 'Up' %}good{% elif person.trend == 'Down' %}poor{% endif %}">{{ person.trend }}</div>
+                                    <div class="metric-label">Trend</div>
+                                </div>
+                            </div>
+                            <div class="tier-info-detail">
+                                <strong>Current:</strong> Tier 1 ({{ person.headcount }} HC, {{ person.revenue }}) • <strong>Eligible for:</strong> Tier 2 (29-39 HC, $100K-$500K/mo)
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">No Tier 1 managers</div>
+                    {% endfor %}
+                </div>
+                <div class="openings-column">
+                    <div class="column-label">Available Locations ({{ tier2_openings|length }})</div>
+                    
+                    <!-- Filters -->
+                    <div class="filters-bar">
+                        <div class="filter-group">
+                            <span class="filter-label">Tier:</span>
+                            <select class="filter-select" id="tier2-tier-filter" onchange="filterOpenings('tier2')">
+                                <option value="all">All</option>
+                                <option value="Tier 2">Tier 2</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Status:</span>
+                            <select class="filter-select" id="tier2-status-filter" onchange="filterOpenings('tier2')">
+                                <option value="all">All</option>
+                                <option value="open">Open</option>
+                                <option value="matched">Matched</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Search:</span>
+                            <input type="text" class="filter-input" id="tier2-search-filter" placeholder="Site name..." onkeyup="filterOpenings('tier2')">
+                        </div>
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="openings-table-container">
+                        <table class="openings-table" id="tier2-openings-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="sortTable('tier2', 0)">Site Name</th>
+                                    <th class="sortable" onclick="sortTable('tier2', 1)">HC</th>
+                                    <th class="sortable" onclick="sortTable('tier2', 2)">Revenue</th>
+                                    <th class="sortable" onclick="sortTable('tier2', 3)">Target Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tier2-openings-tbody">
+                                {% for opening in tier2_openings %}
+                                <tr data-tier="Tier 2" data-status="{% if opening.matched %}matched{% elif opening.urgent %}urgent{% else %}open{% endif %}" data-site="{{ opening.site|lower }}">
+                                    <td style="font-weight: 500; color: white;">{{ opening.site }}</td>
+                                    <td>{{ opening.headcount }}</td>
+                                    <td>{{ opening.revenue }}</td>
+                                    <td>{{ opening.target or '—' }}</td>
+                                    <td>
+                                        {% if opening.matched %}
+                                        <span class="status-badge status-matched">✓ Matched: {{ opening.matched }}</span>
+                                        {% elif opening.urgent %}
+                                        <span class="status-badge status-urgent">⚠ Urgent</span>
+                                        {% else %}
+                                        <span class="status-badge status-open">○ Open</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="tier2-pagination">
+                        <div class="pagination-info">Showing <span id="tier2-showing">0</span> of {{ tier2_openings|length }} openings</div>
+                        <div class="pagination-controls">
+                            <button class="pagination-btn" onclick="changePage('tier2', -1)">← Prev</button>
+                            <button class="pagination-btn" onclick="changePage('tier2', 1)">Next →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tier 2 Managers → Tier 3 Locations -->
+        <div class="progression-section">
+            <div class="progression-header">
+                <div class="progression-title">
+                    <h2>Tier 2 Managers</h2>
+                    <span class="arrow">→</span>
+                    <h2>Tier 3 Locations</h2>
+                </div>
+                <div class="tier-info">
+                    <span class="tier-info-item">📊 <strong>HC:</strong> 40-50</span>
+                    <span class="tier-info-item">💰 <strong>Revenue:</strong> $500K-$750K/mo</span>
+                    <span class="tier-info-item">⚠️ <strong>Risk:</strong> <span class="risk-high">High</span></span>
+                    <span class="tier-info-item mit-not-eligible">✗ <strong>No MIT Eligibility</strong></span>
+                </div>
+                <span class="tier-badge">{{ tier3_openings|length }} Openings</span>
+            </div>
+            <div class="progression-body">
+                <div class="people-column">
+                    <div class="column-label">People ({{ tier2_managers|length }})</div>
+                    {% for person in tier2_managers %}
+                    <div class="person-card" onclick="toggleCard(this)">
+                        <div class="person-header">
+                            <div>
+                                <div class="person-name">{{ person.name }}</div>
+                                <div class="person-meta">{{ person.site }} • {{ person.months }} months</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="person-status {% if person.csat >= 4.0 %}status-ready{% elif person.csat >= 3.5 %}status-soon{% else %}status-training{% endif %}">
+                                    {{ person.csat }}/5
+                                </span>
+                                <span class="expand-icon">▼</span>
+                            </div>
+                        </div>
+                        <div class="person-details">
+                            <div class="metrics-grid">
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.csat >= 4.0 %}good{% elif person.csat >= 3.5 %}warning{% else %}poor{% endif %}">{{ person.csat }}</div>
+                                    <div class="metric-label">CSAT</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.months }}</div>
+                                    <div class="metric-label">Months</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.headcount }}</div>
+                                    <div class="metric-label">Headcount</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.trend == 'Up' %}good{% elif person.trend == 'Down' %}poor{% endif %}">{{ person.trend }}</div>
+                                    <div class="metric-label">Trend</div>
+                                </div>
+                            </div>
+                            <div class="tier-info-detail">
+                                <strong>Current:</strong> Tier 2 ({{ person.headcount }} HC, {{ person.revenue }}) • <strong>Eligible for:</strong> Tier 3 (40-50 HC, $500K-$750K/mo)
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">No Tier 2 managers</div>
+                    {% endfor %}
+                </div>
+                <div class="openings-column">
+                    <div class="column-label">Available Locations ({{ tier3_openings|length }})</div>
+                    
+                    <!-- Filters -->
+                    <div class="filters-bar">
+                        <div class="filter-group">
+                            <span class="filter-label">Tier:</span>
+                            <select class="filter-select" id="tier3-tier-filter" onchange="filterOpenings('tier3')">
+                                <option value="all">All</option>
+                                <option value="Tier 3">Tier 3</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Status:</span>
+                            <select class="filter-select" id="tier3-status-filter" onchange="filterOpenings('tier3')">
+                                <option value="all">All</option>
+                                <option value="open">Open</option>
+                                <option value="matched">Matched</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Search:</span>
+                            <input type="text" class="filter-input" id="tier3-search-filter" placeholder="Site name..." onkeyup="filterOpenings('tier3')">
+                        </div>
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="openings-table-container">
+                        <table class="openings-table" id="tier3-openings-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="sortTable('tier3', 0)">Site Name</th>
+                                    <th class="sortable" onclick="sortTable('tier3', 1)">HC</th>
+                                    <th class="sortable" onclick="sortTable('tier3', 2)">Revenue</th>
+                                    <th class="sortable" onclick="sortTable('tier3', 3)">Target Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tier3-openings-tbody">
+                                {% for opening in tier3_openings %}
+                                <tr data-tier="Tier 3" data-status="{% if opening.matched %}matched{% elif opening.urgent %}urgent{% else %}open{% endif %}" data-site="{{ opening.site|lower }}">
+                                    <td style="font-weight: 500; color: white;">{{ opening.site }}</td>
+                                    <td>{{ opening.headcount }}</td>
+                                    <td>{{ opening.revenue }}</td>
+                                    <td>{{ opening.target or '—' }}</td>
+                                    <td>
+                                        {% if opening.matched %}
+                                        <span class="status-badge status-matched">✓ Matched: {{ opening.matched }}</span>
+                                        {% elif opening.urgent %}
+                                        <span class="status-badge status-urgent">⚠ Urgent</span>
+                                        {% else %}
+                                        <span class="status-badge status-open">○ Open</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="tier3-pagination">
+                        <div class="pagination-info">Showing <span id="tier3-showing">0</span> of {{ tier3_openings|length }} openings</div>
+                        <div class="pagination-controls">
+                            <button class="pagination-btn" onclick="changePage('tier3', -1)">← Prev</button>
+                            <button class="pagination-btn" onclick="changePage('tier3', 1)">Next →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tier 3 Managers → Tier 4 Locations -->
+        <div class="progression-section">
+            <div class="progression-header">
+                <div class="progression-title">
+                    <h2>Tier 3 Managers</h2>
+                    <span class="arrow">→</span>
+                    <h2>Tier 4 Locations</h2>
+                </div>
+                <div class="tier-info">
+                    <span class="tier-info-item">📊 <strong>HC:</strong> 51-100</span>
+                    <span class="tier-info-item">💰 <strong>Revenue:</strong> $750K-$1M/mo</span>
+                    <span class="tier-info-item">⚠️ <strong>Risk:</strong> <span class="risk-high">High</span></span>
+                    <span class="tier-info-item mit-not-eligible">✗ <strong>No MIT Eligibility</strong></span>
+                </div>
+                <span class="tier-badge">{{ tier4_openings|length }} Openings</span>
+            </div>
+            <div class="progression-body">
+                <div class="people-column">
+                    <div class="column-label">People ({{ tier3_managers|length }})</div>
+                    {% for person in tier3_managers %}
+                    <div class="person-card" onclick="toggleCard(this)">
+                        <div class="person-header">
+                            <div>
+                                <div class="person-name">{{ person.name }}</div>
+                                <div class="person-meta">{{ person.site }} • {{ person.months }} months</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="person-status {% if person.csat >= 4.0 %}status-ready{% elif person.csat >= 3.5 %}status-soon{% else %}status-training{% endif %}">
+                                    {{ person.csat }}/5
+                                </span>
+                                <span class="expand-icon">▼</span>
+                            </div>
+                        </div>
+                        <div class="person-details">
+                            <div class="metrics-grid">
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.csat >= 4.0 %}good{% elif person.csat >= 3.5 %}warning{% else %}poor{% endif %}">{{ person.csat }}</div>
+                                    <div class="metric-label">CSAT</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.months }}</div>
+                                    <div class="metric-label">Months</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.headcount }}</div>
+                                    <div class="metric-label">Headcount</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.trend == 'Up' %}good{% elif person.trend == 'Down' %}poor{% endif %}">{{ person.trend }}</div>
+                                    <div class="metric-label">Trend</div>
+                                </div>
+                            </div>
+                            <div class="tier-info-detail">
+                                <strong>Current:</strong> Tier 3 ({{ person.headcount }} HC, {{ person.revenue }}) • <strong>Eligible for:</strong> Tier 4 (51-100 HC, $750K-$1M/mo)
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">No Tier 3 managers</div>
+                    {% endfor %}
+                </div>
+                <div class="openings-column">
+                    <div class="column-label">Available Locations ({{ tier4_openings|length }})</div>
+                    
+                    <!-- Filters -->
+                    <div class="filters-bar">
+                        <div class="filter-group">
+                            <span class="filter-label">Tier:</span>
+                            <select class="filter-select" id="tier4-tier-filter" onchange="filterOpenings('tier4')">
+                                <option value="all">All</option>
+                                <option value="Tier 4">Tier 4</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Status:</span>
+                            <select class="filter-select" id="tier4-status-filter" onchange="filterOpenings('tier4')">
+                                <option value="all">All</option>
+                                <option value="open">Open</option>
+                                <option value="matched">Matched</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Search:</span>
+                            <input type="text" class="filter-input" id="tier4-search-filter" placeholder="Site name..." onkeyup="filterOpenings('tier4')">
+                        </div>
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="openings-table-container">
+                        <table class="openings-table" id="tier4-openings-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="sortTable('tier4', 0)">Site Name</th>
+                                    <th class="sortable" onclick="sortTable('tier4', 1)">HC</th>
+                                    <th class="sortable" onclick="sortTable('tier4', 2)">Revenue</th>
+                                    <th class="sortable" onclick="sortTable('tier4', 3)">Target Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tier4-openings-tbody">
+                                {% for opening in tier4_openings %}
+                                <tr data-tier="Tier 4" data-status="{% if opening.matched %}matched{% elif opening.urgent %}urgent{% else %}open{% endif %}" data-site="{{ opening.site|lower }}">
+                                    <td style="font-weight: 500; color: white;">{{ opening.site }}</td>
+                                    <td>{{ opening.headcount }}</td>
+                                    <td>{{ opening.revenue }}</td>
+                                    <td>{{ opening.target or '—' }}</td>
+                                    <td>
+                                        {% if opening.matched %}
+                                        <span class="status-badge status-matched">✓ Matched: {{ opening.matched }}</span>
+                                        {% elif opening.urgent %}
+                                        <span class="status-badge status-urgent">⚠ Urgent</span>
+                                        {% else %}
+                                        <span class="status-badge status-open">○ Open</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="tier4-pagination">
+                        <div class="pagination-info">Showing <span id="tier4-showing">0</span> of {{ tier4_openings|length }} openings</div>
+                        <div class="pagination-controls">
+                            <button class="pagination-btn" onclick="changePage('tier4', -1)">← Prev</button>
+                            <button class="pagination-btn" onclick="changePage('tier4', 1)">Next →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tier 4 Managers → Tier 5 Locations -->
+        <div class="progression-section">
+            <div class="progression-header">
+                <div class="progression-title">
+                    <h2>Tier 4 Managers</h2>
+                    <span class="arrow">→</span>
+                    <h2>Tier 5 Locations</h2>
+                </div>
+                <div class="tier-info">
+                    <span class="tier-info-item">📊 <strong>HC:</strong> 101-250</span>
+                    <span class="tier-info-item">💰 <strong>Revenue:</strong> $1M-$1.5M/mo</span>
+                    <span class="tier-info-item">⚠️ <strong>Risk:</strong> <span class="risk-high">High</span></span>
+                    <span class="tier-info-item mit-not-eligible">✗ <strong>No MIT Eligibility</strong></span>
+                </div>
+                <span class="tier-badge">{{ tier5_openings|length }} Openings</span>
+            </div>
+            <div class="progression-body">
+                <div class="people-column">
+                    <div class="column-label">People ({{ tier4_managers|length }})</div>
+                    {% for person in tier4_managers %}
+                    <div class="person-card" onclick="toggleCard(this)">
+                        <div class="person-header">
+                            <div>
+                                <div class="person-name">{{ person.name }}</div>
+                                <div class="person-meta">{{ person.site }} • {{ person.months }} months</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="person-status {% if person.csat >= 4.0 %}status-ready{% elif person.csat >= 3.5 %}status-soon{% else %}status-training{% endif %}">
+                                    {{ person.csat }}/5
+                                </span>
+                                <span class="expand-icon">▼</span>
+                            </div>
+                        </div>
+                        <div class="person-details">
+                            <div class="metrics-grid">
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.csat >= 4.0 %}good{% elif person.csat >= 3.5 %}warning{% else %}poor{% endif %}">{{ person.csat }}</div>
+                                    <div class="metric-label">CSAT</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.months }}</div>
+                                    <div class="metric-label">Months</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.headcount }}</div>
+                                    <div class="metric-label">Headcount</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.trend == 'Up' %}good{% elif person.trend == 'Down' %}poor{% endif %}">{{ person.trend }}</div>
+                                    <div class="metric-label">Trend</div>
+                                </div>
+                            </div>
+                            <div class="tier-info-detail">
+                                <strong>Current:</strong> Tier 4 ({{ person.headcount }} HC, {{ person.revenue }}) • <strong>Eligible for:</strong> Tier 5 (101-250 HC, $1M-$1.5M/mo)
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">No Tier 4 managers</div>
+                    {% endfor %}
+                </div>
+                <div class="openings-column">
+                    <div class="column-label">Available Locations ({{ tier5_openings|length }})</div>
+                    
+                    <!-- Filters -->
+                    <div class="filters-bar">
+                        <div class="filter-group">
+                            <span class="filter-label">Tier:</span>
+                            <select class="filter-select" id="tier5-tier-filter" onchange="filterOpenings('tier5')">
+                                <option value="all">All</option>
+                                <option value="Tier 5">Tier 5</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Status:</span>
+                            <select class="filter-select" id="tier5-status-filter" onchange="filterOpenings('tier5')">
+                                <option value="all">All</option>
+                                <option value="open">Open</option>
+                                <option value="matched">Matched</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Search:</span>
+                            <input type="text" class="filter-input" id="tier5-search-filter" placeholder="Site name..." onkeyup="filterOpenings('tier5')">
+                        </div>
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="openings-table-container">
+                        <table class="openings-table" id="tier5-openings-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="sortTable('tier5', 0)">Site Name</th>
+                                    <th class="sortable" onclick="sortTable('tier5', 1)">HC</th>
+                                    <th class="sortable" onclick="sortTable('tier5', 2)">Revenue</th>
+                                    <th class="sortable" onclick="sortTable('tier5', 3)">Target Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tier5-openings-tbody">
+                                {% for opening in tier5_openings %}
+                                <tr data-tier="Tier 5" data-status="{% if opening.matched %}matched{% elif opening.urgent %}urgent{% else %}open{% endif %}" data-site="{{ opening.site|lower }}">
+                                    <td style="font-weight: 500; color: white;">{{ opening.site }}</td>
+                                    <td>{{ opening.headcount }}</td>
+                                    <td>{{ opening.revenue }}</td>
+                                    <td>{{ opening.target or '—' }}</td>
+                                    <td>
+                                        {% if opening.matched %}
+                                        <span class="status-badge status-matched">✓ Matched: {{ opening.matched }}</span>
+                                        {% elif opening.urgent %}
+                                        <span class="status-badge status-urgent">⚠ Urgent</span>
+                                        {% else %}
+                                        <span class="status-badge status-open">○ Open</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="tier5-pagination">
+                        <div class="pagination-info">Showing <span id="tier5-showing">0</span> of {{ tier5_openings|length }} openings</div>
+                        <div class="pagination-controls">
+                            <button class="pagination-btn" onclick="changePage('tier5', -1)">← Prev</button>
+                            <button class="pagination-btn" onclick="changePage('tier5', 1)">Next →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tier 5 Managers → Tier 6 Locations -->
+        <div class="progression-section">
+            <div class="progression-header">
+                <div class="progression-title">
+                    <h2>Tier 5 Managers</h2>
+                    <span class="arrow">→</span>
+                    <h2>Tier 6 Locations</h2>
+                </div>
+                <div class="tier-info">
+                    <span class="tier-info-item">📊 <strong>HC:</strong> 250+</span>
+                    <span class="tier-info-item">💰 <strong>Revenue:</strong> &gt;$1.5M/mo</span>
+                    <span class="tier-info-item">⚠️ <strong>Risk:</strong> <span class="risk-very-high">Very High</span></span>
+                    <span class="tier-info-item mit-not-eligible">✗ <strong>Never MIT Eligible</strong></span>
+                </div>
+                <span class="tier-badge">{{ tier6_openings|length }} Openings</span>
+            </div>
+            <div class="progression-body">
+                <div class="people-column">
+                    <div class="column-label">People ({{ tier5_managers|length }})</div>
+                    {% for person in tier5_managers %}
+                    <div class="person-card" onclick="toggleCard(this)">
+                        <div class="person-header">
+                            <div>
+                                <div class="person-name">{{ person.name }}</div>
+                                <div class="person-meta">{{ person.site }} • {{ person.months }} months</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="person-status {% if person.csat >= 4.0 %}status-ready{% elif person.csat >= 3.5 %}status-soon{% else %}status-training{% endif %}">
+                                    {{ person.csat }}/5
+                                </span>
+                                <span class="expand-icon">▼</span>
+                            </div>
+                        </div>
+                        <div class="person-details">
+                            <div class="metrics-grid">
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.csat >= 4.0 %}good{% elif person.csat >= 3.5 %}warning{% else %}poor{% endif %}">{{ person.csat }}</div>
+                                    <div class="metric-label">CSAT</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.months }}</div>
+                                    <div class="metric-label">Months</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value">{{ person.headcount }}</div>
+                                    <div class="metric-label">Headcount</div>
+                                </div>
+                                <div class="metric-box">
+                                    <div class="metric-value {% if person.trend == 'Up' %}good{% elif person.trend == 'Down' %}poor{% endif %}">{{ person.trend }}</div>
+                                    <div class="metric-label">Trend</div>
+                                </div>
+                            </div>
+                            <div class="tier-info-detail">
+                                <strong>Current:</strong> Tier 5 ({{ person.headcount }} HC, {{ person.revenue }}) • <strong>Eligible for:</strong> Tier 6 (250+ HC, &gt;$1.5M/mo)
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">No Tier 5 managers</div>
+                    {% endfor %}
+                </div>
+                <div class="openings-column">
+                    <div class="column-label">Available Locations ({{ tier6_openings|length }})</div>
+                    
+                    <!-- Filters -->
+                    <div class="filters-bar">
+                        <div class="filter-group">
+                            <span class="filter-label">Tier:</span>
+                            <select class="filter-select" id="tier6-tier-filter" onchange="filterOpenings('tier6')">
+                                <option value="all">All</option>
+                                <option value="Tier 6">Tier 6</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Status:</span>
+                            <select class="filter-select" id="tier6-status-filter" onchange="filterOpenings('tier6')">
+                                <option value="all">All</option>
+                                <option value="open">Open</option>
+                                <option value="matched">Matched</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Search:</span>
+                            <input type="text" class="filter-input" id="tier6-search-filter" placeholder="Site name..." onkeyup="filterOpenings('tier6')">
+                        </div>
+                    </div>
+                    
+                    <!-- Table -->
+                    <div class="openings-table-container">
+                        <table class="openings-table" id="tier6-openings-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="sortTable('tier6', 0)">Site Name</th>
+                                    <th class="sortable" onclick="sortTable('tier6', 1)">HC</th>
+                                    <th class="sortable" onclick="sortTable('tier6', 2)">Revenue</th>
+                                    <th class="sortable" onclick="sortTable('tier6', 3)">Target Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tier6-openings-tbody">
+                                {% for opening in tier6_openings %}
+                                <tr data-tier="Tier 6" data-status="{% if opening.matched %}matched{% elif opening.urgent %}urgent{% else %}open{% endif %}" data-site="{{ opening.site|lower }}">
+                                    <td style="font-weight: 500; color: white;">{{ opening.site }}</td>
+                                    <td>{{ opening.headcount }}</td>
+                                    <td>{{ opening.revenue }}</td>
+                                    <td>{{ opening.target or '—' }}</td>
+                                    <td>
+                                        {% if opening.matched %}
+                                        <span class="status-badge status-matched">✓ Matched: {{ opening.matched }}</span>
+                                        {% elif opening.urgent %}
+                                        <span class="status-badge status-urgent">⚠ Urgent</span>
+                                        {% else %}
+                                        <span class="status-badge status-open">○ Open</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="tier6-pagination">
+                        <div class="pagination-info">Showing <span id="tier6-showing">0</span> of {{ tier6_openings|length }} openings</div>
+                        <div class="pagination-controls">
+                            <button class="pagination-btn" onclick="changePage('tier6', -1)">← Prev</button>
+                            <button class="pagination-btn" onclick="changePage('tier6', 1)">Next →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <script>
+        // Pagination state
+        const pageState = {};
+        
+        // Initialize pagination for each tier
+        ['tier1', 'tier2', 'tier3', 'tier4', 'tier5', 'tier6'].forEach(tier => {
+            pageState[tier] = { currentPage: 1, pageSize: 15 };
+            updatePagination(tier);
+        });
+        
+        function toggleCard(card) {
+            card.classList.toggle('expanded');
+        }
+        
+        function filterOpenings(tier) {
+            const tierFilter = document.getElementById(`${tier}-tier-filter`).value;
+            const statusFilter = document.getElementById(`${tier}-status-filter`).value;
+            const searchFilter = document.getElementById(`${tier}-search-filter`).value.toLowerCase();
+            
+            const tbody = document.getElementById(`${tier}-openings-tbody`);
+            const rows = tbody.querySelectorAll('tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const rowTier = row.getAttribute('data-tier');
+                const rowStatus = row.getAttribute('data-status');
+                const rowSite = row.getAttribute('data-site');
+                
+                const tierMatch = tierFilter === 'all' || rowTier === tierFilter;
+                const statusMatch = statusFilter === 'all' || rowStatus === statusFilter;
+                const searchMatch = !searchFilter || rowSite.includes(searchFilter);
+                
+                if (tierMatch && statusMatch && searchMatch) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Reset to page 1 after filtering
+            pageState[tier].currentPage = 1;
+            updatePagination(tier, visibleCount);
+        }
+        
+        function sortTable(tier, columnIndex) {
+            const tbody = document.getElementById(`${tier}-openings-tbody`);
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Toggle sort direction (stored in data attribute)
+            const currentDir = tbody.getAttribute('data-sort-dir') || 'asc';
+            const newDir = currentDir === 'asc' ? 'desc' : 'asc';
+            tbody.setAttribute('data-sort-dir', newDir);
+            
+            rows.sort((a, b) => {
+                const aVal = a.cells[columnIndex].textContent.trim();
+                const bVal = b.cells[columnIndex].textContent.trim();
+                
+                // Try numeric comparison first
+                const aNum = parseFloat(aVal);
+                const bNum = parseFloat(bVal);
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return newDir === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+                
+                // String comparison
+                return newDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            });
+            
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Re-apply pagination
+            updatePagination(tier);
+        }
+        
+        function changePage(tier, direction) {
+            const state = pageState[tier];
+            const tbody = document.getElementById(`${tier}-openings-tbody`);
+            const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.style.display !== 'none');
+            const totalPages = Math.ceil(visibleRows.length / state.pageSize);
+            
+            state.currentPage = Math.max(1, Math.min(totalPages, state.currentPage + direction));
+            updatePagination(tier, visibleRows.length);
+        }
+        
+        function updatePagination(tier, totalVisible = null) {
+            const state = pageState[tier];
+            const tbody = document.getElementById(`${tier}-openings-tbody`);
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const visibleRows = rows.filter(r => r.style.display !== 'none');
+            const total = totalVisible !== null ? totalVisible : visibleRows.length;
+            const totalPages = Math.ceil(total / state.pageSize);
+            
+            // Show/hide rows based on current page
+            rows.forEach((row, index) => {
+                if (row.style.display === 'none') return;
+                
+                const startIndex = (state.currentPage - 1) * state.pageSize;
+                const endIndex = startIndex + state.pageSize;
+                
+                if (index >= startIndex && index < endIndex) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Update pagination info
+            const showingEl = document.getElementById(`${tier}-showing`);
+            if (showingEl) {
+                const start = Math.min((state.currentPage - 1) * state.pageSize + 1, total);
+                const end = Math.min(state.currentPage * state.pageSize, total);
+                showingEl.textContent = total > 0 ? `${start}-${end}` : '0';
+            }
+            
+            // Update button states
+            const prevBtn = document.querySelector(`#${tier}-pagination .pagination-btn:first-child`);
+            const nextBtn = document.querySelector(`#${tier}-pagination .pagination-btn:last-child`);
+            if (prevBtn) prevBtn.disabled = state.currentPage === 1;
+            if (nextBtn) nextBtn.disabled = state.currentPage >= totalPages || totalPages === 0;
+        }
+    </script>
+</body>
+</html>
