@@ -2513,3 +2513,118 @@ def fetch_meeting_insights() -> List[str]:
     except Exception as e:
         logger.error(f"Error fetching meeting insights: {str(e)}")
         return []
+
+def get_tier1_managers() -> List[Dict[str, Any]]:
+    """
+    Get Tier 1 Managers (completed MIT/SMIT from the fallback sheet)
+    
+    Filters for:
+    - Training Program = 'MIT' OR 'SMIT'
+    - Completion Status = 'Complete'
+    
+    Returns:
+        List of Tier 1 manager dictionaries with their information
+    """
+    try:
+        logger.info("Fetching Tier 1 managers (completed MIT/SMIT)")
+        
+        # Fetch the fallback sheet which contains completed MIT/SMIT
+        df = _read_csv_normalized(TIER1_MANAGERS_SHEET_URL, dtype=str)
+        
+        # Drop the first column if it exists (6 month survey sent?)
+        if len(df.columns) > 0 and '6 month survey sent?' in str(df.columns[0]):
+            df = df.drop(df.columns[0], axis=1)
+        
+        # Standardize columns
+        df = standardize_columns(df)
+        
+        # Filter for MIT or SMIT
+        if 'Training Program' not in df.columns:
+            logger.warning("Training Program column not found in Tier 1 managers sheet")
+            return []
+        
+        # Filter for MIT or SMIT
+        tier1_df = df[df['Training Program'].isin(['MIT', 'SMIT'])]
+        
+        # Filter for completed status
+        completion_col = None
+        for col in df.columns:
+            if 'completion' in str(col).lower() and 'status' in str(col).lower():
+                completion_col = col
+                break
+        
+        if completion_col:
+            tier1_df = tier1_df[tier1_df[completion_col].astype(str).str.strip().str.lower() == 'complete']
+        else:
+            logger.warning("Completion Status column not found - including all MIT/SMIT")
+        
+        tier1_managers = []
+        
+        for _, row in tier1_df.iterrows():
+            # Try both column names (sheet might use either)
+            name = str(safe_get(row, 'Trainee Name', safe_get(row, 'MIT Name', ''))).strip()
+            if not name or name.lower() in ['nan', 'none', '']:
+                continue
+            
+            # Calculate months in role from Graduation Date
+            months = 0
+            grad_date_str = str(safe_get(row, 'Graduation Date', '')).strip()
+            if grad_date_str and grad_date_str.lower() not in ['nan', 'none', 'tbd', '']:
+                try:
+                    grad_date = pd.to_datetime(grad_date_str, errors='coerce')
+                    if pd.notna(grad_date):
+                        from datetime import datetime
+                        months = max(1, (datetime.now() - grad_date.to_pydatetime()).days // 30)
+                except:
+                    months = 0
+            
+            # Get performance scores (handle NaN properly)
+            def safe_float(value, default=0):
+                """Convert value to float, replacing NaN with default"""
+                try:
+                    val = pd.to_numeric(value, errors='coerce')
+                    if pd.isna(val) or val is None:
+                        return default
+                    return float(val)
+                except:
+                    return default
+            
+            mock_qbr = safe_float(safe_get(row, 'Mock QBR Score', 0))
+            assessment = safe_float(safe_get(row, 'Assessment Score', 0))
+            perf_eval = safe_float(safe_get(row, 'Perf Evaluation Score', 0))
+            confidence = safe_float(safe_get(row, 'Confidence Score', 0))
+            
+            # Use highest available score (filter out zeros/None)
+            scores = [s for s in [mock_qbr, assessment, perf_eval, confidence] if s > 0]
+            performance_score = max(scores) if scores else 0
+            
+            # Parse salary
+            salary = parse_salary(safe_get(row, 'Salary', 0))
+            
+            manager = {
+                'name': name,
+                'site': str(safe_get(row, 'Ops Account- Location', safe_get(row, 'Location', 'TBD'))).strip(),
+                'title': str(safe_get(row, 'Title', 'TBD')).strip(),
+                'months': months if months > 0 else 0,
+                'salary': salary if salary > 0 else 0,
+                'performance_score': round(performance_score, 2) if performance_score > 0 else 0,
+                'vertical': str(safe_get(row, 'Vertical', 'TBD')).strip(),
+                'mock_qbr_score': mock_qbr if mock_qbr > 0 else 0,
+                'assessment_score': assessment if assessment > 0 else 0,
+                'perf_eval_score': perf_eval if perf_eval > 0 else 0,
+                'confidence_score': confidence if confidence > 0 else 0,
+                'graduation_date': grad_date_str if grad_date_str else 'TBD',
+                'mentor_name': str(safe_get(row, 'Mentor Name', 'TBD')).strip(),
+                'training_program': str(safe_get(row, 'Training Program', 'TBD')).strip()
+            }
+            
+            tier1_managers.append(manager)
+        
+        logger.info(f"Found {len(tier1_managers)} Tier 1 managers")
+        return tier1_managers
+        
+    except Exception as e:
+        logger.error(f"Error fetching Tier 1 managers: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return []
