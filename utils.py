@@ -1385,6 +1385,8 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
 
         # MIT Tracking is source of truth for status (detects future start dates)
         mit_tracking_status = str(safe_get(trow, 'Status', '')).lower()
+        # Also get salary from MIT Tracking as fallback
+        mit_tracking_salary = parse_salary(safe_get(trow, 'Salary', 0))
 
         # Try main with mentor hint
         found = find_candidate_in_sheet(candidate_name, main_df, hint_mentor=mentor_name)
@@ -1393,6 +1395,9 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
             cand['data_quality'] = 'full'
             # Override with MIT Tracking status (source of truth for incoming MITs)
             cand['status'] = mit_tracking_status
+            # If salary is missing/zero in main sheet, use MIT Tracking salary
+            if cand.get('salary', 0) == 0 and mit_tracking_salary > 0:
+                cand['salary'] = mit_tracking_salary
             unified.append(cand)
             continue
 
@@ -1403,6 +1408,9 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
             cand['data_quality'] = 'archive'
             # Override with MIT Tracking status (source of truth for incoming MITs)
             cand['status'] = mit_tracking_status
+            # If salary is missing/zero in fallback sheet, use MIT Tracking salary
+            if cand.get('salary', 0) == 0 and mit_tracking_salary > 0:
+                cand['salary'] = mit_tracking_salary
             unified.append(cand)
             continue
 
