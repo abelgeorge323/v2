@@ -2261,25 +2261,33 @@ def get_active_training_mentors() -> Dict[str, Any]:
         candidates = merge_candidate_sources()
         mentor_trainee_map = {}
         
-        # Build mentor-trainee relationships for "In Training" candidates only
+        # Build mentor-trainee relationships for "In Training" candidates AND pending start MITs with mentors
         for candidate in candidates:
             status = str(candidate.get('status', '')).strip().lower()
-            # Include both "training" and candidates in weeks 0-22
             week = candidate.get('week', 0)
-            if status == 'training' or (week >= 0 and week <= 22 and status not in ['pending start', 'ready'] and 'pending' not in status):
-                mentor_name = str(candidate.get('mentor_name', '')).strip()
-                # Filter out invalid mentor names
-                if mentor_name and mentor_name.lower() not in ['nan', 'none', '', 'n/a', 'tbd', '—']:
-                    if mentor_name not in mentor_trainee_map:
-                        mentor_trainee_map[mentor_name] = {
-                            'trainees': [],
-                            'mei_score': 0.0,
-                            'mentor_title': str(candidate.get('mentor_title', 'Mentor')).strip()
-                        }
-                    mentor_trainee_map[mentor_name]['trainees'].append({
-                        'name': candidate.get('name', ''),
-                        'week': candidate.get('week', 0)
-                    })
+            mentor_name = str(candidate.get('mentor_name', '')).strip()
+            
+            # Check if candidate has a valid mentor
+            has_mentor = mentor_name and mentor_name.lower() not in ['nan', 'none', '', 'n/a', 'tbd', '—']
+            
+            # Include candidates who are:
+            # 1. In training (status == 'training' OR week 0-22 and not ready/pending)
+            # 2. Pending start (status contains 'pending'/'offer' AND week == 0) IF they have a mentor
+            is_training = status == 'training' or (week >= 0 and week <= 22 and status not in ['pending start', 'ready'] and 'pending' not in status)
+            is_pending_with_mentor = ('pending' in status or 'offer' in status) and week == 0 and has_mentor
+            
+            if (is_training or is_pending_with_mentor) and has_mentor:
+                if mentor_name not in mentor_trainee_map:
+                    mentor_trainee_map[mentor_name] = {
+                        'trainees': [],
+                        'mei_score': 0.0,
+                        'mentor_title': str(candidate.get('mentor_title', 'Mentor')).strip()
+                    }
+                mentor_trainee_map[mentor_name]['trainees'].append({
+                    'name': candidate.get('name', ''),
+                    'week': candidate.get('week', 0),
+                    'status': status  # Include status to distinguish pending start MITs
+                })
         
         logger.info(f"Found {len(mentor_trainee_map)} mentors with active trainees")
         
@@ -2636,3 +2644,167 @@ def get_tier1_managers() -> List[Dict[str, Any]]:
         import traceback
         logger.error(traceback.format_exc())
         return []
+
+def determine_site_tier(headcount: Any) -> int:
+    """
+    Determine site tier based on RFP Head Count (Hourly)
+    
+    Tier Logic:
+    - Tier 1: 1-28 headcount
+    - Tier 2: 29-39 headcount
+    - Tier 3: 40-50 headcount
+    - Tier 4: 51-100 headcount
+    - Tier 5: 101-250 headcount
+    - Tier 6: 250+ headcount
+    
+    Args:
+        headcount: RFP Head Count value (can be float, int, or string)
+        
+    Returns:
+        int: Tier number (1-6)
+    """
+    try:
+        # Convert to float, handling strings and commas
+        if isinstance(headcount, str):
+            headcount = headcount.replace(',', '').strip()
+            # Handle "Subcontracted" or other non-numeric values
+            if headcount.lower() in ['subcontracted', 'n/a', 'na', 'tbd', '', 'nan']:
+                return 1  # Default to Tier 1 if unknown
+            headcount = float(headcount)
+        
+        headcount = float(headcount)
+        
+        # Tier logic based on headcount ranges
+        if headcount <= 28:
+            return 1
+        elif headcount <= 39:
+            return 2
+        elif headcount <= 50:
+            return 3
+        elif headcount <= 100:
+            return 4
+        elif headcount <= 250:
+            return 5
+        else:
+            return 6
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Could not parse headcount '{headcount}', defaulting to Tier 1: {str(e)}")
+        return 1
+
+def fetch_transition_master_data() -> pd.DataFrame:
+    """
+    Fetch Transition Master List data from local CSV
+    
+    Returns:
+        DataFrame with site information including headcount for tier determination
+    """
+    try:
+        logger.info("Fetching Transition Master List data")
+        df = pd.read_csv(TRANSITION_MASTER_CSV, dtype=str)
+        
+        # Standardize columns
+        df = standardize_columns(df)
+        
+        # Ensure required columns exist
+        required_cols = ['Primary', 'State', 'Vertical', 'RFP Head Count (Hourly)', 'RFP Head Count (Site Manager/s)']
+        for col in required_cols:
+            if col not in df.columns:
+                logger.warning(f"Column '{col}' not found in Transition Master List")
+        
+        logger.info(f"Loaded {len(df)} sites from Transition Master List")
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error fetching Transition Master List: {str(e)}", exc_info=True)
+        return pd.DataFrame()
+
+def fetch_transition_tracker_data() -> pd.DataFrame:
+    """
+    Fetch Transitions Tracker data from local CSV
+    
+    Filters for job titles: Site Manager, Assistant Site Manager, Sr Site Manager, Custodial Manager
+    
+    Returns:
+        DataFrame with job openings
+    """
+    try:
+        logger.info("Fetching Transitions Tracker data")
+        df = pd.read_csv(TRANSITION_TRACKER_CSV, dtype=str)
+        
+        # Standardize columns
+        df = standardize_columns(df)
+        
+        # Filter for relevant job titles
+        if 'Job Title' in df.columns:
+            relevant_titles = [
+                'Site Manager',
+                'Assistant Site Manager', 
+                'Sr Site Manager',
+                'Sr. Site Manager',
+                'Senior Site Manager',
+                'Custodial Manager'
+            ]
+            # Case-insensitive matching
+            title_mask = df['Job Title'].astype(str).str.strip().str.title().isin([t.title() for t in relevant_titles])
+            df = df[title_mask]
+        else:
+            logger.warning("'Job Title' column not found in Transitions Tracker")
+            return pd.DataFrame()
+        
+        logger.info(f"Loaded {len(df)} relevant job openings from Transitions Tracker")
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error fetching Transitions Tracker: {str(e)}", exc_info=True)
+        return pd.DataFrame()
+
+def match_opening_to_site(opening_row: pd.Series, master_df: pd.DataFrame) -> Optional[Dict[str, Any]]:
+    """
+    Match a job opening to a site in the master list and determine tier
+    
+    Args:
+        opening_row: Row from Transitions Tracker
+        master_df: DataFrame from Transition Master List
+        
+    Returns:
+        Dict with opening info including tier, or None if no match
+    """
+    try:
+        opening_city = str(safe_get(opening_row, 'City', '')).strip()
+        opening_state = str(safe_get(opening_row, 'State', '')).strip()
+        opening_client_location = str(safe_get(opening_row, 'Client & Location', '')).strip()
+        
+        # Try to match by State + City (REQUIRED - must match both)
+        matched_sites = pd.DataFrame()
+        if opening_state and opening_city:
+            state_match = master_df['State'].astype(str).str.strip().str.upper() == opening_state.upper()
+            city_match = master_df['Primary'].astype(str).str.contains(opening_city, case=False, na=False)
+            matched_sites = master_df[state_match & city_match]
+        
+        # If no State+City match, try State + Client name (state must still match)
+        if len(matched_sites) == 0 and opening_state and opening_client_location:
+            # Extract client name (before " - ")
+            client_name = opening_client_location.split(' - ')[0] if ' - ' in opening_client_location else opening_client_location
+            state_match = master_df['State'].astype(str).str.strip().str.upper() == opening_state.upper()
+            client_match = master_df['Primary'].astype(str).str.contains(client_name, case=False, na=False)
+            matched_sites = master_df[state_match & client_match]
+        
+        # Use first match if found (only if state matches)
+        if len(matched_sites) > 0:
+            site_row = matched_sites.iloc[0]
+            headcount_str = safe_get(site_row, 'RFP Head Count (Hourly)', '0')
+            tier = determine_site_tier(headcount_str)
+            
+            return {
+                'tier': tier,
+                'headcount': headcount_str,
+                'site_name': safe_get(site_row, 'Primary', 'TBD'),
+                'vertical': safe_get(site_row, 'Vertical', safe_get(opening_row, 'Vertical', 'TBD'))
+            }
+        
+        # No match found - return None (opening won't be added)
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error matching opening to site: {str(e)}")
+        return None
