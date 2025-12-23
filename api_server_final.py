@@ -44,7 +44,12 @@ from utils import (
     get_mentor_dashboard_metrics,
     get_active_training_mentors,
     get_mit_alumni,
-    get_tier1_managers
+    get_tier1_managers,
+    fetch_transition_master_data,
+    fetch_transition_tracker_data,
+    determine_site_tier,
+    match_opening_to_site,
+    safe_get
 )
 from executive_report import collect_report_data
 
@@ -945,66 +950,176 @@ def get_pipeline_data():
         # Get Tier 1 Managers (completed MIT/SMIT)
         tier1_managers = get_tier1_managers()
         
-        # Get Tier 1 Openings (all from open positions sheet)
-        all_openings = fetch_open_positions_data()
-        tier1_openings = []
-        for opening in all_openings:
-            # All openings in the sheet are Tier 1
-            tier1_openings.append({
-                'site': opening.get('account', 'TBD') + ' - ' + opening.get('city', '') + ', ' + opening.get('state', ''),
-                'account': opening.get('account', 'TBD'),
-                'location': opening.get('city', '') + ', ' + opening.get('state', ''),
-                'salary': opening.get('salary', 0),
-                'vertical': opening.get('vertical', 'TBD'),
-                'jv_id': opening.get('jv_id', ''),
-                'title': opening.get('title', 'Site Manager'),
-                'headcount': 'TBD',  # Will be added to sheet later
-                'revenue': 'TBD',    # Will be added to sheet later
-                'target_date': None,
-                'status': 'Open',
-                'matched': None,
-                'urgent': False
-            })
+        # Get existing Tier 1 openings from Google Sheets (for overlap handling)
+        existing_tier1_openings = fetch_open_positions_data()
+        existing_tier1_dict = {}
+        for opening in existing_tier1_openings:
+            key = f"{opening.get('account', '')}_{opening.get('city', '')}_{opening.get('state', '')}"
+            existing_tier1_dict[key] = opening
         
-        # Generate test data for Tier 2-6 (clearly marked)
+        # Fetch Transition Master List and Tracker
+        master_df = fetch_transition_master_data()
+        tracker_df = fetch_transition_tracker_data()
+        
+        # Organize openings by tier
+        tier_openings = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []}
+        
+        # Process openings from Transitions Tracker
+        for _, row in tracker_df.iterrows():
+            match_info = match_opening_to_site(row, master_df)
+            
+            if match_info:
+                tier = match_info['tier']
+                client_location = safe_get(row, 'Client & Location', 'TBD')
+                city = safe_get(row, 'City', '')
+                state = safe_get(row, 'State', '')
+                
+                opening = {
+                    'site': client_location,
+                    'account': client_location.split(' - ')[0] if ' - ' in client_location else 'TBD',
+                    'location': f"{city}, {state}" if city and state else (city or state or 'TBD'),
+                    'salary': parse_salary(safe_get(row, 'Pay', 0)),
+                    'vertical': match_info['vertical'],
+                    'jv_id': safe_get(row, 'JV ID', ''),
+                    'title': safe_get(row, 'Job Title', 'Site Manager'),
+                    'headcount': match_info['headcount'],
+                    'revenue': 'TBD',  # Not in tracker
+                    'target_date': safe_get(row, 'Go Live Date', None),
+                    'status': safe_get(row, 'Status', 'Open'),
+                    'matched': None,
+                    'urgent': 'urgent' in str(safe_get(row, 'Status', '')).lower()
+                }
+                
+                # Check for overlap with existing Tier 1 data
+                key = f"{opening['account']}_{city}_{state}"
+                if tier == 1 and key in existing_tier1_dict:
+                    # Use existing data if available (may have more fields)
+                    existing = existing_tier1_dict[key]
+                    opening.update({
+                        'salary': existing.get('salary', opening['salary']),
+                        'jv_id': existing.get('jv_id', opening['jv_id'])
+                    })
+                
+                tier_openings[tier].append(opening)
+        
+        # Add any existing Tier 1 openings not found in tracker
+        for opening in existing_tier1_openings:
+            key = f"{opening.get('account', '')}_{opening.get('city', '')}_{opening.get('state', '')}"
+            found_in_tracker = any(
+                f"{o.get('account', '')}_{o.get('location', '').split(',')[0] if ',' in o.get('location', '') else ''}" == key
+                for o in tier_openings[1]
+            )
+            if not found_in_tracker:
+                tier_openings[1].append({
+                    'site': opening.get('account', 'TBD') + ' - ' + opening.get('city', '') + ', ' + opening.get('state', ''),
+                    'account': opening.get('account', 'TBD'),
+                    'location': opening.get('city', '') + ', ' + opening.get('state', ''),
+                    'salary': opening.get('salary', 0),
+                    'vertical': opening.get('vertical', 'TBD'),
+                    'jv_id': opening.get('jv_id', ''),
+                    'title': opening.get('title', 'Site Manager'),
+                    'headcount': 'TBD',
+                    'revenue': 'TBD',
+                    'target_date': None,
+                    'status': 'Open',
+                    'matched': None,
+                    'urgent': False
+                })
+        
+        # For Tier 2-6: Get openings from Master List based on "RFP Head Count (Site Manager/s)"
+        for _, site_row in master_df.iterrows():
+            hourly_headcount_str = safe_get(site_row, 'RFP Head Count (Hourly)', '0')
+            site_manager_count_str = safe_get(site_row, 'RFP Head Count (Site Manager/s)', '0')
+            
+            # Determine tier from hourly headcount
+            tier = determine_site_tier(hourly_headcount_str)
+            
+            # Only process Tier 2-6 (skip Tier 1)
+            if tier < 2 or tier > 6:
+                continue
+            
+            # Check if site has Site Manager openings
+            try:
+                if isinstance(site_manager_count_str, str):
+                    site_manager_count_str = site_manager_count_str.replace(',', '').strip()
+                    if site_manager_count_str.lower() in ['subcontracted', 'n/a', 'na', 'tbd', '', 'nan', '-']:
+                        site_manager_count = 0
+                    else:
+                        site_manager_count = float(site_manager_count_str)
+                else:
+                    site_manager_count = float(site_manager_count_str) if site_manager_count_str else 0
+            except (ValueError, TypeError):
+                site_manager_count = 0
+            
+            # If site has Site Manager openings, create opening entry with count
+            if site_manager_count > 0:
+                site_name = safe_get(site_row, 'Primary', 'TBD')
+                state = safe_get(site_row, 'State', 'TBD')
+                vertical = safe_get(site_row, 'Vertical', 'TBD')
+                
+                # Extract city from site name if possible (format: "Client (CBRE) City State")
+                city = ''
+                if '(' in site_name and ')' in site_name:
+                    # Try to extract location info after the parentheses
+                    parts = site_name.split(')')
+                    if len(parts) > 1:
+                        location_part = parts[1].strip()
+                        # Split by space to get city/state
+                        location_words = location_part.split()
+                        if len(location_words) >= 2:
+                            # Last word is usually state, rest is city
+                            city = ' '.join(location_words[:-1])
+                
+                opening = {
+                    'site': site_name,
+                    'account': site_name.split(' (')[0] if ' (' in site_name else site_name.split(' - ')[0] if ' - ' in site_name else site_name,
+                    'location': f"{city}, {state}" if city else state,
+                    'salary': 0,  # Not in Master List
+                    'vertical': vertical,
+                    'jv_id': safe_get(site_row, 'Business Unit', ''),
+                    'title': f'Site Manager ({int(site_manager_count)} positions)' if site_manager_count > 1 else 'Site Manager',
+                    'headcount': hourly_headcount_str,
+                    'revenue': 'TBD',
+                    'target_date': safe_get(site_row, 'Go Live', None),
+                    'status': 'Open',
+                    'matched': None,
+                    'urgent': False,
+                    'position_count': int(site_manager_count)
+                }
+                
+                # Check if this opening already exists from Tracker (avoid duplicates)
+                already_exists = any(
+                    o.get('site', '').lower() == site_name.lower() or
+                    (o.get('account', '').lower() == opening['account'].lower() and 
+                     o.get('location', '').lower() == opening['location'].lower())
+                    for o in tier_openings[tier]
+                )
+                
+                if not already_exists:
+                    tier_openings[tier].append(opening)
+        
+        # Use tier_openings for all tiers, keep test data for managers (until real data available)
+        tier1_openings = tier_openings[1]
+        
+        # Generate test data for Tier 2-6 Managers (clearly marked)
         tier2_managers = [
             {'name': '[TEST] Manager A', 'site': '[TEST] Apple - Austin, TX', 'months': 14, 'csat': 4.4, 'headcount': 35, 'revenue': '$320K/mo', 'trend': 'Up', 'salary': 95000, 'title': 'Site Manager', 'performance_score': 4.2, 'vertical': 'Tech'},
             {'name': '[TEST] Manager B', 'site': '[TEST] Google - Reston, VA', 'months': 12, 'csat': 4.1, 'headcount': 32, 'revenue': '$280K/mo', 'trend': 'Stable', 'salary': 92000, 'title': 'Operations Manager', 'performance_score': 4.0, 'vertical': 'Tech'},
-        ]
-        
-        tier2_openings = [
-            {'site': '[TEST] Tesla - Austin, TX', 'account': 'Tesla', 'location': 'Austin, TX', 'headcount': 35, 'revenue': '$380K/mo', 'target_date': '02/15/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Site Manager', 'salary': 95000, 'vertical': 'Tech'},
-            {'site': '[TEST] Apple - Cupertino, CA', 'account': 'Apple', 'location': 'Cupertino, CA', 'headcount': 32, 'revenue': '$420K/mo', 'target_date': '01/20/2025', 'status': 'Urgent', 'matched': None, 'urgent': True, 'title': 'Operations Manager', 'salary': 98000, 'vertical': 'Tech'},
         ]
         
         tier3_managers = [
             {'name': '[TEST] Manager C', 'site': '[TEST] Amazon - Nashville, TN', 'months': 24, 'csat': 4.6, 'headcount': 45, 'revenue': '$680K/mo', 'trend': 'Up', 'salary': 110000, 'title': 'Senior Site Manager', 'performance_score': 4.5, 'vertical': 'Distribution'},
         ]
         
-        tier3_openings = [
-            {'site': '[TEST] Amazon - Seattle, WA', 'account': 'Amazon', 'location': 'Seattle, WA', 'headcount': 45, 'revenue': '$680K/mo', 'target_date': '03/01/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Senior Site Manager', 'salary': 110000, 'vertical': 'Distribution'},
-        ]
-        
         tier4_managers = [
             {'name': '[TEST] Manager D', 'site': '[TEST] Tesla - Fremont, CA', 'months': 30, 'csat': 4.7, 'headcount': 85, 'revenue': '$950K/mo', 'trend': 'Up', 'salary': 130000, 'title': 'Regional Manager', 'performance_score': 4.6, 'vertical': 'Manufacturing'},
-        ]
-        
-        tier4_openings = [
-            {'site': '[TEST] Amazon - Nashville, TN', 'account': 'Amazon', 'location': 'Nashville, TN', 'headcount': 85, 'revenue': '$950K/mo', 'target_date': '04/01/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Regional Manager', 'salary': 130000, 'vertical': 'Distribution'},
         ]
         
         tier5_managers = [
             {'name': '[TEST] Manager E', 'site': '[TEST] Amazon - JFK8, NY', 'months': 36, 'csat': 4.8, 'headcount': 220, 'revenue': '$1.3M/mo', 'trend': 'Up', 'salary': 150000, 'title': 'Regional Manager', 'performance_score': 4.7, 'vertical': 'Distribution'},
         ]
         
-        tier5_openings = [
-            {'site': '[TEST] Amazon - JFK8, NY', 'account': 'Amazon', 'location': 'JFK8, NY', 'headcount': 220, 'revenue': '$1.3M/mo', 'target_date': '05/01/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Regional Manager', 'salary': 150000, 'vertical': 'Distribution'},
-        ]
-        
         tier6_managers = []
-        tier6_openings = [
-            {'site': '[TEST] Amazon - DFW7, TX', 'account': 'Amazon', 'location': 'DFW7, TX', 'headcount': 380, 'revenue': '$2.1M/mo', 'target_date': '06/01/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Senior Regional Manager', 'salary': 180000, 'vertical': 'Distribution'},
-        ]
         
         # Helper function to clean NaN values for JSON serialization
         import math
@@ -1052,28 +1167,28 @@ def get_pipeline_data():
             },
             'tier2': {
                 'managers': clean_for_json(tier2_managers),
-                'openings': clean_for_json(tier2_openings),
-                'is_test_data': True
+                'openings': clean_for_json(tier_openings[2]),
+                'is_test_data': len(tier_openings[2]) == 0  # Only test if no real data
             },
             'tier3': {
                 'managers': clean_for_json(tier3_managers),
-                'openings': clean_for_json(tier3_openings),
-                'is_test_data': True
+                'openings': clean_for_json(tier_openings[3]),
+                'is_test_data': len(tier_openings[3]) == 0
             },
             'tier4': {
                 'managers': clean_for_json(tier4_managers),
-                'openings': clean_for_json(tier4_openings),
-                'is_test_data': True
+                'openings': clean_for_json(tier_openings[4]),
+                'is_test_data': len(tier_openings[4]) == 0
             },
             'tier5': {
                 'managers': clean_for_json(tier5_managers),
-                'openings': clean_for_json(tier5_openings),
-                'is_test_data': True
+                'openings': clean_for_json(tier_openings[5]),
+                'is_test_data': len(tier_openings[5]) == 0
             },
             'tier6': {
                 'managers': clean_for_json(tier6_managers),
-                'openings': clean_for_json(tier6_openings),
-                'is_test_data': True
+                'openings': clean_for_json(tier_openings[6]),
+                'is_test_data': len(tier_openings[6]) == 0
             }
         }
         
