@@ -43,7 +43,8 @@ from utils import (
     build_mentor_profiles,
     get_mentor_dashboard_metrics,
     get_active_training_mentors,
-    get_mit_alumni
+    get_mit_alumni,
+    get_tier1_managers
 )
 from executive_report import collect_report_data
 
@@ -906,6 +907,192 @@ def get_mit_alumni_endpoint():
         return response, 200
     except Exception as e:
         log_error("Error in MIT alumni endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+@app.route('/api/pipeline-data', methods=['GET'])
+def get_pipeline_data():
+    """
+    Get pipeline data for Pipeline & Placement view
+    
+    Returns:
+        JSON with MITs, Tier 1 Managers, Tier 1 Openings, and test data for Tier 2-6
+    """
+    try:
+        from datetime import datetime
+        
+        # Get active MITs (trainees) and clean any NaN values
+        candidates = get_cached_merged_candidates()
+        active_mits = []
+        for c in candidates:
+            if c.get('week', 0) >= 1:
+                # Clean any NaN values from candidate data
+                cleaned_candidate = {}
+                for key, value in c.items():
+                    if isinstance(value, float):
+                        import math
+                        import pandas as pd
+                        try:
+                            if math.isnan(value) or pd.isna(value):
+                                cleaned_candidate[key] = 0
+                            else:
+                                cleaned_candidate[key] = value
+                        except:
+                            cleaned_candidate[key] = value
+                    else:
+                        cleaned_candidate[key] = value
+                active_mits.append(cleaned_candidate)
+        
+        # Get Tier 1 Managers (completed MIT/SMIT)
+        tier1_managers = get_tier1_managers()
+        
+        # Get Tier 1 Openings (all from open positions sheet)
+        all_openings = fetch_open_positions_data()
+        tier1_openings = []
+        for opening in all_openings:
+            # All openings in the sheet are Tier 1
+            tier1_openings.append({
+                'site': opening.get('account', 'TBD') + ' - ' + opening.get('city', '') + ', ' + opening.get('state', ''),
+                'account': opening.get('account', 'TBD'),
+                'location': opening.get('city', '') + ', ' + opening.get('state', ''),
+                'salary': opening.get('salary', 0),
+                'vertical': opening.get('vertical', 'TBD'),
+                'jv_id': opening.get('jv_id', ''),
+                'title': opening.get('title', 'Site Manager'),
+                'headcount': 'TBD',  # Will be added to sheet later
+                'revenue': 'TBD',    # Will be added to sheet later
+                'target_date': None,
+                'status': 'Open',
+                'matched': None,
+                'urgent': False
+            })
+        
+        # Generate test data for Tier 2-6 (clearly marked)
+        tier2_managers = [
+            {'name': '[TEST] Manager A', 'site': '[TEST] Apple - Austin, TX', 'months': 14, 'csat': 4.4, 'headcount': 35, 'revenue': '$320K/mo', 'trend': 'Up', 'salary': 95000, 'title': 'Site Manager', 'performance_score': 4.2, 'vertical': 'Tech'},
+            {'name': '[TEST] Manager B', 'site': '[TEST] Google - Reston, VA', 'months': 12, 'csat': 4.1, 'headcount': 32, 'revenue': '$280K/mo', 'trend': 'Stable', 'salary': 92000, 'title': 'Operations Manager', 'performance_score': 4.0, 'vertical': 'Tech'},
+        ]
+        
+        tier2_openings = [
+            {'site': '[TEST] Tesla - Austin, TX', 'account': 'Tesla', 'location': 'Austin, TX', 'headcount': 35, 'revenue': '$380K/mo', 'target_date': '02/15/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Site Manager', 'salary': 95000, 'vertical': 'Tech'},
+            {'site': '[TEST] Apple - Cupertino, CA', 'account': 'Apple', 'location': 'Cupertino, CA', 'headcount': 32, 'revenue': '$420K/mo', 'target_date': '01/20/2025', 'status': 'Urgent', 'matched': None, 'urgent': True, 'title': 'Operations Manager', 'salary': 98000, 'vertical': 'Tech'},
+        ]
+        
+        tier3_managers = [
+            {'name': '[TEST] Manager C', 'site': '[TEST] Amazon - Nashville, TN', 'months': 24, 'csat': 4.6, 'headcount': 45, 'revenue': '$680K/mo', 'trend': 'Up', 'salary': 110000, 'title': 'Senior Site Manager', 'performance_score': 4.5, 'vertical': 'Distribution'},
+        ]
+        
+        tier3_openings = [
+            {'site': '[TEST] Amazon - Seattle, WA', 'account': 'Amazon', 'location': 'Seattle, WA', 'headcount': 45, 'revenue': '$680K/mo', 'target_date': '03/01/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Senior Site Manager', 'salary': 110000, 'vertical': 'Distribution'},
+        ]
+        
+        tier4_managers = [
+            {'name': '[TEST] Manager D', 'site': '[TEST] Tesla - Fremont, CA', 'months': 30, 'csat': 4.7, 'headcount': 85, 'revenue': '$950K/mo', 'trend': 'Up', 'salary': 130000, 'title': 'Regional Manager', 'performance_score': 4.6, 'vertical': 'Manufacturing'},
+        ]
+        
+        tier4_openings = [
+            {'site': '[TEST] Amazon - Nashville, TN', 'account': 'Amazon', 'location': 'Nashville, TN', 'headcount': 85, 'revenue': '$950K/mo', 'target_date': '04/01/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Regional Manager', 'salary': 130000, 'vertical': 'Distribution'},
+        ]
+        
+        tier5_managers = [
+            {'name': '[TEST] Manager E', 'site': '[TEST] Amazon - JFK8, NY', 'months': 36, 'csat': 4.8, 'headcount': 220, 'revenue': '$1.3M/mo', 'trend': 'Up', 'salary': 150000, 'title': 'Regional Manager', 'performance_score': 4.7, 'vertical': 'Distribution'},
+        ]
+        
+        tier5_openings = [
+            {'site': '[TEST] Amazon - JFK8, NY', 'account': 'Amazon', 'location': 'JFK8, NY', 'headcount': 220, 'revenue': '$1.3M/mo', 'target_date': '05/01/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Regional Manager', 'salary': 150000, 'vertical': 'Distribution'},
+        ]
+        
+        tier6_managers = []
+        tier6_openings = [
+            {'site': '[TEST] Amazon - DFW7, TX', 'account': 'Amazon', 'location': 'DFW7, TX', 'headcount': 380, 'revenue': '$2.1M/mo', 'target_date': '06/01/2025', 'status': 'Open', 'matched': None, 'urgent': False, 'title': 'Senior Regional Manager', 'salary': 180000, 'vertical': 'Distribution'},
+        ]
+        
+        # Helper function to clean NaN values for JSON serialization
+        import math
+        import pandas as pd
+        import json
+        
+        def clean_for_json(obj):
+            """Recursively clean NaN and None values for JSON serialization"""
+            if isinstance(obj, dict):
+                return {k: clean_for_json(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_for_json(item) for item in obj]
+            elif isinstance(obj, float):
+                # Handle both Python NaN and pandas NaN
+                try:
+                    if math.isnan(obj):
+                        return 0
+                except (TypeError, ValueError):
+                    pass
+                try:
+                    if pd.isna(obj):
+                        return 0
+                except (TypeError, ValueError):
+                    pass
+                return obj
+            elif isinstance(obj, (pd._libs.missing.NAType, type(pd.NA))):
+                # Handle pandas NA types
+                return 0
+            elif obj is None:
+                return None
+            else:
+                # Try to check if it's a pandas NaN-like value
+                try:
+                    if pd.isna(obj):
+                        return 0
+                except:
+                    pass
+                return obj
+        
+        pipeline_data = {
+            'mits': clean_for_json(active_mits),
+            'tier1': {
+                'managers': clean_for_json(tier1_managers),
+                'openings': clean_for_json(tier1_openings)
+            },
+            'tier2': {
+                'managers': clean_for_json(tier2_managers),
+                'openings': clean_for_json(tier2_openings),
+                'is_test_data': True
+            },
+            'tier3': {
+                'managers': clean_for_json(tier3_managers),
+                'openings': clean_for_json(tier3_openings),
+                'is_test_data': True
+            },
+            'tier4': {
+                'managers': clean_for_json(tier4_managers),
+                'openings': clean_for_json(tier4_openings),
+                'is_test_data': True
+            },
+            'tier5': {
+                'managers': clean_for_json(tier5_managers),
+                'openings': clean_for_json(tier5_openings),
+                'is_test_data': True
+            },
+            'tier6': {
+                'managers': clean_for_json(tier6_managers),
+                'openings': clean_for_json(tier6_openings),
+                'is_test_data': True
+            }
+        }
+        
+        # Use json.dumps first to catch any remaining NaN issues, then parse back
+        try:
+            # Convert to JSON string and back to catch any NaN issues
+            json_str = json.dumps(pipeline_data, default=str, allow_nan=False)
+            pipeline_data_clean = json.loads(json_str)
+        except (ValueError, TypeError) as e:
+            # If json.dumps fails, try one more deep clean
+            log_debug(f"JSON serialization issue, doing deep clean: {str(e)}")
+            pipeline_data_clean = clean_for_json(pipeline_data)
+        
+        response = jsonify(pipeline_data_clean)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, 200
+        
+    except Exception as e:
+        log_error("Error in pipeline data endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 # =============================================================================
