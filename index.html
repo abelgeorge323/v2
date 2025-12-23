@@ -5853,9 +5853,9 @@
                 
                 // Budget calculations
                 const budgetTotal = 1128920; // 13 FTE × $86,840
-                const avgSalary = 86840;
-                const activeBudget = allCandidates.length * avgSalary;
-                const pendingBudget = pendingCandidates.length * avgSalary;
+                // Sum actual salaries instead of using average
+                const activeBudget = allCandidates.reduce((sum, c) => sum + (c.salary || 0), 0);
+                const pendingBudget = pendingCandidates.reduce((sum, c) => sum + (c.salary || 0), 0);
                 const budgetUsed = activeBudget + pendingBudget;
                 const budgetRemaining = Math.max(0, budgetTotal - budgetUsed);
                 const budgetUtilization = (budgetUsed / budgetTotal * 100).toFixed(0);
