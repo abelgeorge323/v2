@@ -38,6 +38,12 @@ PLACED_MITS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbdhuieyA-
 # Weekly Meeting Insights Sheet
 MEETING_INSIGHTS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSGsWrJ7HL1EreSYuF2595dGglPSXtKAMrhL064HfvFJPi9E_4Usz5Pr7HTJhAzBhRptNLxX-epCjV9/pub?gid=0&single=true&output=csv'
 
+# Transition Master List CSV (local file)
+TRANSITION_MASTER_CSV = 'Transition Master List 2025 Report (1).csv'
+
+# Transitions Tracker CSV (local file)
+TRANSITION_TRACKER_CSV = 'Transitions Tracker.csv'
+
 # =============================================================================
 # TRAINING PROGRAM CONFIGURATION
 # =============================================================================
