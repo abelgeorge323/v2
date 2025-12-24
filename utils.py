@@ -2010,12 +2010,30 @@ def fetch_mentor_relationships_data() -> List[Dict[str, Any]]:
             if not mentor_name and not trainee_name:
                 continue
             
+            # Try to find primary and secondary reason columns (handle variations)
+            primary_reason = ''
+            secondary_reason = ''
+            
+            # Look for reason columns with various naming patterns
+            for col in df.columns:
+                col_lower = col.lower().strip()
+                if 'primary' in col_lower and 'reason' in col_lower:
+                    primary_reason = str(safe_get(row, col, '')).strip()
+                elif 'secondary' in col_lower and 'reason' in col_lower:
+                    secondary_reason = str(safe_get(row, col, '')).strip()
+                elif 'reason' in col_lower and 'primary' not in col_lower and 'secondary' not in col_lower:
+                    # If there's just a "Reason" column, use it as primary
+                    if not primary_reason:
+                        primary_reason = str(safe_get(row, col, '')).strip()
+            
             relationships.append({
                 'mentor_name': mentor_name,
                 'trainee_name': trainee_name,
                 'training_program': str(safe_get(row, 'Training Program', '')).strip(),
                 'completion_status': str(safe_get(row, 'Completion Status', '')).strip(),
-                'effectiveness_score': float(safe_get(row, 'Mentor Effectiveness Score', 0)) if pd.notna(safe_get(row, 'Mentor Effectiveness Score', 0)) else 0.0
+                'effectiveness_score': float(safe_get(row, 'Mentor Effectiveness Score', 0)) if pd.notna(safe_get(row, 'Mentor Effectiveness Score', 0)) else 0.0,
+                'primary_reason': primary_reason if primary_reason and primary_reason.lower() not in ['nan', 'none', '', 'n/a', 'tbd'] else '',
+                'secondary_reason': secondary_reason if secondary_reason and secondary_reason.lower() not in ['nan', 'none', '', 'n/a', 'tbd'] else ''
             })
         
         logger.info(f"Successfully fetched {len(relationships)} mentor relationships")
@@ -2384,6 +2402,108 @@ def get_active_training_mentors() -> Dict[str, Any]:
             'needs_help_mentors': [],
             'monitoring_mentors': [],
             'total_trainees': 0
+        }
+
+def get_failed_exited_mits() -> Dict[str, Any]:
+    """
+    Get MITs who failed the program or exited shortly after, grouped by mentor
+    
+    Fetches data from Mentor Relationships sheet and filters for specific completion statuses:
+    - removed, resigned, terminated (only these three)
+    
+    Returns:
+        Dictionary with mentors and their failed candidates:
+        {
+            'total_failed': int,
+            'total_mentors': int,
+            'mentors': [
+                {
+                    'mentor_name': str,
+                    'failed_count': int,
+                    'failed_candidates': [
+                        {
+                            'name': str,
+                            'completion_status': str,
+                            'training_program': str,
+                            'effectiveness_score': float
+                        }
+                    ]
+                }
+            ]
+        }
+    """
+    try:
+        logger.info("Building failed/exited MITs list grouped by mentor")
+        relationships = fetch_mentor_relationships_data()
+        
+        if not relationships:
+            logger.warning("No mentor relationships found")
+            return {
+                'total_failed': 0,
+                'total_mentors': 0,
+                'mentors': []
+            }
+        
+        # Only these three statuses matter: removed, resigned, terminated
+        target_statuses = ['removed', 'resigned', 'terminated']
+        
+        # Group by mentor
+        mentor_dict = {}
+        
+        for rel in relationships:
+            completion_status = str(rel.get('completion_status', '')).strip().lower()
+            
+            # Check if status is one of the three we care about
+            is_target_status = any(status in completion_status for status in target_statuses)
+            
+            if is_target_status:
+                mentor_name = rel.get('mentor_name', 'TBD').strip()
+                trainee_name = rel.get('trainee_name', 'Unknown').strip()
+                
+                if not mentor_name or mentor_name.lower() in ['tbd', 'nan', 'none', '']:
+                    continue
+                
+                if mentor_name not in mentor_dict:
+                    mentor_dict[mentor_name] = {
+                        'mentor_name': mentor_name,
+                        'failed_count': 0,
+                        'failed_candidates': []
+                    }
+                
+                mentor_dict[mentor_name]['failed_candidates'].append({
+                    'name': trainee_name,
+                    'completion_status': rel.get('completion_status', 'Unknown'),
+                    'training_program': rel.get('training_program', 'TBD'),
+                    'effectiveness_score': rel.get('effectiveness_score', 0.0),
+                    'primary_reason': rel.get('primary_reason', ''),
+                    'secondary_reason': rel.get('secondary_reason', '')
+                })
+                mentor_dict[mentor_name]['failed_count'] += 1
+        
+        # Convert to list and sort by failed count (descending), then by mentor name
+        mentors_list = list(mentor_dict.values())
+        mentors_list.sort(key=lambda x: (-x['failed_count'], x['mentor_name']))
+        
+        # Sort candidates within each mentor by name
+        for mentor in mentors_list:
+            mentor['failed_candidates'].sort(key=lambda x: x['name'])
+        
+        total_failed = sum(m['failed_count'] for m in mentors_list)
+        
+        logger.info(f"Found {total_failed} failed/exited MITs across {len(mentors_list)} mentors")
+        
+        return {
+            'total_failed': total_failed,
+            'total_mentors': len(mentors_list),
+            'mentors': mentors_list
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting failed/exited MITs: {str(e)}", exc_info=True)
+        return {
+            'total_failed': 0,
+            'total_mentors': 0,
+            'mentors': []
         }
 
 def get_mit_alumni() -> Dict[str, Any]:
