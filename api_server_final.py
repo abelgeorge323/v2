@@ -44,6 +44,7 @@ from utils import (
     get_mentor_dashboard_metrics,
     get_active_training_mentors,
     get_mit_alumni,
+    get_failed_exited_mits,
     get_tier1_managers,
     fetch_transition_master_data,
     fetch_transition_tracker_data,
@@ -912,6 +913,19 @@ def get_mit_alumni_endpoint():
         return response, 200
     except Exception as e:
         log_error("Error in MIT alumni endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+@app.route('/api/failed-exited-mits', methods=['GET'])
+def get_failed_exited_mits_endpoint():
+    """Get MITs who failed the program or exited shortly after"""
+    try:
+        failed_data = get_failed_exited_mits()
+        log_debug(f"Failed/Exited MITs endpoint: returning {failed_data.get('total_failed', 0)} MITs")
+        response = jsonify(failed_data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, 200
+    except Exception as e:
+        log_error("Error in failed/exited MITs endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 @app.route('/api/pipeline-data', methods=['GET'])
