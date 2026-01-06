@@ -1393,8 +1393,24 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
         if found is not None:
             cand = process_candidate_data(found)
             cand['data_quality'] = 'full'
-            # Override with MIT Tracking status (source of truth for incoming MITs)
-            cand['status'] = mit_tracking_status
+            
+            # Override with MIT Tracking status ONLY for candidates who haven't started yet
+            # Check if Company Start Date is in the future or missing
+            company_start_date = cand.get('operation_details', {}).get('company_start_date', '')
+            has_started = False
+            if company_start_date and company_start_date not in ['TBD', 'nan', '', 'None']:
+                try:
+                    start_dt = pd.to_datetime(company_start_date, errors='coerce')
+                    if pd.notna(start_dt) and start_dt <= pd.Timestamp.now():
+                        has_started = True
+                except:
+                    pass
+            
+            # Only override status if they haven't started yet
+            if not has_started and mit_tracking_status:
+                cand['status'] = mit_tracking_status
+            # Otherwise, keep the status derived from Main sheet (based on Company Start Date)
+            
             # If salary is missing/zero in main sheet, use MIT Tracking salary
             if cand.get('salary', 0) == 0 and mit_tracking_salary > 0:
                 cand['salary'] = mit_tracking_salary
@@ -1406,8 +1422,23 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
         if found is not None:
             cand = process_candidate_data(found)
             cand['data_quality'] = 'archive'
-            # Override with MIT Tracking status (source of truth for incoming MITs)
-            cand['status'] = mit_tracking_status
+            
+            # Override with MIT Tracking status ONLY for candidates who haven't started yet
+            # Check if Company Start Date is in the future or missing
+            company_start_date = cand.get('operation_details', {}).get('company_start_date', '')
+            has_started = False
+            if company_start_date and company_start_date not in ['TBD', 'nan', '', 'None']:
+                try:
+                    start_dt = pd.to_datetime(company_start_date, errors='coerce')
+                    if pd.notna(start_dt) and start_dt <= pd.Timestamp.now():
+                        has_started = True
+                except:
+                    pass
+            
+            # Only override status if they haven't started yet
+            if not has_started and mit_tracking_status:
+                cand['status'] = mit_tracking_status
+            
             # If salary is missing/zero in fallback sheet, use MIT Tracking salary
             if cand.get('salary', 0) == 0 and mit_tracking_salary > 0:
                 cand['salary'] = mit_tracking_salary
@@ -1533,7 +1564,7 @@ def categorize_candidates_by_week(candidates: List[Dict]) -> Dict[str, List[Dict
         if is_pending_status and has_not_started:
             # Only include if they haven't started training yet
             offer_pending.append(candidate)
-        elif 1 <= week <= 2:  # Exclude week 0 from active bands
+        elif 0 <= week <= 2:  # Include week 0 active candidates (day 1-13)
             weeks_0_3.append(candidate)
         elif 3 <= week <= 5:
             weeks_4_6.append(candidate)
