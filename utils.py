@@ -2617,11 +2617,18 @@ def get_mit_alumni() -> Dict[str, Any]:
                 # Add mentor information
                 alumni_profile['mentor_name'] = str(safe_get(fallback_row, 'Mentor Name', 'TBD')).strip()
                 
-                # Add scores if available
-                alumni_profile['mock_qbr_score'] = float(pd.to_numeric(safe_get(fallback_row, 'Mock QBR Score', 0), errors='coerce') or 0)
-                alumni_profile['assessment_score'] = float(pd.to_numeric(safe_get(fallback_row, 'Assessment Score', 0), errors='coerce') or 0)
-                alumni_profile['perf_eval_score'] = float(pd.to_numeric(safe_get(fallback_row, 'Perf Evaluation Score', 0), errors='coerce') or 0)
-                alumni_profile['confidence_score'] = float(pd.to_numeric(safe_get(fallback_row, 'Confidence Score', 0), errors='coerce') or 0)
+                # Add scores if available (handle NaN properly for JSON serialization)
+                mock_qbr = pd.to_numeric(safe_get(fallback_row, 'Mock QBR Score', 0), errors='coerce')
+                alumni_profile['mock_qbr_score'] = 0 if pd.isna(mock_qbr) else float(mock_qbr)
+                
+                assessment = pd.to_numeric(safe_get(fallback_row, 'Assessment Score', 0), errors='coerce')
+                alumni_profile['assessment_score'] = 0 if pd.isna(assessment) else float(assessment)
+                
+                perf_eval = pd.to_numeric(safe_get(fallback_row, 'Perf Evaluation Score', 0), errors='coerce')
+                alumni_profile['perf_eval_score'] = 0 if pd.isna(perf_eval) else float(perf_eval)
+                
+                confidence = pd.to_numeric(safe_get(fallback_row, 'Confidence Score', 0), errors='coerce')
+                alumni_profile['confidence_score'] = 0 if pd.isna(confidence) else float(confidence)
                 
                 skill_rank = str(safe_get(fallback_row, 'Skill Ranking', 'TBD')).strip()
                 alumni_profile['skill_ranking'] = skill_rank if skill_rank.lower() not in ['nan', 'none', ''] else 'TBD'
