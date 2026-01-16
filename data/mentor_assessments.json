@@ -722,6 +722,46 @@
       }
     ]
   },
+  "traci thomson": {
+    "assessments": [
+      {
+        "date": "1/16/2025",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 4,
+            "q3_time_management": 5,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 4,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "Traci is very good on the computer and really picked up 4insite"
+        }
+      }
+    ]
+  },
   "tyler heinle": {
     "assessments": []
   },
