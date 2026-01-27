@@ -38,6 +38,9 @@ PLACED_MITS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbdhuieyA-
 # Weekly Meeting Insights Sheet
 MEETING_INSIGHTS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSGsWrJ7HL1EreSYuF2595dGglPSXtKAMrhL064HfvFJPi9E_4Usz5Pr7HTJhAzBhRptNLxX-epCjV9/pub?gid=0&single=true&output=csv'
 
+# Client Requests for MIT Placements (hiring pipeline)
+CLIENT_MIT_REQUESTS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbdhuieyA-axzb4aLe8c7zdAYXBLPNrIxKRder6j1ZAlj2g4U1k0YzkZbm_dEcSwBik4CJ57FROJ/pub?gid=1506398133&single=true&output=csv'
+
 # Transition Master List CSV (local file)
 TRANSITION_MASTER_CSV = 'Transition Master List 2025 Report (1).csv'
 
