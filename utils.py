@@ -2916,6 +2916,66 @@ def fetch_transition_tracker_data() -> pd.DataFrame:
         logger.error(f"Error fetching Transitions Tracker: {str(e)}", exc_info=True)
         return pd.DataFrame()
 
+# =============================================================================
+# CLIENT MIT REQUESTS
+# =============================================================================
+
+def fetch_client_mit_requests() -> List[Dict[str, Any]]:
+    """
+    Fetch client requests for MIT placements from Google Sheets
+    
+    Returns:
+        List of client request dictionaries with status breakdown
+    """
+    try:
+        logger.info("Fetching client MIT requests")
+        
+        # Read CSV (skip first 3 header rows)
+        df = pd.read_csv(CLIENT_MIT_REQUESTS_URL, dtype=str, skiprows=3)
+        
+        # Clean column names
+        df.columns = df.columns.str.strip()
+        
+        logger.info(f"Columns found: {list(df.columns)}")
+        
+        # Filter out empty rows
+        df = df.dropna(how='all')
+        
+        # Build requests list
+        requests = []
+        for _, row in df.iterrows():
+            job_id = safe_get(row, 'Job ID', '') or safe_get(row, '', 'TBD')  # First column might be empty header
+            job_title = safe_get(row, 'Job Title', 'TBD')
+            hiring_manager = safe_get(row, 'Hiring Manager', 'TBD')
+            requestor = safe_get(row, 'Requestor', 'TBD')
+            client = safe_get(row, 'Client', 'TBD')
+            location = safe_get(row, 'Location', 'TBD')
+            status = safe_get(row, 'Status', 'TBD')
+            notes = safe_get(row, 'Notes', '')
+            
+            # Skip if all fields are empty
+            if all(not str(v).strip() or str(v).strip().lower() in ['nan', 'tbd', ''] 
+                   for v in [job_title, client, location]):
+                continue
+            
+            requests.append({
+                'job_id': str(job_id).strip() if job_id else 'TBD',
+                'job_title': str(job_title).strip() if job_title else 'TBD',
+                'hiring_manager': str(hiring_manager).strip() if hiring_manager else 'TBD',
+                'requestor': str(requestor).strip() if requestor else 'TBD',
+                'client': str(client).strip() if client else 'TBD',
+                'location': str(location).strip() if location else 'TBD',
+                'status': str(status).strip() if status else 'TBD',
+                'notes': str(notes).strip() if notes else ''
+            })
+        
+        logger.info(f"Loaded {len(requests)} client MIT requests")
+        return requests
+        
+    except Exception as e:
+        log_error("Error fetching client MIT requests", e)
+        return []
+
 def match_opening_to_site(opening_row: pd.Series, master_df: pd.DataFrame) -> Optional[Dict[str, Any]]:
     """
     Match a job opening to a site in the master list and determine tier
