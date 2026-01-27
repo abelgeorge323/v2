@@ -496,24 +496,35 @@ def collect_report_data() -> Dict[str, Any]:
                     return latest.get('section_4_readiness_confidence', {}).get('observations', '')
         return ''
     
-    # Group MITs by NEW week bands: 0-3 Onboarding, 4-5 Mid, 6-7 Critical, 8+ Ready
+    # Group MITs by NEW week bands: 0-3 Onboarding, 4-5 Mid, 6-7 Critical, 8+ Ready, Pending
     mits_by_week_band = {
         'weeks_0_3': [],      # Onboarding / New Starts
         'weeks_4_5': [],      # Mid-Training
         'weeks_6_7': [],      # Critical Window (placement priority)
-        'weeks_8_plus': []    # Placement Ready
+        'weeks_8_plus': [],   # Placement Ready
+        'pending_mits': []    # Incoming MITs (offers accepted, not started)
     }
     
     for candidate in candidates:
         week = candidate.get('week', 0)
         status = str(candidate.get('status', '')).lower()
         
-        # Skip incoming MITs who haven't started yet (week = 0 with pending/offer status)
+        # Check if incoming MIT who hasn't started yet (week = 0 with pending/offer status)
         is_pending_status = 'pending' in status or 'offer' in status
         has_not_started = week == 0 or week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', ''])
         
         if is_pending_status and has_not_started:
-            continue  # Skip incoming MITs who haven't started
+            # Add to pending MITs section
+            pending_data = {
+                'name': candidate.get('name', 'Unknown'),
+                'location': candidate.get('training_site', 'TBD'),
+                'vertical': candidate.get('operation_details', {}).get('vertical', 'TBD'),
+                'mentor': candidate.get('mentor_name', 'TBD'),
+                'status': candidate.get('status', 'TBD'),
+                'expected_start': candidate.get('operation_details', {}).get('training_start_date', 'TBD')
+            }
+            mits_by_week_band['pending_mits'].append(pending_data)
+            continue  # Skip the rest of the processing for pending MITs
         
         # Get mentor score and determine status indicator
         mentor_score = get_mentor_score(candidate.get('name', ''))
@@ -572,9 +583,14 @@ def collect_report_data() -> Dict[str, Any]:
         elif week >= 8:
             mits_by_week_band['weeks_8_plus'].append(mit_data)
     
-    # Sort each band by week then name
-    for band in mits_by_week_band.values():
-        band.sort(key=lambda x: (x['week'], x['name']))
+    # Sort each band by week then name (except pending_mits which don't have week field)
+    for band_name, band_list in mits_by_week_band.items():
+        if band_name == 'pending_mits':
+            # Sort pending MITs by name only
+            band_list.sort(key=lambda x: x['name'])
+        else:
+            # Sort by week then name for active MITs
+            band_list.sort(key=lambda x: (x['week'], x['name']))
     
     # Get critical window mentors (Week 6-7)
     critical_window_mentors = get_critical_window_mentors(candidates, active_mentors)
@@ -765,11 +781,47 @@ def collect_report_data() -> Dict[str, Any]:
         'new_starts': len(mits_by_week_band['weeks_0_3']),
         'mid_training': len(mits_by_week_band['weeks_4_5']),
         'critical_window': len(mits_by_week_band['weeks_6_7']),
-        'placement_ready': len(mits_by_week_band['weeks_8_plus'])
+        'placement_ready': len(mits_by_week_band['weeks_8_plus']),
+        'pending_mits': len(mits_by_week_band['pending_mits'])
     }
     
     # Calculate active_mits as sum of all week bands (ensures consistency)
     active_mits = sum(band_counts.values())
+    
+    # Fetch client MIT requests
+    from utils import fetch_client_mit_requests
+    client_requests = fetch_client_mit_requests()
+    
+    # Calculate client request status breakdown
+    client_request_stats = {
+        'total': len(client_requests),
+        'posted': 0,
+        'offer_extended': 0,
+        'pending_approval': 0,
+        'by_client': {},
+        'by_manager': {}
+    }
+    
+    for req in client_requests:
+        status_lower = req.get('status', '').lower()
+        if 'posted' in status_lower:
+            client_request_stats['posted'] += 1
+        elif 'offer' in status_lower or 'extended' in status_lower:
+            client_request_stats['offer_extended'] += 1
+        elif 'pending' in status_lower:
+            client_request_stats['pending_approval'] += 1
+        
+        # Count by client
+        client = req.get('client', 'Unknown')
+        client_request_stats['by_client'][client] = client_request_stats['by_client'].get(client, 0) + 1
+        
+        # Count by hiring manager
+        manager = req.get('hiring_manager', 'Unknown')
+        client_request_stats['by_manager'][manager] = client_request_stats['by_manager'].get(manager, 0) + 1
+    
+    # Get top clients and managers
+    top_clients = sorted(client_request_stats['by_client'].items(), key=lambda x: x[1], reverse=True)[:3]
+    top_managers = sorted(client_request_stats['by_manager'].items(), key=lambda x: x[1], reverse=True)[:3]
     
     return {
         'timestamp': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
@@ -797,6 +849,11 @@ def collect_report_data() -> Dict[str, Any]:
         'assessment_summary': assessment_summary,
         'top_2_mits': top_2_mits,
         'bottom_2_mits': bottom_2_mits,
-        'all_mits': all_mits
+        'all_mits': all_mits,
+        'assessment_data': assessment_data,
+        'client_requests': client_requests,
+        'client_request_stats': client_request_stats,
+        'top_clients': top_clients,
+        'top_managers': top_managers
     }
 
