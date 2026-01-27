@@ -50,7 +50,8 @@ from utils import (
     fetch_transition_tracker_data,
     determine_site_tier,
     match_opening_to_site,
-    safe_get
+    safe_get,
+    fetch_client_mit_requests
 )
 from executive_report import collect_report_data
 
@@ -532,6 +533,47 @@ def get_open_positions():
         
     except Exception as e:
         log_error("Error in open positions endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+@app.route('/api/client-requests', methods=['GET'])
+def get_client_requests():
+    """
+    Get client requests for MIT placements
+    
+    Returns:
+        JSON response with client request data and status breakdown
+    """
+    try:
+        requests = fetch_client_mit_requests()
+        
+        # Calculate status breakdown
+        status_counts = {
+            'posted': 0,
+            'offer_extended': 0,
+            'pending_approval': 0
+        }
+        
+        for req in requests:
+            status_lower = req.get('status', '').lower()
+            if 'posted' in status_lower:
+                status_counts['posted'] += 1
+            elif 'offer' in status_lower or 'extended' in status_lower:
+                status_counts['offer_extended'] += 1
+            elif 'pending' in status_lower:
+                status_counts['pending_approval'] += 1
+        
+        response_data = {
+            'total': len(requests),
+            'requests': requests,
+            'status_counts': status_counts
+        }
+        
+        response = jsonify(response_data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        log_error("Error in client requests endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 @app.route('/api/job-matches/<int:job_id>', methods=['GET'])
