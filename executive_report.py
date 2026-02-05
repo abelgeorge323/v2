@@ -301,6 +301,7 @@ def build_mit_assessment_summary() -> List[Dict[str, Any]]:
     """
     assessments_data = load_mentor_assessments()
     logger.info(f"Loaded {len(assessments_data)} MITs from assessments file")
+    
     summary_list = []
     
     excluded_normalized = [e.lower().strip() for e in EXCLUDED_MITS]
