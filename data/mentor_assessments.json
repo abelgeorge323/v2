@@ -795,6 +795,42 @@
           "independent_responsibility": 5,
           "observations": "Traci is continuing to excel when learning new tasks and her understanding of 4insite."
         }
+      },
+      {
+        "date": "1/27/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 5,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 5,
+            "q3_adaptability": 3,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 5,
+          "observations": "Traci continues to show improvement each day"
+        }
       }
     ]
   },
@@ -875,6 +911,42 @@
           "independent_responsibility": 4,
           "observations": "He has been willing to support night shift operations, cleanroom shifts, special projects on the weekend and has not shied away from putting in the necessary hours to be successful"
         }
+      },
+      {
+        "date": "1/27/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 4,
+            "q3_time_management": 3,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 4,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 4
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 4,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "Has been doing great at being hands on and being involved"
+        }
       }
     ]
   },
@@ -953,6 +1025,166 @@
           "weekly_performance": "Progressing as Expected",
           "independent_responsibility": 4,
           "observations": "The mentee had a set back due to a sudden illness and death in thier family. This put us a few days behind on our interally developed schedule for site level goals. However, the mentee has shown willingness to learn, retain knowledge and support various shifts and sites durring thier time otherwise."
+        }
+      }
+    ]
+  },
+  "orlando doss": {
+    "assessments": [
+      {
+        "date": "1/27/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 4,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Exceeding Expectations",
+          "independent_responsibility": 5,
+          "observations": "Orlando has been very hands-on since day one. He is ready and eager to take on more than what is given daily, and for what SBM has to offer in knowledge and management perspectives. I think he will do great!"
+        }
+      }
+    ]
+  },
+  "juan hernandez": {
+    "assessments": [
+      {
+        "date": "1/27/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 3,
+            "q2_problem_solving": 3,
+            "q3_time_management": 4,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 4,
+            "q3_adaptability": 4,
+            "q4_initiative": 4,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 3,
+            "q2_learning_drive": 4,
+            "q3_flexibility": 4,
+            "q4_curiosity": 3,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 3,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 3,
+          "observations": "Juan is an individual who demonstrates strong initiative and brings a significant amount of prior experience. Continued focus is needed on his progression in fully owning a shift and developing a deeper understanding of how operations function at SBM. While he frequently reflects on his past experiences, the next step will be effectively translating that knowledge to align with our current operational environment."
+        }
+      }
+    ]
+  },
+  "eddie bennett": {
+    "assessments": [
+      {
+        "date": "1/27/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 3,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 5,
+          "observations": "Eddie has been very attentive to details and absorbing information as well as already working with the crew to understand their tasks"
+        }
+      }
+    ]
+  },
+  "humberto sanchez": {
+    "assessments": [
+      {
+        "date": "1/27/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 2,
+            "q3_time_management": 2,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 5,
+            "q3_adaptability": 3,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 4,
+            "q3_flexibility": 4,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "Humberto overall has been great in information retention and has brought a positive outlook to the staff and team members. As the program continues, I believe he will be a great operation leader by the end of it."
         }
       }
     ]
