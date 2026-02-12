@@ -2723,17 +2723,19 @@
                     throw new Error(data.error);
                 }
                 
-                // Fetch training mentors separately
+                // Fetch mentors dashboard (all mentors: current + historical, effectiveness scores)
                 try {
-                    const trainingMentorsResponse = await fetch(`${API_BASE_URL}/api/training-mentors${getCacheBust()}`);
-                    data.training_mentor_metrics = await trainingMentorsResponse.json();
+                    const mentorsDashboardResponse = await fetch(`${API_BASE_URL}/api/mentors-dashboard${getCacheBust()}`);
+                    data.mentors_dashboard = await mentorsDashboardResponse.json();
                 } catch (err) {
-                    console.warn('Could not fetch training mentors:', err);
-                    data.training_mentor_metrics = {
-                        total_training_mentors: 0,
-                        strong_mentors: [],
-                        needs_help_mentors: [],
-                        monitoring_mentors: []
+                    console.warn('Could not fetch mentors dashboard:', err);
+                    data.mentors_dashboard = {
+                        total_mentors: 0,
+                        strong_count: 0,
+                        needs_support_count: 0,
+                        in_progress_count: 0,
+                        current_mentors: [],
+                        other_mentors: []
                     };
                 }
                 
@@ -2746,18 +2748,6 @@
                     data.alumni_metrics = {
                         total_alumni: 0,
                         alumni: []
-                    };
-                }
-                
-                // Fetch failed/exited MITs separately
-                try {
-                    const failedResponse = await fetch(`${API_BASE_URL}/api/failed-exited-mits${getCacheBust()}`);
-                    data.failed_metrics = await failedResponse.json();
-                } catch (err) {
-                    console.warn('Could not fetch failed/exited MITs:', err);
-                    data.failed_metrics = {
-                        total_failed: 0,
-                        failed_mits: []
                     };
                 }
                 
@@ -2800,18 +2790,18 @@
                     <div class="metric-value">${data.open_positions}</div>
                     <div class="metric-change">Available full-time roles for MITs</div>
                 </div>
-                <div class="metric-card mentors" onclick="showTrainingMentors()">
-                    <div class="metric-label">Training Mentors</div>
-                    <div class="metric-value">${data.training_mentor_metrics?.total_training_mentors || 0}</div>
-                    <div class="metric-change">Active with trainees</div>
+                <div class="metric-card mentors" onclick="showMentorsPage()">
+                    <div class="metric-label">Mentors</div>
+                    <div class="metric-value">${data.mentors_dashboard?.total_mentors || 0}</div>
+                    <div class="metric-change">All mentors (current + historical)</div>
                     <div class="mentor-metrics">
                         <div class="mentor-metric-item">
                             <div class="mentor-metric-label">Strong</div>
-                            <div class="mentor-metric-value" style="color: #10b981;">${data.training_mentor_metrics?.strong_mentors?.length || 0}</div>
+                            <div class="mentor-metric-value" style="color: #10b981;">${data.mentors_dashboard?.strong_count || 0}</div>
                         </div>
                         <div class="mentor-metric-item">
                             <div class="mentor-metric-label">Needs Support</div>
-                            <div class="mentor-metric-value" style="color: #ef4444;">${data.training_mentor_metrics?.needs_help_mentors?.length || 0}</div>
+                            <div class="mentor-metric-value" style="color: #ef4444;">${data.mentors_dashboard?.needs_support_count || 0}</div>
                         </div>
                     </div>
                 </div>
@@ -2874,14 +2864,6 @@
                     <div class="metric-label">Incoming MITs</div>
                     <div class="metric-value">${data.offer_pending || 0}</div>
                     <div class="metric-change">Pending Start</div>
-                </div>
-                <div class="metric-card failed-mits" onclick="showFailedExitedMits()" 
-                     style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); cursor: pointer; border: 2px solid #ef4444; transition: all 0.3s ease;"
-                     onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(239, 68, 68, 0.4)';"
-                     onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';">
-                    <div class="metric-label" style="color: #fff; font-weight: 700;">⚠️ Failed/Exited</div>
-                    <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${data.failed_metrics?.total_mentors || 0}</div>
-                    <div class="metric-change" style="color: rgba(255,255,255,0.9);">Mentors with failed candidates</div>
                 </div>
             `;
         }
@@ -4966,6 +4948,139 @@
         // Global variables for training mentor filtering
         let allTrainingMentors = [];
         let currentTrainingMentorFilter = 'all';
+
+        // Mentors page (all mentors: current + historical)
+        let mentorsDashboardData = null;
+        let mentorsSearchQuery = '';
+
+        async function showMentorsPage() {
+            try {
+                hideAllPages();
+                document.getElementById('candidateList').classList.add('active');
+                const container = document.getElementById('candidatesList');
+                container.innerHTML = '<div class="loading">Loading mentors...</div>';
+                document.querySelector('.candidates-container h2').textContent = '👨‍🏫 Mentors';
+                previousPage = currentPage;
+                currentPage = 'mentors';
+
+                const data = await cachedFetch(`${API_BASE_URL}/api/mentors-dashboard${getCacheBust()}`, 'mentors-dashboard');
+                if (data.error) throw new Error(data.error);
+
+                mentorsDashboardData = data;
+                mentorsSearchQuery = '';
+                renderMentorsPageContent();
+            } catch (error) {
+                console.error('Error loading mentors:', error);
+                document.getElementById('candidatesList').innerHTML =
+                    `<div class="error">Error loading mentors: ${error.message}</div>`;
+            }
+        }
+
+        function filterMentorsPageBySearch() {
+            if (!mentorsDashboardData) return;
+            mentorsSearchQuery = (document.getElementById('mentorsSearchInput') || {}).value || '';
+            mentorsSearchQuery = mentorsSearchQuery.trim().toLowerCase();
+            renderMentorsPageContent();
+        }
+
+        function renderMentorsPageContent() {
+            const candidatesList = document.getElementById('candidatesList');
+            if (!mentorsDashboardData) return;
+
+            const q = mentorsSearchQuery;
+            const currentAll = mentorsDashboardData.current_mentors || [];
+            const otherAll = mentorsDashboardData.other_mentors || [];
+            const filterByName = (list) => list.filter(m => !q || (m.name || '').toLowerCase().includes(q));
+            const current = filterByName(currentAll);
+            const other = filterByName(otherAll);
+
+            const scoreColor = (m) => m.avg_effectiveness >= 2.5 ? '#10b981' : m.avg_effectiveness >= 1.5 ? '#f59e0b' : '#ef4444';
+            const borderColor = (m) => scoreColor(m);
+
+            const mentorCard = (m, isCurrent) => {
+                const trainees = (m.current_trainees || []).map(t => t.trainee_name || t.name).filter(Boolean);
+                return `
+                    <div class="mentor-card" style="background: rgba(45, 55, 72, 0.6); padding: 24px; border-radius: 12px; border: 2px solid ${borderColor(m)};
+                         box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s ease; display: flex; flex-direction: column;"
+                         onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.4)';"
+                         onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
+                        <h3 style="margin: 0 0 20px 0; font-size: 1.3rem; font-weight: 700; color: #fff; text-align: center;">
+                            <a href="#" onclick="showMentorProfile('${(m.name || '').replace(/'/g, "\\'")}'); return false;"
+                               style="color: #fff; text-decoration: none; transition: color 0.2s;"
+                               onmouseenter="this.style.color='${scoreColor(m)}';"
+                               onmouseleave="this.style.color='#fff';">
+                                ${(m.name || 'Unknown').replace(/</g, '&lt;')}
+                            </a>
+                        </h3>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+                            <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; border: 2px solid ${scoreColor(m)}; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Effectiveness</div>
+                                <div style="font-size: 1.8rem; font-weight: 800; color: ${scoreColor(m)};">${(m.avg_effectiveness || 0).toFixed(1)}</div>
+                                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">${(m.effectiveness_label || '').replace(/</g, '&lt;')}</div>
+                            </div>
+                            <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">LIFETIME<br>TRAINEES</div>
+                                <div style="font-size: 1.8rem; font-weight: 800; color: #14b8a6;">${m.trainee_count || 0}</div>
+                            </div>
+                            <div style="background: rgba(20, 184, 166, 0.15); padding: 18px 12px; border-radius: 10px; text-align: center; border: 2px solid ${(m.success_rate || 0) >= 50 ? '#10b981' : (m.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'}; min-height: 110px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; line-height: 1.2;">SUCCESS<br>RATE</div>
+                                <div style="font-size: 1.8rem; font-weight: 800; color: ${(m.success_rate || 0) >= 50 ? '#10b981' : (m.success_rate || 0) >= 25 ? '#f59e0b' : '#ef4444'};">
+                                    ${(m.success_rate || 0).toFixed(0)}%
+                                </div>
+                            </div>
+                        </div>
+                        ${isCurrent && trainees.length ? `
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto;">
+                            ${trainees.map(t => `
+                                <a href="#" onclick="showProfile('${String(t).replace(/'/g, "\\'")}'); return false;"
+                                   style="background: rgba(20, 184, 166, 0.2); padding: 8px 14px; border-radius: 20px; color: #14b8a6; text-decoration: none; font-weight: 600; font-size: 0.85rem;
+                                          border: 1px solid rgba(20, 184, 166, 0.4); transition: all 0.2s; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"
+                                   onmouseenter="this.style.background='rgba(20, 184, 166, 0.3)'; this.style.transform='translateY(-2px)';"
+                                   onmouseleave="this.style.background='rgba(20, 184, 166, 0.2)'; this.style.transform='translateY(0)';">
+                                    ${String(t).replace(/</g, '&lt;')}
+                                </a>
+                            `).join('')}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            };
+
+            let html = `
+                <div style="grid-column: 1 / -1; margin-bottom: 16px;">
+                    <button type="button" onclick="showDashboard()" class="back-btn" style="margin-bottom: 12px;">← Back to Dashboard</button>
+                </div>
+                <div style="grid-column: 1 / -1; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <label style="color: rgba(255,255,255,0.95); font-weight: 600;">Search by name:</label>
+                    <input type="text" id="mentorsSearchInput" placeholder="Filter mentors..." value="${(q || '').replace(/"/g, '&quot;')}"
+                           oninput="filterMentorsPageBySearch()" onkeyup="filterMentorsPageBySearch()"
+                           style="padding: 10px 16px; border-radius: 8px; background: #1a202c; color: #fff; border: 2px solid rgba(139, 92, 246, 0.5); font-size: 1rem; min-width: 200px;">
+                </div>
+                <div style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%); padding: 15px 24px; border-radius: 10px; margin-bottom: 20px; border: 1px solid rgba(139, 92, 246, 0.3);">
+                    <h3 style="margin: 0 0 12px 0; font-size: 1.25rem; font-weight: 700; color: #a78bfa;">Current mentors</h3>
+                    <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 0.95rem;">Mentors with active or pending MIT/SMIT mentees (${current.length}${q ? ' shown' : ''})</p>
+                </div>
+            `;
+            if (current.length > 0) {
+                html += current.map(m => mentorCard(m, true)).join('');
+            } else {
+                html += `<div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: rgba(255,255,255,0.6);">No current mentors found${q ? ' for this search' : ''}.</div>`;
+            }
+
+            html += `
+                <div style="grid-column: 1 / -1; margin-top: 28px; margin-bottom: 12px; background: linear-gradient(135deg, rgba(107, 114, 128, 0.2) 0%, rgba(75, 85, 99, 0.2) 100%); padding: 15px 24px; border-radius: 10px; border: 1px solid rgba(156, 163, 175, 0.3);">
+                    <h3 style="margin: 0 0 12px 0; font-size: 1.25rem; font-weight: 700; color: #9ca3af;">Historical / other mentors</h3>
+                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 0.95rem;">Mentors with data but no current MIT/SMIT mentee (${other.length}${q ? ' shown' : ''})</p>
+                </div>
+            `;
+            if (other.length > 0) {
+                html += other.map(m => mentorCard(m, false)).join('');
+            } else {
+                html += `<div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: rgba(255,255,255,0.6);">No historical mentors found${q ? ' for this search' : ''}.</div>`;
+            }
+
+            candidatesList.innerHTML = html;
+        }
 
         async function showTrainingMentors() {
             try {
