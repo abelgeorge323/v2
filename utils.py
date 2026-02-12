@@ -2201,13 +2201,16 @@ def build_mentor_profiles() -> List[Dict[str, Any]]:
             scores = [t['effectiveness_score'] for t in trainees if t['effectiveness_score'] > 0]
             avg_mei = sum(scores) / len(scores) if scores else 0.0
         
-        # Count completion statuses (case-insensitive matching)
+        # Count completion statuses (case-insensitive matching). Exclude NLT from score calculation.
         completed = 0
         in_progress = 0
         unsuccessful = 0
         
         logger.debug(f"Processing {len(trainees)} trainees for mentor {original_name}")
         for t in trainees:
+            program = str(t.get('training_program', '')).strip().upper()
+            if program not in ['MIT', 'SMIT']:
+                continue  # NLT and other programs excluded from score/counts
             status = str(t.get('completion_status', '')).lower().strip()
             trainee_name = t.get('trainee_name', 'Unknown')
             
@@ -2227,8 +2230,8 @@ def build_mentor_profiles() -> List[Dict[str, Any]]:
         
         logger.debug(f"Mentor {original_name}: completed={completed}, in_progress={in_progress}, unsuccessful={unsuccessful}")
         
-        # Get lifetime trainee count from MEI summary (more accurate than len(trainees))
-        lifetime_trainees = summary.get('num_trainees', len(trainees))
+        # MIT/SMIT-only count for score-consistent display (excludes NLT)
+        mit_smit_count = completed + in_progress + unsuccessful
         
         # Calculate success rate: completed / (completed + unsuccessful) * 100
         # Only count finished trainees (exclude in-progress) in denominator
@@ -2249,8 +2252,8 @@ def build_mentor_profiles() -> List[Dict[str, Any]]:
         profiles.append({
             'name': original_name,  # Use original name (from MEI summary if available)
             'average_mei': round(avg_mei, 2),
-            'num_trainees': len(trainees),  # Current active relationships
-            'trainee_count': lifetime_trainees,  # Lifetime total from MEI summary (for frontend)
+            'num_trainees': mit_smit_count,  # MIT/SMIT relationships only (excludes NLT)
+            'trainee_count': mit_smit_count,  # Same for frontend display consistency
             'completed': completed,
             'in_progress': in_progress,
             'unsuccessful': unsuccessful,
@@ -2371,10 +2374,13 @@ def get_active_training_mentors() -> Dict[str, Any]:
             for rel in relationships:
                 rel_mentor = str(rel.get('mentor_name', '')).strip()
                 if rel_mentor and normalize_name(rel_mentor) == normalized_name:
+                    program = str(rel.get('training_program', '')).strip().upper()
+                    if program not in ['MIT', 'SMIT']:
+                        continue  # NLT excluded from score calculation
                     lifetime_count += 1
                     completion_status = str(rel.get('completion_status', '')).strip().lower()
                     
-                    # Count completed trainees
+                    # Count completed trainees (MIT/SMIT only)
                     if completion_status in ['completed', 'complete', 'successful', 'graduated']:
                         completed_count += 1
                     # Count unsuccessful trainees
@@ -2434,6 +2440,135 @@ def get_active_training_mentors() -> Dict[str, Any]:
             'monitoring_mentors': [],
             'total_trainees': 0
         }
+
+
+def get_all_mentors_for_dashboard() -> Dict[str, Any]:
+    """
+    Build dashboard data for the Mentors tile and page: all mentors with
+    average effectiveness score (from all relationship rows), split into
+    current (active + pending MIT/SMIT mentees) vs other (historical only).
+    Effectiveness: 3=Good, 2=In program, 1=Needs support.
+    """
+    try:
+        relationships = fetch_mentor_relationships_data()
+        if not relationships:
+            return {
+                'total_mentors': 0,
+                'strong_count': 0,
+                'needs_support_count': 0,
+                'in_progress_count': 0,
+                'current_mentors': [],
+                'other_mentors': []
+            }
+
+        # Group by mentor: collect effectiveness scores and detect current vs other
+        mentor_scores = {}  # normalized_name -> list of effectiveness_score
+        mentor_current_trainees = {}  # normalized_name -> list of {trainee_name, training_program, completion_status}
+        mentor_original_name = {}  # normalized_name -> original display name
+        mentor_relationships = {}  # normalized_name -> list of full rel dicts for counts
+
+        for rel in relationships:
+            mentor_name = str(rel.get('mentor_name', '')).strip()
+            if not mentor_name:
+                continue
+            norm = normalize_name(mentor_name)
+            mentor_original_name[norm] = mentor_name
+
+            if norm not in mentor_scores:
+                mentor_scores[norm] = []
+                mentor_current_trainees[norm] = []
+                mentor_relationships[norm] = []
+
+            program = str(rel.get('training_program', '')).strip().upper()
+            score = rel.get('effectiveness_score')
+            if score is not None and score > 0 and program in ['MIT', 'SMIT']:
+                mentor_scores[norm].append(float(score))
+            mentor_relationships[norm].append(rel)
+
+            # Current = MIT/SMIT and status indicates active or pending
+            status = str(rel.get('completion_status', '')).lower()
+            if program in ['MIT', 'SMIT']:
+                if 'currently' in status or 'pending' in status or 'in program' in status:
+                    mentor_current_trainees[norm].append({
+                        'trainee_name': rel.get('trainee_name', ''),
+                        'training_program': rel.get('training_program', ''),
+                        'completion_status': rel.get('completion_status', '')
+                    })
+
+        # Build current_mentors and other_mentors with avg effectiveness
+        mei_data = fetch_mentor_mei_summary()
+        current_mentors = []
+        other_mentors = []
+
+        for norm, scores in mentor_scores.items():
+            avg_eff = sum(scores) / len(scores) if scores else 0.0
+            if avg_eff >= 2.5:
+                effectiveness_label = 'Good'
+            elif avg_eff >= 1.5:
+                effectiveness_label = 'In program'
+            else:
+                effectiveness_label = 'Needs support'
+
+            current_trainees = mentor_current_trainees.get(norm, [])
+            rels = mentor_relationships.get(norm, [])
+            # Exclude NLT from success rate and trainee count for score
+            rels_mit_smit = [r for r in rels if str(r.get('training_program', '')).strip().upper() in ['MIT', 'SMIT']]
+            completed = sum(1 for r in rels_mit_smit if any(x in str(r.get('completion_status', '')).lower() for x in ['complete', 'graduated', 'successful']))
+            unsuccessful = sum(1 for r in rels_mit_smit if any(x in str(r.get('completion_status', '')).lower() for x in ['removed', 'resigned', 'incomplete', 'failed', 'terminated']))
+            finished = completed + unsuccessful
+            success_rate = round((completed / finished * 100), 1) if finished > 0 else 0.0
+
+            mei = 0.0
+            for mei_name, mei_info in mei_data.items():
+                if normalize_name(mei_name) == norm:
+                    mei = mei_info.get('average_mei', 0.0)
+                    break
+
+            entry = {
+                'name': mentor_original_name[norm],
+                'avg_effectiveness': round(avg_eff, 2),
+                'effectiveness_label': effectiveness_label,
+                'trainee_count': len(rels_mit_smit),
+                'success_rate': success_rate,
+                'mei_score': round(mei, 2),
+                'current_trainees': current_trainees,
+                'current_trainee_count': len(current_trainees)
+            }
+
+            if current_trainees:
+                current_mentors.append(entry)
+            else:
+                other_mentors.append(entry)
+
+        # Sort: current by avg_effectiveness desc, other by avg_effectiveness desc
+        current_mentors.sort(key=lambda x: (-x['avg_effectiveness'], x['name']))
+        other_mentors.sort(key=lambda x: (-x['avg_effectiveness'], x['name']))
+
+        strong_count = sum(1 for m in current_mentors + other_mentors if m['avg_effectiveness'] >= 2.5)
+        needs_support_count = sum(1 for m in current_mentors + other_mentors if m['avg_effectiveness'] < 1.5)
+        in_progress_count = sum(1 for m in current_mentors + other_mentors if 1.5 <= m['avg_effectiveness'] < 2.5)
+
+        logger.info(f"Mentors dashboard: {len(current_mentors)} current, {len(other_mentors)} other, strong={strong_count}, needs_support={needs_support_count}")
+
+        return {
+            'total_mentors': len(mentor_scores),
+            'strong_count': strong_count,
+            'needs_support_count': needs_support_count,
+            'in_progress_count': in_progress_count,
+            'current_mentors': current_mentors,
+            'other_mentors': other_mentors
+        }
+    except Exception as e:
+        logger.error(f"Error building mentors dashboard: {str(e)}", exc_info=True)
+        return {
+            'total_mentors': 0,
+            'strong_count': 0,
+            'needs_support_count': 0,
+            'in_progress_count': 0,
+            'current_mentors': [],
+            'other_mentors': []
+        }
+
 
 def get_failed_exited_mits() -> Dict[str, Any]:
     """
