@@ -345,6 +345,185 @@ def build_mit_assessment_summary() -> List[Dict[str, Any]]:
     logger.info(f"Built assessment summary for {len(summary_list)} MITs")
     return summary_list
 
+
+# Section labels for problem-area reporting
+SECTION_LABELS = {
+    'section_1': 'Core Competencies',
+    'section_2': 'Soft Skills & Leadership',
+    'section_3': 'Engagement & Aptitude',
+    'section_4': 'Readiness & Confidence'
+}
+PROBLEM_AREA_THRESHOLD = 4.0
+
+
+def get_problem_areas(mit_assessment: Dict[str, Any], threshold: float = PROBLEM_AREA_THRESHOLD) -> List[str]:
+    """
+    Return list of section names where the MIT's score is below threshold.
+    Used for executive email "possible problem areas".
+    """
+    areas = []
+    for key, label in SECTION_LABELS.items():
+        val = mit_assessment.get(key)
+        if isinstance(val, (int, float)) and val < threshold:
+            areas.append(label)
+    return areas
+
+
+def build_executive_email_data() -> Dict[str, Any]:
+    """
+    Build data for the executive email: active MITs, pending start, and survey summary with problem areas.
+    """
+    candidates = merge_candidate_sources()
+    categorized = categorize_candidates_by_week(candidates)
+    offer_pending = categorized.get('offer_pending', [])
+    assessment_data = build_mit_assessment_summary()
+
+    # Active MITs (everyone except pending start): name, start date, salary, mentor, week, location
+    active_mits = []
+    for c in candidates:
+        status = str(c.get('status', '')).lower()
+        week = c.get('week', 0)
+        try:
+            week = int(week) if week is not None else 0
+        except (TypeError, ValueError):
+            week = 0
+        is_pending = ('pending' in status or 'offer' in status) and week == 0
+        if is_pending:
+            continue
+        start_date = c.get('operation_details', {}).get('company_start_date', 'TBD')
+        salary = c.get('salary')
+        if isinstance(salary, (int, float)) and salary > 0:
+            salary_str = f"${int(salary):,}"
+        else:
+            salary_str = str(salary) if salary else 'TBD'
+        active_mits.append({
+            'name': c.get('name', 'Unknown'),
+            'start_date': start_date if start_date and str(start_date).strip() not in ('TBD', 'nan', '') else 'TBD',
+            'salary': salary_str,
+            'mentor': c.get('mentor_name', 'TBD'),
+            'week': week,
+            'location': c.get('training_site', c.get('operation_details', {}).get('operation_location', 'TBD')),
+        })
+
+    # Pending start: name, expected start, salary, mentor, location
+    pending_mits = []
+    for c in offer_pending:
+        start_date = c.get('operation_details', {}).get('training_start_date') or c.get('operation_details', {}).get('company_start_date', 'TBD')
+        salary = c.get('salary')
+        if isinstance(salary, (int, float)) and salary > 0:
+            salary_str = f"${int(salary):,}"
+        else:
+            salary_str = str(salary) if salary else 'TBD'
+        pending_mits.append({
+            'name': c.get('name', 'Unknown'),
+            'expected_start': start_date if start_date and str(start_date).strip() not in ('TBD', 'nan', '') else 'TBD',
+            'salary': salary_str,
+            'mentor': c.get('mentor_name', 'TBD'),
+            'location': c.get('training_site', c.get('operation_details', {}).get('operation_location', 'TBD')),
+        })
+
+    # Survey summary: name, overall, section scores, problem_areas, observations
+    survey_summary = []
+    needs_attention = []  # MITs with problem areas or low overall for "additional eyes"
+    for mit in assessment_data:
+        problem_areas = get_problem_areas(mit, PROBLEM_AREA_THRESHOLD)
+        entry = {
+            'name': mit['name'],
+            'overall': mit['overall'],
+            'section_1': mit.get('section_1', 0),
+            'section_2': mit.get('section_2', 0),
+            'section_3': mit.get('section_3', 0),
+            'section_4': mit.get('section_4', 0),
+            'problem_areas': problem_areas,
+            'observations': (mit.get('observations') or '')[:500],
+        }
+        survey_summary.append(entry)
+        if problem_areas or (mit.get('overall', 5) < PROBLEM_AREA_THRESHOLD):
+            needs_attention.append(entry)
+
+    # Pipeline health statement (counts-based)
+    n_active = len(active_mits)
+    n_pending = len(pending_mits)
+    n_surveys = len(survey_summary)
+    if n_active + n_pending == 0:
+        pipeline_health = "The MIT pipeline currently has no active or pending participants."
+    else:
+        parts = []
+        if n_active:
+            parts.append(f"{n_active} active MIT{'s' if n_active != 1 else ''} in training")
+        if n_pending:
+            parts.append(f"{n_pending} pending start")
+        pipeline_health = f"The pipeline is active with {', '.join(parts)}. "
+        if n_surveys:
+            pipeline_health += f"Mentor survey results are available for {n_surveys} MIT{'s' if n_surveys != 1 else ''}."
+
+    # Survey overview statement
+    if not survey_summary:
+        survey_overview = "No mentor survey results have been collected yet."
+    else:
+        avg_overall = sum(s['overall'] for s in survey_summary) / len(survey_summary)
+        survey_overview = f"Mentors have submitted progress surveys for {len(survey_summary)} MIT{'s' if len(survey_summary) != 1 else ''}. "
+        survey_overview += f"Average overall rating is {avg_overall:.1f}/5. "
+        if needs_attention:
+            survey_overview += f"{len(needs_attention)} mentee(s) have areas below 4.0 or may benefit from additional attention (see Areas of Improvement below)."
+        else:
+            survey_overview += "Scores are generally at or above target; no areas of improvement flagged."
+
+    return {
+        'timestamp': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+        'active_mits': active_mits,
+        'pending_mits': pending_mits,
+        'survey_summary': survey_summary,
+        'needs_attention': needs_attention,
+        'pipeline_health': pipeline_health,
+        'survey_overview': survey_overview,
+    }
+
+
+def build_executive_email_plain_text(data: Dict[str, Any]) -> str:
+    """Turn executive email data into a plain-text email body (for copy/paste or /executive-email.txt)."""
+    lines = [
+        "MIT Program — Pipeline & Survey Update",
+        data['timestamp'],
+        "",
+        "ACTIVE MITs",
+        f"We currently have {len(data['active_mits'])} active MIT{'s' if len(data['active_mits']) != 1 else ''} in the program.",
+        ""
+    ]
+    if data['active_mits']:
+        for mit in data['active_mits']:
+            line = f"  • {mit['name']} — {mit['location']} | Mentor: {mit['mentor']}"
+            if mit.get('week') is not None:
+                line += f" (Week {mit['week']})"
+            lines.append(line)
+    else:
+        lines.append("  None at this time.")
+    lines.extend(["", "MITs PENDING START", f"We have {len(data['pending_mits'])} MIT{'s' if len(data['pending_mits']) != 1 else ''} with pending start dates.", ""])
+    if data['pending_mits']:
+        for mit in data['pending_mits']:
+            line = f"  • {mit['name']} — Expected start: {mit['expected_start']} | {mit['location']} | Mentor: {mit['mentor']}"
+            if mit.get('salary') and str(mit['salary']).strip() not in ('TBD', ''):
+                line += f" | {mit['salary']}"
+            lines.append(line)
+    else:
+        lines.append("  None at this time.")
+    lines.extend(["", "HEALTH OF THE MIT PIPELINE", data['pipeline_health'], "", "MENTOR SURVEY RESULTS — MENTEE PROGRESS", "Below are the results of surveys given by mentors rating mentee progress.", data['survey_overview'], ""])
+    if data['survey_summary']:
+        lines.append("Scores & areas of improvement / additional eyes")
+        lines.append("-" * 60)
+        for s in data['survey_summary']:
+            areas = ", ".join(s['problem_areas']) if s['problem_areas'] else "—"
+            lines.append(f"  {s['name']}: Overall {s['overall']:.2f} | Core {s['section_1']:.1f} | Soft {s['section_2']:.1f} | Engage {s['section_3']:.1f} | Readiness {s['section_4']:.1f}")
+            lines.append(f"    Areas of improvement: {areas}")
+            if s.get('observations'):
+                lines.append(f"    Mentor notes: {s['observations'][:300]}{'...' if len(s.get('observations', '')) > 300 else ''}")
+            lines.append("")
+    else:
+        lines.append("No survey results available yet.")
+    lines.extend(["", "We are in the process of collecting feedback on mentors in the program."])
+    return "\n".join(lines)
+
+
 def generate_assessment_executive_summary(top_2: List[Dict], bottom_2: List[Dict]) -> str:
     """
     Generate executive summary text from top and bottom MITs
