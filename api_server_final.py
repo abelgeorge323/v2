@@ -43,6 +43,7 @@ from utils import (
     build_mentor_profiles,
     get_mentor_dashboard_metrics,
     get_active_training_mentors,
+    get_all_mentors_for_dashboard,
     get_mit_alumni,
     get_failed_exited_mits,
     get_tier1_managers,
@@ -53,7 +54,7 @@ from utils import (
     safe_get,
     fetch_client_mit_requests
 )
-from executive_report import collect_report_data
+from executive_report import collect_report_data, build_executive_email_data, build_executive_email_plain_text
 
 # =============================================================================
 # FLASK APP SETUP
@@ -934,7 +935,7 @@ def get_mentor_metrics():
 
 @app.route('/api/training-mentors', methods=['GET'])
 def get_training_mentors_endpoint():
-    """Get mentors actively training current MIT candidates"""
+    """Get mentors actively training current MIT candidates (legacy; dashboard uses /api/mentors-dashboard)"""
     try:
         mentors = get_active_training_mentors()
         response = jsonify(mentors)
@@ -942,6 +943,18 @@ def get_training_mentors_endpoint():
         return response, 200
     except Exception as e:
         log_error("Error in training mentors endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+@app.route('/api/mentors-dashboard', methods=['GET'])
+def get_mentors_dashboard_endpoint():
+    """Get all mentors for dashboard tile and page: current (active+pending) vs other, with effectiveness scores"""
+    try:
+        data = get_all_mentors_for_dashboard()
+        response = jsonify(data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, 200
+    except Exception as e:
+        log_error("Error in mentors-dashboard endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 @app.route('/api/mit-alumni', methods=['GET'])
@@ -1309,6 +1322,32 @@ def executive_print():
     except Exception as e:
         log_error("Error rendering executive print report", e)
         return f"Error generating report: {str(e)}", 500
+
+@app.route('/executive-email')
+def executive_email():
+    """
+    Render the executive email summary: active MITs, pending start, survey results with problem areas.
+    """
+    try:
+        data = build_executive_email_data()
+        return render_template('executive_email.html', **data)
+    except Exception as e:
+        log_error("Error rendering executive email", e)
+        return f"Error generating executive email: {str(e)}", 500
+
+@app.route('/executive-email.txt')
+def executive_email_txt():
+    """
+    Return the executive email as plain text (for copy/paste into an email).
+    """
+    try:
+        from flask import Response
+        data = build_executive_email_data()
+        text = build_executive_email_plain_text(data)
+        return Response(text, mimetype='text/plain; charset=utf-8')
+    except Exception as e:
+        log_error("Error generating executive email text", e)
+        return f"Error generating executive email: {str(e)}", 500
 
 @app.route('/pipeline')
 def pipeline_view():
@@ -1743,9 +1782,11 @@ if __name__ == '__main__':
     print("   - GET /api/mentor/<name> - Individual mentor profile")
     print("   - GET /api/mentor-metrics - Mentor dashboard metrics")
     print("   - GET /api/training-mentors - Active training mentors")
+    print("   - GET /api/mentors-dashboard - All mentors (current + historical) for dashboard")
     print("   - GET /api/mit-alumni - MIT alumni data")
     print("   - GET /api/executive-print - Executive report data (JSON)")
     print("   - GET /executive-print - Executive report (HTML)")
+    print("   - GET /executive-email - Executive email summary (active, pending, surveys)")
     print("   - GET /executive-print/pdf - Executive report (PDF)")
     print("   - GET /headshots/<filename> - Serve headshot images")
     print("   - GET /data/<filename> - Serve data files (JSON)")
