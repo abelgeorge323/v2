@@ -634,7 +634,7 @@
                 Most recent mentor assessments across Core Competencies, Soft Skills, Engagement, and Readiness.
             </p>
             
-            {% set target_names = ['zimri quintero moreno', 'traci thomson', 'juvae randolph'] %}
+            {% set target_names = ['zimri quintero moreno', 'traci thomson', 'juvae randolph', 'orlando doss', 'juan hernandez', 'eddie bennett', 'humberto sanchez'] %}
             {% set ns = namespace(latest_surveys=[]) %}
             {% for target in target_names %}
                 {% for mit in assessment_data %}
@@ -645,7 +645,7 @@
             {% endfor %}
             
             {% if ns.latest_surveys %}
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 20px;">
                 {% for mit in ns.latest_surveys %}
                 <div style="background: {% if mit['overall'] >= 4.5 %}#f0fdf4{% elif mit['overall'] >= 4.0 %}#fef3c7{% else %}#fef2f2{% endif %}; 
                            padding: 20px; border-radius: 12px; 
