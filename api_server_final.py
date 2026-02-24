@@ -1750,6 +1750,232 @@ def candidate_report(candidate_name):
         return f"Error generating report: {str(e)}", 500
 
 # =============================================================================
+# NETWORKING MEETINGS ENDPOINTS
+# =============================================================================
+
+# Google Sheets CSV URL for networking contacts
+NETWORKING_CONTACTS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdbdhuieyA-axzb4aLe8c7zdAYXBLPNrIxKRder6j1ZAlj2g4U1k0YzkZbm_dEcSwBik4CJ57FROJ/pub?gid=1006190469&single=true&output=csv"
+
+@app.route('/api/networking-contacts')
+def get_networking_contacts():
+    """
+    Fetch networking contacts from Google Sheets by vertical
+    Returns structure: {vertical: [contact_names]}
+    """
+    try:
+        import requests
+        
+        response = requests.get(NETWORKING_CONTACTS_URL)
+        response.raise_for_status()
+        
+        # Parse CSV
+        from io import StringIO
+        import csv
+        
+        csv_data = StringIO(response.text)
+        reader = csv.reader(csv_data)
+        
+        # Read header row (verticals)
+        headers = next(reader)
+        
+        # Build contact structure
+        contacts = {vertical: [] for vertical in headers if vertical}
+        
+        # Read contact rows
+        for row in reader:
+            for idx, contact in enumerate(row):
+                if contact and idx < len(headers) and headers[idx]:
+                    contacts[headers[idx]].append(contact.strip())
+        
+        log_debug(f"Loaded networking contacts: {contacts}")
+        return jsonify(contacts)
+        
+    except Exception as e:
+        log_error("Error fetching networking contacts", e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/networking-meetings')
+@app.route('/networking_meetings.html')
+@app.route('/networking-meetings.html')
+def networking_meetings_page():
+    """
+    Serve the networking meetings HTML page
+    """
+    try:
+        return send_from_directory('.', 'networking_meetings.html')
+    except Exception as e:
+        log_error("Error serving networking meetings page", e)
+        return jsonify({"error": "Page not found"}), 404
+
+@app.route('/api/networking-meetings')
+def get_networking_meetings():
+    """
+    Get all networking meetings data for all MITs
+    """
+    try:
+        meetings_file = os.path.join('data', 'networking_meetings.json')
+        
+        if not os.path.exists(meetings_file):
+            log_error("networking_meetings.json not found", None)
+            return jsonify({"error": "Meetings data not found"}), 404
+        
+        with open(meetings_file, 'r') as f:
+            import json
+            meetings_data = json.load(f)
+        
+        # Calculate stats
+        total_meetings = 0
+        completed_meetings = 0
+        
+        for mit_name, data in meetings_data.items():
+            total_meetings += len(data.get('required_meetings', []))
+            completed_meetings += len(data.get('completed_meetings', []))
+        
+        result = {
+            "meetings": meetings_data,
+            "stats": {
+                "total_required": total_meetings,
+                "completed": completed_meetings,
+                "pending": total_meetings - completed_meetings,
+                "completion_percentage": round((completed_meetings / total_meetings * 100) if total_meetings > 0 else 0, 1)
+            }
+        }
+        
+        log_debug(f"Networking meetings stats: {result['stats']}")
+        return jsonify(result)
+        
+    except Exception as e:
+        log_error("Error fetching networking meetings", e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/networking-meetings/<mit_name>')
+def get_mit_networking_meetings(mit_name):
+    """
+    Get networking meetings for a specific MIT
+    """
+    try:
+        meetings_file = os.path.join('data', 'networking_meetings.json')
+        
+        if not os.path.exists(meetings_file):
+            return jsonify({"error": "Meetings data not found"}), 404
+        
+        with open(meetings_file, 'r') as f:
+            import json
+            meetings_data = json.load(f)
+        
+        # Normalize MIT name
+        mit_norm = normalize_name(mit_name)
+        
+        # Find MIT
+        mit_data = None
+        for name, data in meetings_data.items():
+            if normalize_name(name) == mit_norm:
+                mit_data = data
+                mit_data['name'] = name
+                break
+        
+        if not mit_data:
+            return jsonify({"error": f"MIT '{mit_name}' not found"}), 404
+        
+        # Calculate completion
+        total = len(mit_data.get('required_meetings', []))
+        completed = len(mit_data.get('completed_meetings', []))
+        
+        mit_data['stats'] = {
+            "total_required": total,
+            "completed": completed,
+            "pending": total - completed,
+            "completion_percentage": round((completed / total * 100) if total > 0 else 0, 1)
+        }
+        
+        return jsonify(mit_data)
+        
+    except Exception as e:
+        log_error(f"Error fetching meetings for {mit_name}", e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/networking-meetings/complete', methods=['POST'])
+def complete_networking_meeting():
+    """
+    Mark a networking meeting as complete
+    Expects JSON: {"mit_name": "...", "contact": "...", "date": "MM/DD/YYYY"}
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'mit_name' not in data or 'contact' not in data:
+            return jsonify({"error": "Missing required fields: mit_name, contact"}), 400
+        
+        mit_name = data['mit_name']
+        contact = data['contact']
+        meeting_date = data.get('date', datetime.now().strftime('%m/%d/%Y'))
+        
+        meetings_file = os.path.join('data', 'networking_meetings.json')
+        
+        if not os.path.exists(meetings_file):
+            return jsonify({"error": "Meetings data not found"}), 404
+        
+        # Load data
+        import json
+        with open(meetings_file, 'r') as f:
+            meetings_data = json.load(f)
+        
+        # Normalize names
+        mit_norm = normalize_name(mit_name)
+        contact_norm = normalize_name(contact)
+        
+        # Find MIT
+        target_mit = None
+        for name in meetings_data.keys():
+            if normalize_name(name) == mit_norm:
+                target_mit = name
+                break
+        
+        if not target_mit:
+            return jsonify({"error": f"MIT '{mit_name}' not found"}), 404
+        
+        mit_data = meetings_data[target_mit]
+        
+        # Check if contact is in required meetings
+        required_norm = [normalize_name(c) for c in mit_data.get('required_meetings', [])]
+        if contact_norm not in required_norm:
+            return jsonify({"error": f"Contact '{contact}' is not in required meetings for {mit_name}"}), 400
+        
+        # Check if already completed
+        completed_contacts = [normalize_name(m['contact']) for m in mit_data.get('completed_meetings', [])]
+        if contact_norm in completed_contacts:
+            return jsonify({"error": f"Meeting with '{contact}' already marked as complete"}), 400
+        
+        # Add to completed meetings
+        if 'completed_meetings' not in mit_data:
+            mit_data['completed_meetings'] = []
+        
+        mit_data['completed_meetings'].append({
+            "contact": contact,
+            "date": meeting_date
+        })
+        
+        # Save back to file
+        with open(meetings_file, 'w') as f:
+            json.dump(meetings_data, f, indent=2)
+        
+        log_debug(f"Marked meeting complete: {mit_name} met with {contact} on {meeting_date}")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Meeting with {contact} marked as complete",
+            "meeting": {
+                "mit_name": target_mit,
+                "contact": contact,
+                "date": meeting_date
+            }
+        })
+        
+    except Exception as e:
+        log_error("Error completing networking meeting", e)
+        return jsonify({"error": str(e)}), 500
+
+# =============================================================================
 # MAIN APPLICATION
 # =============================================================================
 
@@ -1790,6 +2016,10 @@ if __name__ == '__main__':
     print("   - GET /executive-print/pdf - Executive report (PDF)")
     print("   - GET /headshots/<filename> - Serve headshot images")
     print("   - GET /data/<filename> - Serve data files (JSON)")
+    print("   - GET /api/networking-contacts - Networking contacts by vertical")
+    print("   - GET /api/networking-meetings - All MIT networking meetings")
+    print("   - GET /api/networking-meetings/<mit_name> - MIT-specific meetings")
+    print("   - POST /api/networking-meetings/complete - Mark meeting as complete")
     print("   - GET /api/health - Health check")
     print()
     print(f"API Server running on: http://localhost:{port}")
