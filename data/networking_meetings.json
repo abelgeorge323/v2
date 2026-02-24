@@ -1,0 +1,104 @@
+{
+  "traci thomson": {
+    "vertical": "R&D",
+    "required_meetings": [
+      "roger dau",
+      "valarie barnett"
+    ],
+    "completed_meetings": []
+  },
+  "juvae randolph": {
+    "vertical": "Technology",
+    "required_meetings": [
+      "john mann",
+      "yousef abbasi",
+      "luna duarte",
+      "valarie barnett"
+    ],
+    "completed_meetings": []
+  },
+  "zimri quintero moreno": {
+    "vertical": "Tech",
+    "required_meetings": [
+      "john mann",
+      "yousef abbasi",
+      "luna duarte",
+      "valarie barnett"
+    ],
+    "completed_meetings": []
+  },
+  "orlando doss": {
+    "vertical": "Financial",
+    "required_meetings": [
+      "tiffany purifoy",
+      "valarie barnett",
+      "shane follman"
+    ],
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/3/2026"
+      }
+    ]
+  },
+  "juan hernandez": {
+    "vertical": "Aviation",
+    "required_meetings": [
+      "brandon castillo",
+      "valarie barnett",
+      "nick mcmackins"
+    ],
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/3/2026"
+      }
+    ]
+  },
+  "eddie bennett": {
+    "vertical": "Manufacturing",
+    "required_meetings": [
+      "kyle wallace",
+      "benjamin ehrenberg",
+      "valarie barnett"
+    ],
+    "completed_meetings": []
+  },
+  "isaac mccabe": {
+    "vertical": "Manufacturing",
+    "required_meetings": [
+      "kyle wallace",
+      "benjamin ehrenberg",
+      "valarie barnett"
+    ],
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/3/2026"
+      }
+    ]
+  },
+  "humberto sanchez": {
+    "vertical": "Life Science",
+    "required_meetings": [
+      "marvin owens",
+      "dan hartman",
+      "valarie barnett"
+    ],
+    "completed_meetings": [
+      {
+        "contact": "marvin owens",
+        "date": "2/24/2026"
+      }
+    ]
+  },
+  "cody mulford": {
+    "vertical": "Automotive",
+    "required_meetings": [
+      "spencer murphy",
+      "valarie barnett",
+      "ryan blackwood"
+    ],
+    "completed_meetings": []
+  }
+}
