@@ -943,6 +943,42 @@
           "independent_responsibility": 4,
           "observations": ""
         }
+      },
+      {
+        "date": "2/24/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 4,
+            "q2_problem_solving": 4,
+            "q3_time_management": 5,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": ""
+        }
       }
     ]
   },
@@ -981,6 +1017,42 @@
           "confidence_level": 4,
           "weekly_performance": "Progressing as Expected",
           "independent_responsibility": 5,
+          "observations": ""
+        }
+      },
+      {
+        "date": "2/24/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 4,
+            "q4_quality_standards": 4,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 5,
+            "q3_adaptability": 4,
+            "q4_initiative": 5,
+            "q5_accountability": 4
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 4,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Exceeding Expectations",
+          "independent_responsibility": 4,
           "observations": ""
         }
       }
@@ -1121,6 +1193,42 @@
             "q1_energy_enthusiasm": 5,
             "q2_learning_drive": 4,
             "q3_flexibility": 4,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": ""
+        }
+      },
+      {
+        "date": "2/23/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 4,
+            "q2_problem_solving": 4,
+            "q3_time_management": 4,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 4
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 4,
+            "q3_flexibility": 5,
             "q4_curiosity": 5,
             "q5_growth_mindset": 5
           }
@@ -1322,6 +1430,42 @@
           "independent_responsibility": 5,
           "observations": "Orlando has been working ahead of schedule and is willing to take on anything that has been thrown at him. He has also been able to develop relationships with employees and our client on site."
         }
+      },
+      {
+        "date": "2/23/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 4,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 4,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 4,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Exceeding Expectations",
+          "independent_responsibility": 5,
+          "observations": ""
+        }
       }
     ]
   },
@@ -1401,6 +1545,46 @@
       }
     ]
   },
+  "cody mulford": {
+    "assessments": [
+      {
+        "date": "2/23/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 3,
+            "q3_time_management": 3,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 4
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 3,
+            "q2_teamwork": 4,
+            "q3_adaptability": 4,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 4,
+            "q2_learning_drive": 4,
+            "q3_flexibility": 4,
+            "q4_curiosity": 4,
+            "q5_growth_mindset": 3
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "This is a week 1 review- the data shared above is based on a one-week evaluation"
+        }
+      }
+    ]
+  },
   "eddie bennett": {
     "assessments": [
       {
@@ -1437,6 +1621,42 @@
           "weekly_performance": "Progressing as Expected",
           "independent_responsibility": 5,
           "observations": "Eddie has been very attentive to details and absorbing information as well as already working with the crew to understand their tasks"
+        }
+      },
+      {
+        "date": "2/19/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 5,
+            "q3_time_management": 5,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 5
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 5,
+            "q2_teamwork": 5,
+            "q3_adaptability": 5,
+            "q4_initiative": 5,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 5,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 5,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 5
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 5,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 5,
+          "observations": "Eddie is doing great we tossed him a scheduling curve ball this week to assist with a site that is in need. Eddie stepped up to the task!"
         }
       }
     ]
@@ -1513,6 +1733,42 @@
           "weekly_performance": "Progressing as Expected",
           "independent_responsibility": 4,
           "observations": "Humberto has become more comfortable with daily tasks and audits. He is also continuing to understand scope of work better and being able to apply it."
+        }
+      },
+      {
+        "date": "2/24/2026",
+        "section_1_core_competencies": {
+          "questions": {
+            "q1_operations_knowledge": 5,
+            "q2_problem_solving": 4,
+            "q3_time_management": 4,
+            "q4_quality_standards": 5,
+            "q5_safety_protocols": 4
+          }
+        },
+        "section_2_soft_skills_leadership": {
+          "questions": {
+            "q1_communication": 4,
+            "q2_teamwork": 5,
+            "q3_adaptability": 4,
+            "q4_initiative": 4,
+            "q5_accountability": 5
+          }
+        },
+        "section_3_engagement_aptitude": {
+          "questions": {
+            "q1_energy_enthusiasm": 4,
+            "q2_learning_drive": 5,
+            "q3_flexibility": 4,
+            "q4_curiosity": 5,
+            "q5_growth_mindset": 4
+          }
+        },
+        "section_4_readiness_confidence": {
+          "confidence_level": 4,
+          "weekly_performance": "Progressing as Expected",
+          "independent_responsibility": 4,
+          "observations": "Humberto has taken more initiative in learning routes, people, and processes."
         }
       }
     ]
