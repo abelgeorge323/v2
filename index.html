@@ -2764,6 +2764,21 @@
                     };
                 }
                 
+                // Fetch networking stats separately
+                try {
+                    const networkingResponse = await fetch(`${API_BASE_URL}/api/networking-meetings${getCacheBust()}`);
+                    const networkingData = await networkingResponse.json();
+                    data.networking_stats = networkingData.stats;
+                } catch (err) {
+                    console.warn('Could not fetch networking stats:', err);
+                    data.networking_stats = {
+                        completion_rate: '0%',
+                        total_required: 0,
+                        completed: 0,
+                        pending: 0
+                    };
+                }
+                
                 renderMetrics(data);
                 
             } catch (error) {
@@ -2820,6 +2835,14 @@
                     <div class="metric-label" style="color: #fff; font-weight: 700;">📊 Pipeline & Placement</div>
                     <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 2.5rem;">🚧</div>
                     <div class="metric-change" style="color: rgba(255,255,255,0.9);">Work in Progress</div>
+                </div>
+                <div class="metric-card" onclick="window.location.href='/networking-meetings'" 
+                     style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); cursor: pointer; border: 2px solid #1e40af; transition: all 0.3s ease;"
+                     onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(30, 64, 175, 0.4)';"
+                     onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';">
+                    <div class="metric-label" style="color: #fff; font-weight: 700;">🤝 Networking</div>
+                    <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${data.networking_stats?.completed || 0}/${data.networking_stats?.total_required || 0}</div>
+                    <div class="metric-change" style="color: rgba(255,255,255,0.9);">Executive Meetings</div>
                 </div>
                 
                 <!-- MOBILE HEADER: Training Pipeline -->
