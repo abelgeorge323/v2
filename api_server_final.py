@@ -1811,33 +1811,141 @@ def networking_meetings_page():
 def get_networking_meetings():
     """
     Get all networking meetings data for all MITs
+    Dynamically pulls active MITs from Google Sheets and merges with completed meetings
     """
     try:
+        import requests
+        import json
+        from io import StringIO
+        import csv
+        
+        # Step 1: Fetch active MITs from Google Sheets
+        sheets_response = requests.get(GOOGLE_SHEETS_URL)
+        sheets_response.raise_for_status()
+        
+        csv_data = StringIO(sheets_response.text)
+        reader = csv.DictReader(csv_data)
+        
+        active_mits = {}
+        today = datetime.now()
+        
+        for row in reader:
+            training_program = row.get('Training Program', '').strip()
+            trainee_name = row.get('Trainee Name', '').strip()
+            company_start_date_str = row.get('Company Start Date', '').strip()
+            vertical = row.get('Vertical', '').strip()
+            completion_status = row.get('Completion Status', '').strip()
+            
+            # Only include active MIT/SMIT trainees
+            if training_program in ['MIT', 'SMIT'] and trainee_name and completion_status != 'Complete':
+                # Check if they've started with the company (not pending/future)
+                if company_start_date_str:
+                    try:
+                        company_start = datetime.strptime(company_start_date_str, '%m/%d/%Y')
+                        # Only include if they've started with company
+                        if company_start <= today:
+                            mit_key = trainee_name.lower()
+                            active_mits[mit_key] = {
+                                'name': trainee_name,
+                                'vertical': vertical,
+                                'training_program': training_program
+                            }
+                    except:
+                        pass
+        
+        log_debug(f"Found {len(active_mits)} active MITs from Google Sheets")
+        
+        # Step 2: Load completed meetings from JSON
         meetings_file = os.path.join('data', 'networking_meetings.json')
+        completed_data = {}
         
-        if not os.path.exists(meetings_file):
-            log_error("networking_meetings.json not found", None)
-            return jsonify({"error": "Meetings data not found"}), 404
+        if os.path.exists(meetings_file):
+            with open(meetings_file, 'r', encoding='utf-8') as f:
+                completed_data = json.load(f)
         
-        with open(meetings_file, 'r') as f:
-            import json
-            meetings_data = json.load(f)
+        # Step 3: Fetch networking contacts to assign required meetings
+        contacts_response = requests.get(NETWORKING_CONTACTS_URL)
+        contacts_response.raise_for_status()
         
-        # Calculate stats
-        total_meetings = 0
-        completed_meetings = 0
+        contacts_csv = StringIO(contacts_response.text)
+        contacts_reader = csv.reader(contacts_csv)
+        headers = next(contacts_reader)
         
-        for mit_name, data in meetings_data.items():
-            total_meetings += len(data.get('required_meetings', []))
-            completed_meetings += len(data.get('completed_meetings', []))
+        # Build vertical-to-contacts mapping
+        vertical_contacts = {vertical: [] for vertical in headers if vertical}
+        for contact_row in contacts_reader:
+            for idx, contact in enumerate(contact_row):
+                if contact and idx < len(headers) and headers[idx]:
+                    vertical_contacts[headers[idx]].append(contact.strip().lower())
+        
+        # Add Valarie Barnett to everyone's list (universal contact)
+        valarie_contact = "valarie barnett"
+        
+        # Step 4: Merge active MITs with completed meetings and assign required contacts
+        merged_meetings = {}
+        
+        for mit_key, mit_info in active_mits.items():
+            mit_name = mit_info['name']
+            vertical = mit_info['vertical']
+            
+            # Get required meetings (only Valarie Barnett is required)
+            required_meetings = [valarie_contact]
+            
+            # Get available bench (all vertical contacts)
+            available_bench = []
+            if vertical in vertical_contacts:
+                available_bench = vertical_contacts[vertical]
+            
+            # Get completed and scheduled meetings from JSON (if exists)
+            completed_meetings = []
+            scheduled_meetings = []
+            if mit_key in completed_data:
+                completed_meetings = completed_data[mit_key].get('completed_meetings', [])
+                scheduled_meetings = completed_data[mit_key].get('scheduled_meetings', [])
+            
+            merged_meetings[mit_key] = {
+                'vertical': vertical,
+                'required_meetings': required_meetings,
+                'available_bench': available_bench,
+                'completed_meetings': completed_meetings,
+                'scheduled_meetings': scheduled_meetings
+            }
+        
+        # Calculate stats (only count Valarie as required)
+        total_required = len(active_mits)  # Everyone needs to meet Val (1 per MIT)
+        completed_required = 0
+        total_additional = 0
+        completed_additional = 0
+        scheduled_count = 0
+        unique_bench_contacts = set()
+        
+        for mit_name, data in merged_meetings.items():
+            # Check if Val meeting is complete
+            completed_contacts = [m.get('contact', '').lower() for m in data.get('completed_meetings', [])]
+            if valarie_contact in completed_contacts:
+                completed_required += 1
+            
+            # Count additional meetings (non-Val)
+            for meeting in data.get('completed_meetings', []):
+                if meeting.get('contact', '').lower() != valarie_contact:
+                    completed_additional += 1
+            
+            # Count scheduled meetings
+            scheduled_count += len(data.get('scheduled_meetings', []))
+            
+            # Track unique bench contacts
+            for contact in data.get('available_bench', []):
+                unique_bench_contacts.add(contact.lower())
         
         result = {
-            "meetings": meetings_data,
+            "meetings": merged_meetings,
             "stats": {
-                "total_required": total_meetings,
-                "completed": completed_meetings,
-                "pending": total_meetings - completed_meetings,
-                "completion_percentage": round((completed_meetings / total_meetings * 100) if total_meetings > 0 else 0, 1)
+                "total_required": total_required,
+                "completed_required": completed_required,
+                "pending_required": total_required - completed_required,
+                "additional_meetings": completed_additional,
+                "scheduled_meetings": scheduled_count,
+                "available_bench_total": len(unique_bench_contacts)
             }
         }
         
