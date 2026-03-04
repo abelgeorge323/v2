@@ -52,7 +52,9 @@ from utils import (
     determine_site_tier,
     match_opening_to_site,
     safe_get,
-    fetch_client_mit_requests
+    fetch_client_mit_requests,
+    headshot_slug,
+    get_bio_for_name
 )
 from executive_report import collect_report_data, build_executive_email_data, build_executive_email_plain_text
 
@@ -181,6 +183,7 @@ def get_cached_merged_candidates() -> List[Dict[str, Any]]:
     if FORCE_FRESH_DATA:
         log_debug("FORCE_FRESH_DATA enabled - bypassing merged candidates cache")
         fresh_data = merge_candidate_sources()
+        _apply_linkedin_overrides(fresh_data)
         merged_candidates_cache['data'] = fresh_data
         merged_candidates_cache['timestamp'] = datetime.now()
         return fresh_data
@@ -197,9 +200,27 @@ def get_cached_merged_candidates() -> List[Dict[str, Any]]:
     # Compute fresh data
     log_debug("Cache expired, computing fresh merged candidates")
     fresh_data = merge_candidate_sources()
+    _apply_linkedin_overrides(fresh_data)
     merged_candidates_cache['data'] = fresh_data
     merged_candidates_cache['timestamp'] = datetime.now()
     return fresh_data
+
+
+def _apply_linkedin_overrides(candidates: List[Dict[str, Any]]) -> None:
+    """If data/mit_linkedin.json exists, apply LinkedIn URLs by name (only when candidate has no URL)."""
+    path = os.path.join(os.path.dirname(__file__), 'data', 'mit_linkedin.json')
+    if not os.path.exists(path):
+        return
+    try:
+        import json
+        with open(path, 'r', encoding='utf-8') as f:
+            overrides = json.load(f)
+    except Exception:
+        return
+    for c in candidates:
+        name = c.get('name', '')
+        if not c.get('linkedin_url') and name and name in overrides:
+            c['linkedin_url'] = str(overrides.get(name, '')).strip()
 
 # =============================================================================
 # API ROUTES
@@ -225,17 +246,32 @@ def serve_dashboard():
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """
-    Health check endpoint
-    
-    Returns:
-        JSON response with server status and version information
+    Health check endpoint. Add ?bios=1 to get bios.json path and sample lookup (for debugging).
     """
-    return jsonify({
+    out = {
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
         'version': API_VERSION,
         'debug_mode': DEBUG_MODE
-    })
+    }
+    if request.args.get('bios'):
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            data_path = os.path.join(base_dir, 'data', 'bios.json')
+            if not os.path.exists(data_path):
+                data_path = os.path.join(os.path.dirname(base_dir), 'data', 'bios.json')
+            out['bios_file_path'] = data_path.replace('\\', '/')
+            out['bios_file_exists'] = os.path.exists(data_path)
+            if out['bios_file_exists']:
+                sample = get_bio_for_name('JuVae Randolph')
+                out['bios_sample_length'] = len(sample) if sample else 0
+                out['bios_sample_preview'] = (sample[:80] + '...') if sample and len(sample) > 80 else (sample or '')
+            else:
+                out['bios_sample_length'] = 0
+                out['bios_sample_preview'] = ''
+        except Exception as e:
+            out['bios_error'] = str(e)
+    return jsonify(out)
 
 @app.route('/api/dashboard-data', methods=['GET'])
 def get_dashboard_data():
@@ -423,6 +459,41 @@ def get_offer_pending_candidates():
         log_error("Error in offer-pending candidates endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
+@app.route('/api/active-mit-headshots', methods=['GET'])
+def get_active_mit_headshots():
+    """
+    Return list of active MIT names and suggested headshot filenames for the headshots folder.
+    Use this to know how many MITs need photos and the exact filename (e.g. tracithomson.png).
+    """
+    try:
+        all_candidates = get_cached_merged_candidates()
+        active_only = []
+        for c in all_candidates:
+            status = str(c.get('status', '')).lower()
+            week = c.get('week', 0)
+            try:
+                if week is None or (isinstance(week, str) and week.lower() in ['n/a', 'na', '']):
+                    week = 0
+                else:
+                    week = int(week)
+            except (ValueError, TypeError):
+                week = 0
+            is_pending_status = 'pending' in status or 'offer' in status
+            has_not_started = week == 0 or week is None
+            if not (is_pending_status and has_not_started):
+                active_only.append(c)
+        names = [c.get('name', '') for c in active_only if c.get('name')]
+        headshot_files = [headshot_slug(n) + '.png' for n in names]
+        return jsonify({
+            'count': len(names),
+            'names': names,
+            'headshot_files': headshot_files,
+            'note': 'Add images to the headshots/ folder. Supported: .png, .jpg, .jpeg, .webp (same base name, no spaces).'
+        })
+    except Exception as e:
+        log_error("Error in active-mit-headshots endpoint", e)
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/candidate/<name>', methods=['GET'])
 def get_candidate_profile(name: str):
     """
@@ -434,6 +505,17 @@ def get_candidate_profile(name: str):
     Returns:
         JSON response with detailed candidate profile
     """
+    # #region agent log
+    try:
+        _log_path = r'c:\Users\abelg\OneDrive\Desktop\MIT V2\.cursor\debug.log'
+        os.makedirs(os.path.dirname(_log_path), exist_ok=True)
+        import time as _t
+        import json as _json
+        with open(_log_path, 'a') as _f:
+            _f.write(_json.dumps({"id":"profile_request","timestamp":int(_t.time()*1000),"location":"api_server_final.get_candidate_profile","message":"profile requested","data":{"name":name[:80] if name else ""},"hypothesisId":"F"}) + '\n')
+    except Exception:
+        pass
+    # #endregion
     try:
         # Step 1: Check current MIT candidates
         unified = get_cached_merged_candidates()
@@ -480,6 +562,10 @@ def get_candidate_profile(name: str):
         if not candidate_data:
             return jsonify({'error': ERROR_MESSAGES['candidate_not_found']}), 404
         
+        # Refresh bio from bios.json on each profile request so updates show after file edit (no cache staleness)
+        candidate_data = dict(candidate_data)
+        candidate_data['bio'] = get_bio_for_name(candidate_data.get('name', ''))
+        
         response = jsonify(candidate_data)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
@@ -487,6 +573,50 @@ def get_candidate_profile(name: str):
     except Exception as e:
         log_error("Error in candidate profile endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+@app.route('/api/bios-check', methods=['GET'])
+def bios_check():
+    """Debug: verify bios.json path and that lookup works."""
+    # #region agent log
+    import time as _t
+    import json
+    _log_path = r'c:\Users\abelg\OneDrive\Desktop\MIT V2\.cursor\debug.log'
+    try:
+        os.makedirs(os.path.dirname(_log_path), exist_ok=True)
+        with open(_log_path, 'a') as _f:
+            _f.write(json.dumps({"id":"log_bios_entry","timestamp":int(_t.time()*1000),"location":"api_server_final.py:bios_check","message":"bios_check entered","data":{},"runId":"bios","hypothesisId":"A"}) + '\n')
+    except Exception:
+        pass
+    # #endregion
+    out = {'bios_file_path': '', 'file_exists': False, 'sample_bio_preview': '', 'sample_bio_length': 0, 'error': None}
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        data_path = os.path.join(base_dir, 'data', 'bios.json')
+        if not os.path.exists(data_path):
+            data_path = os.path.join(os.path.dirname(base_dir), 'data', 'bios.json')
+        out['bios_file_path'] = data_path.replace('\\', '/')
+        out['file_exists'] = os.path.exists(data_path)
+        if out['file_exists']:
+            sample_bio = get_bio_for_name('JuVae Randolph')
+            out['sample_bio_length'] = len(sample_bio) if sample_bio else 0
+            out['sample_bio_preview'] = (sample_bio[:100] + '...') if sample_bio and len(sample_bio) > 100 else (sample_bio or '')
+    except Exception as e:
+        out['error'] = str(e)
+        # #region agent log
+        try:
+            with open(_log_path, 'a') as _f:
+                _f.write(json.dumps({"id":"log_bios_except","timestamp":int(_t.time()*1000),"location":"api_server_final.py:bios_check","message":"bios_check exception","data":{"error":str(e)},"runId":"bios","hypothesisId":"B"}) + '\n')
+        except Exception:
+            pass
+        # #endregion
+    # #region agent log
+    try:
+        with open(_log_path, 'a') as _f:
+            _f.write(json.dumps({"id":"log_bios_exit","timestamp":int(_t.time()*1000),"location":"api_server_final.py:bios_check","message":"bios_check returning","data":{"file_exists":out["file_exists"],"has_error":out["error"] is not None},"runId":"bios","hypothesisId":"C"}) + '\n')
+    except Exception:
+        pass
+    # #endregion
+    return jsonify(out)
 
 @app.route('/api/open-positions', methods=['GET'])
 def get_open_positions():
@@ -2128,6 +2258,7 @@ if __name__ == '__main__':
     print("   - GET /api/networking-meetings - All MIT networking meetings")
     print("   - GET /api/networking-meetings/<mit_name> - MIT-specific meetings")
     print("   - POST /api/networking-meetings/complete - Mark meeting as complete")
+    print("   - GET /api/bios-check - Debug bios.json path and sample lookup")
     print("   - GET /api/health - Health check")
     print()
     print(f"API Server running on: http://localhost:{port}")
