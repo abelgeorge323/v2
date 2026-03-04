@@ -178,37 +178,107 @@ def validate_schema(df: pd.DataFrame, sheet_name: str = "Sheet") -> None:
 
 _BIOS_CACHE: Optional[Dict[str, str]] = None
 
+def _debug_log_path():
+    """Primary: session log path. Fallback: next to this file so logs appear in repo."""
+    primary = r'c:\Users\abelg\OneDrive\Desktop\MIT V2\.cursor\debug.log'
+    fallback = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cursor_debug.log')
+    return primary, fallback
+
 def _load_bios_file() -> Dict[str, str]:
-    """Load bios from data/bios.json once and cache."""
+    """Load bios from data/bios.json once and cache. Restart server to pick up edits."""
     global _BIOS_CACHE
     if _BIOS_CACHE is not None:
         return _BIOS_CACHE
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(base_dir, 'data', 'bios.json')
+    if not os.path.exists(data_path):
+        data_path = os.path.join(os.path.dirname(base_dir), 'data', 'bios.json')
+    # #region agent log
+    import time as _t
+    _line = json.dumps({"id":"bios_load","timestamp":int(_t.time()*1000),"location":"utils._load_bios_file","message":"loading bios","data":{"path":data_path.replace(chr(92),'/'),"exists":os.path.exists(data_path)},"hypothesisId":"A"}) + '\n'
+    for _log_path in _debug_log_path():
+        try:
+            if os.path.dirname(_log_path):
+                os.makedirs(os.path.dirname(_log_path), exist_ok=True)
+            with open(_log_path, 'a') as _f:
+                _f.write(_line)
+            break
+        except Exception:
+            continue
+    # #endregion
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        data_path = os.path.join(base_dir, 'data', 'bios.json')
-        # If utils.py is at repo root, adjust path accordingly
-        if not os.path.exists(data_path):
-            data_path = os.path.join(os.path.dirname(base_dir), 'data', 'bios.json')
         with open(data_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        # Normalize keys to lowercase for lookup
-        _BIOS_CACHE = {str(k).lower(): str(v) for k, v in data.items()}
-    except Exception:
+        _BIOS_CACHE = {str(k).strip().lower(): str(v) if v else '' for k, v in data.items()}
+        logger.info(f"Loaded {len(_BIOS_CACHE)} bios from {data_path}")
+        # #region agent log
+        import time as _t2
+        _line = json.dumps({"id":"bios_loaded","timestamp":int(_t2.time()*1000),"location":"utils._load_bios_file","message":"bios loaded","data":{"key_count":len(_BIOS_CACHE),"sample_keys":list(_BIOS_CACHE.keys())[:5]},"hypothesisId":"A"}) + '\n'
+        for _lp in _debug_log_path():
+            try:
+                with open(_lp, 'a') as _f:
+                    _f.write(_line)
+                break
+            except Exception:
+                continue
+        # #endregion
+    except Exception as e:
+        logger.warning(f"Could not load bios from {data_path}: {e}")
         _BIOS_CACHE = {}
+        # #region agent log
+        import time as _t2
+        _line = json.dumps({"id":"bios_load_fail","timestamp":int(_t2.time()*1000),"location":"utils._load_bios_file","message":"bios load failed","data":{"error":str(e)},"hypothesisId":"B"}) + '\n'
+        for _lp in _debug_log_path():
+            try:
+                with open(_lp, 'a') as _f:
+                    _f.write(_line)
+                break
+            except Exception:
+                continue
+        # #endregion
     return _BIOS_CACHE
 
 def get_bio_for_name(name: Any) -> str:
     """Return a short bio for a candidate using tolerant matching."""
     bios = _load_bios_file()
+    if not bios:
+        # #region agent log
+        try:
+            import time as _t3
+            with open(r'c:\Users\abelg\OneDrive\Desktop\MIT V2\.cursor\debug.log', 'a') as _f:
+                _f.write(json.dumps({"id":"bio_lookup_empty","timestamp":int(_t3.time()*1000),"location":"utils.get_bio_for_name","message":"bios dict empty","data":{"name":str(name)[:80]},"hypothesisId":"C"}) + '\n')
+        except Exception:
+            pass
+        # #endregion
+        return ''
     key = normalize_name(name)
+    # #region agent log
+    try:
+        import time as _t3
+        with open(r'c:\Users\abelg\OneDrive\Desktop\MIT V2\.cursor\debug.log', 'a') as _f:
+            _f.write(json.dumps({"id":"bio_lookup","timestamp":int(_t3.time()*1000),"location":"utils.get_bio_for_name","message":"lookup","data":{"name":str(name)[:80],"normalized_key":key,"key_in_bios":key in bios,"bios_key_count":len(bios)},"hypothesisId":"D"}) + '\n')
+    except Exception:
+        pass
+    # #endregion
     # 1) Exact normalized key
-    if key in bios:
+    if key in bios and bios[key]:
         return bios[key]
-    # 2) Token containment / fuzzy match against bios keys
+    # 2) Common spelling variant (Isaac vs Issac)
+    variant = key.replace('isaac ', 'issac ').replace('issac ', 'isaac ')
+    if variant in bios and bios[variant]:
+        return bios[variant]
+    # 3) Token containment / fuzzy match against bios keys
     for bio_key, bio_text in bios.items():
-        if fuzzy_match_name(bio_key, key, threshold=0.82):
+        if bio_text and fuzzy_match_name(bio_key, key, threshold=0.82):
             return bio_text
-    # 3) No match
+    # #region agent log
+    try:
+        import time as _t3
+        with open(r'c:\Users\abelg\OneDrive\Desktop\MIT V2\.cursor\debug.log', 'a') as _f:
+            _f.write(json.dumps({"id":"bio_no_match","timestamp":int(_t3.time()*1000),"location":"utils.get_bio_for_name","message":"no bio match","data":{"name":str(name)[:80],"normalized_key":key},"hypothesisId":"E"}) + '\n')
+    except Exception:
+        pass
+    # #endregion
     return ''
 
 # =============================================================================
@@ -239,6 +309,12 @@ def resolve_headshot_path(name: Any) -> str:
                 return '/' + rel.replace('\\', '/')
     # Fallback to default .png (keeps previous behavior)
     return f"/headshots/{slug}.png"
+
+
+def headshot_slug(name: Any) -> str:
+    """Return the headshot filename slug for a name (no extension). E.g. 'Traci Thomson' -> 'tracithomson'."""
+    text = str(name or '').strip()
+    return re.sub(r'\s+', '', text).lower()
 
 # =============================================================================
 # DATA PROCESSING UTILITIES
@@ -1363,6 +1439,7 @@ def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
         },
         'resume_link': '',
         'profile_image': resolve_headshot_path(name_value),
+        'linkedin_url': str(safe_get(tracking_row, 'LinkedIn', safe_get(tracking_row, 'LinkedIn URL', ''))).strip(),
         'data_quality': 'limited'
     }
 
@@ -1387,6 +1464,8 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
         mit_tracking_status = str(safe_get(trow, 'Status', '')).lower()
         # Also get salary from MIT Tracking as fallback
         mit_tracking_salary = parse_salary(safe_get(trow, 'Salary', 0))
+        # LinkedIn URL from MIT Tracking sheet
+        mit_tracking_linkedin = str(safe_get(trow, 'LinkedIn', '')).strip()
 
         # Try main with mentor hint
         found = find_candidate_in_sheet(candidate_name, main_df, hint_mentor=mentor_name)
@@ -1414,6 +1493,8 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
             # If salary is missing/zero in main sheet, use MIT Tracking salary
             if cand.get('salary', 0) == 0 and mit_tracking_salary > 0:
                 cand['salary'] = mit_tracking_salary
+            if not cand.get('linkedin_url') and mit_tracking_linkedin:
+                cand['linkedin_url'] = mit_tracking_linkedin
             unified.append(cand)
             continue
 
@@ -1442,6 +1523,8 @@ def merge_candidate_sources() -> List[Dict[str, Any]]:
             # If salary is missing/zero in fallback sheet, use MIT Tracking salary
             if cand.get('salary', 0) == 0 and mit_tracking_salary > 0:
                 cand['salary'] = mit_tracking_salary
+            if not cand.get('linkedin_url') and mit_tracking_linkedin:
+                cand['linkedin_url'] = mit_tracking_linkedin
             unified.append(cand)
             continue
 
@@ -1655,7 +1738,8 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
         'placement_info': str(safe_get(row, 'Notes', '')).strip(),
         # Local file paths
         'resume_link': str(safe_get(row, 'Resume', '')),
-        'profile_image': profile_image_path
+        'profile_image': profile_image_path,
+        'linkedin_url': str(safe_get(row, 'LinkedIn', safe_get(row, 'LinkedIn URL', ''))).strip()
     }
     
     return candidate_data
