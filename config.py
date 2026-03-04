@@ -99,7 +99,11 @@ COLUMN_MAPPING = {
     # OIG completion column - exact name from Google Sheets
     "Mentor Certification of Trainee's OIG Completion": "OIG Completion",  # Column BB - "Yes" if completed
     # Mock QBR scheduling
-    "Mock QBR Date (MIT Only)": "Mock QBR Date"  # Column AD - Date of scheduled Mock QBR
+    "Mock QBR Date (MIT Only)": "Mock QBR Date",  # Column AD - Date of scheduled Mock QBR
+    # LinkedIn profile URLs
+    "Linkedin": "LinkedIn",
+    "LinkedIn URL": "LinkedIn",
+    "LinkedIn": "LinkedIn"
 }
 
 # =============================================================================
