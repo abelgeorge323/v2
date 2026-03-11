@@ -185,6 +185,7 @@ def get_cached_merged_candidates() -> List[Dict[str, Any]]:
         log_debug("FORCE_FRESH_DATA enabled - bypassing merged candidates cache")
         fresh_data = merge_candidate_sources()
         _apply_linkedin_overrides(fresh_data)
+        fresh_data = _filter_nlt_transitions(fresh_data)
         merged_candidates_cache['data'] = fresh_data
         merged_candidates_cache['timestamp'] = datetime.now()
         return fresh_data
@@ -202,9 +203,23 @@ def get_cached_merged_candidates() -> List[Dict[str, Any]]:
     log_debug("Cache expired, computing fresh merged candidates")
     fresh_data = merge_candidate_sources()
     _apply_linkedin_overrides(fresh_data)
+    fresh_data = _filter_nlt_transitions(fresh_data)
     merged_candidates_cache['data'] = fresh_data
     merged_candidates_cache['timestamp'] = datetime.now()
     return fresh_data
+
+
+# Candidates transitioning from MIT to NLT — excluded from all MIT lists.
+# Remove names from this set once they are deleted from the Google Sheet.
+NLT_TRANSITION_NAMES = {
+    'humberto sanchez',
+    'eddie bennett',
+    'orlando doss',
+}
+
+def _filter_nlt_transitions(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Remove NLT-transitioned candidates from MIT lists (hardcoded until sheet cleanup)."""
+    return [c for c in candidates if c.get('name', '').strip().lower() not in NLT_TRANSITION_NAMES]
 
 
 def _apply_linkedin_overrides(candidates: List[Dict[str, Any]]) -> None:
@@ -1114,6 +1129,25 @@ def get_failed_exited_mits_endpoint():
     except Exception as e:
         log_error("Error in failed/exited MITs endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+@app.route('/api/nlt-candidates', methods=['GET'])
+def get_nlt_candidates():
+    """Get candidates who have transitioned from MIT to NLT (New Leader Training)."""
+    try:
+        nlt_path = os.path.join(os.path.dirname(__file__), 'data', 'nlt_transitions.json')
+        if not os.path.exists(nlt_path):
+            return jsonify({'program_name': 'NLT', 'candidates': [], 'total': 0}), 200
+        import json as _json
+        with open(nlt_path, 'r', encoding='utf-8') as f:
+            data = _json.load(f)
+        data['total'] = len(data.get('candidates', []))
+        response = jsonify(data)
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response, 200
+    except Exception as e:
+        log_error("Error in NLT candidates endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
 
 @app.route('/api/pipeline-data', methods=['GET'])
 def get_pipeline_data():

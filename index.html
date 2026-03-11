@@ -2783,6 +2783,16 @@
                         pending: 0
                     };
                 }
+
+                // Fetch NLT transition count
+                try {
+                    const nltResponse = await fetch(`${API_BASE_URL}/api/nlt-candidates${getCacheBust()}`);
+                    const nltData = await nltResponse.json();
+                    data.nlt_count = nltData.total || 0;
+                } catch (err) {
+                    console.warn('Could not fetch NLT candidates:', err);
+                    data.nlt_count = 0;
+                }
                 
                 renderMetrics(data);
                 
@@ -2832,6 +2842,14 @@
                     <div class="metric-label" style="color: #fff; font-weight: 700;">🎓 MIT Alumni</div>
                     <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${data.alumni_metrics?.total_alumni || 0}</div>
                     <div class="metric-change" style="color: rgba(255,255,255,0.9);">Successfully placed</div>
+                </div>
+                <div class="metric-card nlt-tile" onclick="showNLTCandidates()" 
+                     style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); cursor: pointer; border: 2px solid #0d9488; transition: all 0.3s ease;"
+                     onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(13, 148, 136, 0.4)';"
+                     onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';">
+                    <div class="metric-label" style="color: #fff; font-weight: 700;">🔄 NLT Transitions</div>
+                    <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${data.nlt_count || 0}</div>
+                    <div class="metric-change" style="color: rgba(255,255,255,0.9);">New Leader Training</div>
                 </div>
                 <div class="metric-card pipeline" onclick="showPipelineView()" 
                      style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); cursor: pointer; border: 2px solid #8b5cf6; transition: all 0.3s ease;"
@@ -5393,6 +5411,101 @@
                 html += '<div class="no-data" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6); grid-column: 1 / -1;">No MIT alumni found</div>';
             }
             
+            candidatesList.innerHTML = html;
+        }
+
+        // NLT Transitions Page
+        async function showNLTCandidates() {
+            try {
+                hideAllPages();
+                document.getElementById('candidateList').classList.add('active');
+                const container = document.getElementById('candidatesList');
+                container.innerHTML = '<div class="loading">Loading NLT candidates...</div>';
+                document.querySelector('.candidates-container h2').textContent = '🔄 NLT — New Leader Training';
+                previousPage = currentPage;
+                currentPage = 'nlt_candidates';
+
+                const data = await cachedFetch(`${API_BASE_URL}/api/nlt-candidates${getCacheBust()}`, 'nlt-candidates');
+                renderNLTCandidates(data.candidates || []);
+            } catch (error) {
+                console.error('Error loading NLT candidates:', error);
+                document.getElementById('candidatesList').innerHTML =
+                    `<div class="error">Error loading NLT candidates: ${error.message}</div>`;
+            }
+        }
+
+        function renderNLTCandidates(nltList) {
+            const candidatesList = document.getElementById('candidatesList');
+            const tealColor = '#0d9488';
+
+            let html = `
+                <div style="background: linear-gradient(135deg, rgba(13,148,136,0.15) 0%, rgba(15,118,110,0.15) 100%);
+                            padding: 20px 30px; border-radius: 12px; margin-bottom: 25px;
+                            border: 2px solid rgba(13,148,136,0.4); text-align: center; grid-column: 1 / -1;">
+                    <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: ${tealColor}; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        🔄 ${nltList.length} MIT${nltList.length !== 1 ? 's' : ''} Transitioned to New Leader Training (NLT)
+                    </h3>
+                    <p style="margin: 8px 0 0; color: rgba(255,255,255,0.7); font-size: 0.9rem;">These candidates have moved off the MIT budget and into NLT.</p>
+                </div>
+            `;
+
+            if (nltList.length > 0) {
+                html += nltList.map(c => {
+                    const badgeHtml = (() => {
+                        const s = c.sponsor;
+                        if (!s || !s.certification) return '';
+                        if (s.certification === 'true_mit') return '<span class="sponsor-badge certified">✓ Sponsor Certified</span>';
+                        if (s.certification === 'approved') return '<span class="sponsor-badge certified">✓ Sponsor Approved</span>';
+                        if (s.certification === 'reviewed') return '<span class="sponsor-badge reviewed">Sponsor Reviewed</span>';
+                        return '';
+                    })();
+                    const imgHtml = c.profile_image
+                        ? `<img src="${c.profile_image}" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid ${tealColor};"
+                               onerror="this.style.display='none'">`
+                        : '';
+                    return `
+                        <div style="background: linear-gradient(135deg, rgba(26,32,44,0.95) 0%, rgba(45,55,72,0.95) 100%);
+                                    padding: 20px; border-radius: 12px; border: 2px solid ${tealColor};
+                                    box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s ease;
+                                    display: flex; flex-direction: column; gap: 12px;"
+                             onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(13,148,136,0.4)';"
+                             onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                ${imgHtml}
+                                <div>
+                                    <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:${tealColor};">
+                                        ${c.linkedin_url ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">${c.name}</a>` : c.name}
+                                        ${badgeHtml}
+                                    </h3>
+                                    <div style="color:rgba(255,255,255,0.6); font-size:0.85rem;">${c.training_site || ''}</div>
+                                </div>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.3); padding:14px; border-radius:8px; border-left:4px solid ${tealColor};">
+                                <div style="display:grid; grid-template-columns:auto 1fr; gap:6px 12px; font-size:0.9rem;">
+                                    <span style="color:rgba(255,255,255,0.6);">Mentor:</span>
+                                    <span style="color:${tealColor}; font-weight:600;">${c.mentor_name || 'TBD'}</span>
+                                    <span style="color:rgba(255,255,255,0.6);">MIT Week at Transition:</span>
+                                    <span style="color:${tealColor}; font-weight:600;">${c.week || 'N/A'}</span>
+                                    <span style="color:rgba(255,255,255,0.6);">Mentor Score:</span>
+                                    <span style="color:${tealColor}; font-weight:600;">${c.latest_mentor_score ? c.latest_mentor_score.toFixed(2) + '/5' : 'N/A'}</span>
+                                    <span style="color:rgba(255,255,255,0.6);">Performance:</span>
+                                    <span style="color:${tealColor}; font-weight:600;">${c.latest_performance || 'N/A'}</span>
+                                    <span style="color:rgba(255,255,255,0.6);">Transition Date:</span>
+                                    <span style="color:${tealColor}; font-weight:600;">${c.transition_date || 'TBD'}</span>
+                                    ${c.sponsor && c.sponsor.sponsor_name ? `
+                                        <span style="color:rgba(255,255,255,0.6);">Executive Sponsor:</span>
+                                        <span style="color:${tealColor}; font-weight:600;">${c.sponsor.sponsor_name}</span>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            ${c.bio ? `<div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; color:rgba(255,255,255,0.8); font-size:0.85rem; line-height:1.5;">${c.bio}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                html += '<div style="text-align:center; padding:40px; color:rgba(255,255,255,0.6); grid-column:1/-1;">No NLT candidates found</div>';
+            }
+
             candidatesList.innerHTML = html;
         }
 

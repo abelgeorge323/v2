@@ -1,0 +1,61 @@
+{
+  "program_name": "NLT",
+  "program_full_name": "New Leader Training",
+  "candidates": [
+    {
+      "name": "Humberto Sanchez",
+      "training_site": "Eli Lilly - Indianapolis, IN",
+      "location": "Indianapolis, IN",
+      "mentor_name": "Rade Kukobat",
+      "week": 9,
+      "status": "NLT Transition",
+      "training_program": "NLT",
+      "transition_date": "3/10/2026",
+      "linkedin_url": "",
+      "profile_image": "/headshots/humbertosanchez.png",
+      "bio": "Humberto draws on experience as a Field Operations Manager, Branch Manager, and Employment Specialist to lead with accountability and care. Her background in janitorial management, workforce development, and criminal justice shows strong leadership potential in team building and operational oversight.",
+      "sponsor": {
+        "sponsor_name": "Melissa Hampton",
+        "certification": "approved",
+        "sentiment": "positive",
+        "feedback": "Humberto passes the check."
+      },
+      "latest_mentor_score": 4.25,
+      "latest_performance": "Progressing as Expected"
+    },
+    {
+      "name": "Eddie Bennett",
+      "training_site": "Boeing - Mascoutah, IL",
+      "location": "Mascoutah, IL",
+      "mentor_name": "Brian Antis",
+      "week": 9,
+      "status": "NLT Transition",
+      "training_program": "NLT",
+      "transition_date": "3/10/2026",
+      "linkedin_url": "",
+      "profile_image": "/headshots/eddiebennett.JPG",
+      "bio": "Eddie has operations leadership experience with Dollar General, where he managed daily store operations, staffing, and customer service delivery. His background in retail operations, public safety dispatch, and service in the U.S. Marine Corps reflects experience leading teams and maintaining accountability in structured environments.",
+      "sponsor": {},
+      "latest_mentor_score": 5.00,
+      "latest_performance": "Progressing as Expected"
+    },
+    {
+      "name": "Orlando Doss",
+      "training_site": "Citi Bank - Dallas, TX",
+      "location": "Dallas, TX",
+      "mentor_name": "Samera Martinez",
+      "week": 11,
+      "status": "NLT Transition",
+      "training_program": "NLT",
+      "transition_date": "3/10/2026",
+      "linkedin_url": "",
+      "profile_image": "/headshots/orlandodoss.png",
+      "bio": "Orlando has operations leadership experience with Octapharma Plasma, where he managed frontline teams and supported process improvement initiatives in a regulated healthcare environment. His work improving operational workflows and coordinating staff operations reflects hands-on experience leading teams in high-throughput service settings.",
+      "sponsor": {
+        "sponsor_name": "Dan Hartman"
+      },
+      "latest_mentor_score": 4.85,
+      "latest_performance": "Exceeding Expectations"
+    }
+  ]
+}
