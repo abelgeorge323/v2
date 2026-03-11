@@ -3267,6 +3267,23 @@
             return '';
         }
 
+        function candidateNoteBadgeHTML(candidate) {
+            const n = candidate.candidate_note;
+            if (!n || !n.flag) return '';
+            if (n.flag === 'monitoring') return '<span class="sponsor-badge" style="background:rgba(251,191,36,0.15);color:#f59e0b;border:1px solid rgba(251,191,36,0.3);">⚠ Monitoring</span>';
+            if (n.flag === 'backfill') return '<span class="sponsor-badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);">↩ Backfill</span>';
+            return '';
+        }
+
+        function candidateNoteHTML(candidate) {
+            const n = candidate.candidate_note;
+            if (!n || !n.note) return '';
+            const colors = n.flag === 'monitoring'
+                ? 'background:rgba(251,191,36,0.08);border-left:3px solid #f59e0b;'
+                : 'background:rgba(59,130,246,0.08);border-left:3px solid #3b82f6;';
+            return `<div style="${colors} padding:10px 14px; border-radius:6px; margin-top:8px; font-size:0.85rem; color:#e2e8f0; line-height:1.5;">${n.note}</div>`;
+        }
+
         // Render candidates with real data
         function renderCandidates() {
             const candidatesList = document.getElementById('candidatesList');
@@ -3288,7 +3305,7 @@
             const renderedContent = candidates.map(candidate => `
                 <div class="candidate-card" onclick="showProfile('${candidate.name}')">
                     <div class="candidate-info">
-                        <h3>${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}</h3>
+                        <h3>${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}${candidateNoteBadgeHTML(candidate)}</h3>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${candidate.training_site}</div>
                             <div><strong>Week:</strong> ${candidate.week}</div>
@@ -3346,7 +3363,7 @@
                                 `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
                                 : ''
                             }
-                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}</h3>
+                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}${candidateNoteBadgeHTML(candidate)}</h3>
                         </div>
                             <div class="candidate-details">
                                 <div><strong>Site:</strong> ${candidate.training_site}</div>
@@ -3401,7 +3418,7 @@
                                 `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
                                 : ''
                             }
-                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}</h3>
+                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}${candidateNoteBadgeHTML(candidate)}</h3>
                         </div>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${candidate.training_site}</div>
@@ -3457,7 +3474,7 @@
                                 `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
                                 : ''
                             }
-                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}</h3>
+                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}${candidateNoteBadgeHTML(candidate)}</h3>
                         </div>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${candidate.training_site}</div>
@@ -3513,7 +3530,7 @@
                                 `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
                                 : ''
                             }
-                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}</h3>
+                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}${candidateNoteBadgeHTML(candidate)}</h3>
                         </div>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
@@ -3564,7 +3581,7 @@
                                 `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
                                 : ''
                             }
-                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}</h3>
+                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}${candidateNoteBadgeHTML(candidate)}</h3>
                         </div>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
@@ -3615,7 +3632,7 @@
                                 `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
                                 : ''
                             }
-                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}</h3>
+                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}${candidateNoteBadgeHTML(candidate)}</h3>
                         </div>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
@@ -3666,7 +3683,7 @@
                                 `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
                                 : ''
                             }
-                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}</h3>
+                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}${candidateNoteBadgeHTML(candidate)}</h3>
                         </div>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${cleanDisplayValue(candidate.training_site, 'TBD')}</div>
@@ -3716,7 +3733,7 @@
                                 `<img src="${candidate.profile_image}" alt="${candidate.name}" class="candidate-avatar-small" onerror="this.style.display='none';">` 
                                 : ''
                             }
-                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}</h3>
+                            <h3 style="margin: 0;">${candidateNameDisplay(candidate)}${sponsorBadgeHTML(candidate)}${candidateNoteBadgeHTML(candidate)}</h3>
                         </div>
                         <div class="candidate-details">
                             <div><strong>Site:</strong> ${candidate.training_site || 'TBD'}</div>
@@ -4277,8 +4294,10 @@
                             ${candidate.data_quality === 'limited' ? '<span class="data-quality-badge warning">Limited Profile Data</span>' : ''}
                             ${candidate.data_quality === 'archive' ? '<span class="data-quality-badge info">Archive Data</span>' : ''}
                             ${sponsorBadgeHTML(candidate)}
+                            ${candidateNoteBadgeHTML(candidate)}
                         </h1>
                         ${candidate.sponsor && candidate.sponsor.sponsor_name ? `<div style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 4px;">Executive Sponsor: <strong style="color: #e2e8f0;">${candidate.sponsor.sponsor_name}</strong>${candidate.sponsor.feedback ? ' — <em>' + candidate.sponsor.feedback + '</em>' : ''}</div>` : ''}
+                        ${candidateNoteHTML(candidate)}
                         <div class="profile-bio-wrap" style="margin-top: 8px; margin-bottom: 12px;">
                             <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">Bio</div>
                             <p class="profile-bio" style="margin: 0; line-height: 1.5; color: #e2e8f0;">${(candidate.bio && candidate.bio.trim()) ? candidate.bio : 'No bio on file.'}</p>

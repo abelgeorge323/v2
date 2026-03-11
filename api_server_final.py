@@ -55,7 +55,8 @@ from utils import (
     fetch_client_mit_requests,
     headshot_slug,
     get_bio_for_name,
-    get_sponsor_for_name
+    get_sponsor_for_name,
+    get_note_for_name
 )
 from executive_report import collect_report_data, build_executive_email_data, build_executive_email_plain_text
 
@@ -213,7 +214,6 @@ def get_cached_merged_candidates() -> List[Dict[str, Any]]:
 # Remove names from this set once they are deleted from the Google Sheet.
 NLT_TRANSITION_NAMES = {
     'humberto sanchez',
-    'eddie bennett',
     'orlando doss',
 }
 
@@ -582,6 +582,7 @@ def get_candidate_profile(name: str):
         candidate_data = dict(candidate_data)
         candidate_data['bio'] = get_bio_for_name(candidate_data.get('name', ''))
         candidate_data['sponsor'] = get_sponsor_for_name(candidate_data.get('name', ''))
+        candidate_data['candidate_note'] = get_note_for_name(candidate_data.get('name', ''))
         
         response = jsonify(candidate_data)
         response.headers['Content-Type'] = 'application/json; charset=utf-8'

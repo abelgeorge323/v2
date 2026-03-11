@@ -325,6 +325,46 @@ def get_sponsor_for_name(name: Any) -> Dict:
 
 
 # =============================================================================
+# CANDIDATE NOTES (loaded from data/candidate_notes.json)
+# =============================================================================
+
+_NOTES_CACHE: Optional[Dict[str, Dict]] = None
+
+def _load_candidate_notes() -> Dict[str, Dict]:
+    """Load candidate notes from data/candidate_notes.json once and cache."""
+    global _NOTES_CACHE
+    if _NOTES_CACHE is not None:
+        return _NOTES_CACHE
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(base_dir, 'data', 'candidate_notes.json')
+    if not os.path.exists(data_path):
+        data_path = os.path.join(os.path.dirname(base_dir), 'data', 'candidate_notes.json')
+    try:
+        with open(data_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        _NOTES_CACHE = {str(k).strip().lower(): v for k, v in data.items()}
+        logger.info(f"Loaded {len(_NOTES_CACHE)} candidate notes from {data_path}")
+    except Exception as e:
+        logger.warning(f"Could not load candidate notes from {data_path}: {e}")
+        _NOTES_CACHE = {}
+    return _NOTES_CACHE
+
+
+def get_note_for_name(name: Any) -> Dict:
+    """Return note dict for a candidate, or empty dict if not found."""
+    notes = _load_candidate_notes()
+    if not notes:
+        return {}
+    key = normalize_name(name)
+    if key in notes:
+        return notes[key]
+    variant = key.replace('isaac ', 'issac ').replace('issac ', 'isaac ')
+    if variant in notes:
+        return notes[variant]
+    return {}
+
+
+# =============================================================================
 # HEADSHOT RESOLUTION
 # =============================================================================
 
@@ -1471,6 +1511,7 @@ def create_basic_profile_from_mit(tracking_row: pd.Series) -> Dict[str, Any]:
         'mentor_title': 'TBD',
         'bio': get_bio_for_name(name_value),
         'sponsor': get_sponsor_for_name(name_value),
+        'candidate_note': get_note_for_name(name_value),
         'scores': {},
         'onboarding_progress': None,
         'business_lessons_progress': None,
@@ -1766,6 +1807,7 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
         'mentor_title': str(safe_get(row, 'Title of Mentor', 'TBD')),
         'bio': get_bio_for_name(candidate_name),
         'sponsor': get_sponsor_for_name(candidate_name),
+        'candidate_note': get_note_for_name(candidate_name),
         'scores': {k: convert_numpy_types(v) for k, v in real_scores.items()},
         'onboarding_progress': {k: convert_numpy_types(v) for k, v in onboarding_progress.items()},
         'business_lessons_progress': {k: convert_numpy_types(v) for k, v in business_lessons_progress.items()},
