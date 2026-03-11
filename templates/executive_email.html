@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIT Program — Pipeline & Survey Update</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+            line-height: 1.6;
+            padding: 24px;
+        }
+        .email-container { max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.06); }
+        .header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+            padding: 24px 28px;
+            text-align: center;
+        }
+        .header h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .header .timestamp { font-size: 12px; opacity: 0.9; }
+        .body { padding: 28px 32px; }
+        .body p { margin-bottom: 16px; }
+        .body .lead { font-weight: 600; color: #1e3a5f; margin-bottom: 8px; }
+        .body ul { margin: 8px 0 16px 24px; }
+        .body li { margin-bottom: 6px; }
+        .body .subsection { margin-top: 20px; }
+        .body .statement { background: #f8fafc; border-left: 4px solid #1e3a5f; padding: 12px 16px; margin: 12px 0; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+        th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+        .problem-areas { color: #b91c1c; font-size: 12px; }
+        .score-high { color: #059669; font-weight: 600; }
+        .score-mid { color: #d97706; font-weight: 600; }
+        .score-low { color: #dc2626; font-weight: 600; }
+        .notes { font-size: 12px; color: #64748b; font-style: italic; }
+        .closing { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>MIT Program — Pipeline & Survey Update</h1>
+            <div class="timestamp">{{ timestamp }}</div>
+        </div>
+
+        <div class="body">
+            <p class="lead">Active MITs</p>
+            <p>We currently have <strong>{{ active_mits|length }}</strong> active MIT{{ 's' if active_mits|length != 1 else '' }} in the program.</p>
+            {% if active_mits %}
+            <ul>
+                {% for mit in active_mits %}
+                <li><strong>{{ mit.name }}</strong> — {{ mit.location }} | Mentor: {{ mit.mentor }}{% if mit.week %} (Week {{ mit.week }}){% endif %}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p style="color:#94a3b8; font-style:italic;">None at this time.</p>
+            {% endif %}
+
+            <p class="lead subsection">MITs Pending Start</p>
+            <p>We have <strong>{{ pending_mits|length }}</strong> MIT{{ 's' if pending_mits|length != 1 else '' }} with pending start dates.</p>
+            {% if pending_mits %}
+            <ul>
+                {% for mit in pending_mits %}
+                <li><strong>{{ mit.name }}</strong> — Expected start: {{ mit.expected_start }} | {{ mit.location }} | Mentor: {{ mit.mentor }}{% if mit.salary and mit.salary != 'TBD' %} | {{ mit.salary }}{% endif %}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p style="color:#94a3b8; font-style:italic;">None at this time.</p>
+            {% endif %}
+
+            <p class="lead subsection">Health of the MIT Pipeline</p>
+            <p class="statement">{{ pipeline_health }}</p>
+
+            <p class="lead subsection">Mentor Survey Results — Mentee Progress</p>
+            <p>Below are the results of surveys given by mentors rating mentee progress.</p>
+            <p class="statement">{{ survey_overview }}</p>
+
+            {% if survey_summary %}
+            <p><strong>Scores &amp; areas of improvement / additional eyes</strong></p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Overall</th>
+                        <th>Core</th>
+                        <th>Soft</th>
+                        <th>Engage</th>
+                        <th>Readiness</th>
+                        <th>Areas of Improvement</th>
+                        <th>Mentor Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in survey_summary %}
+                    <tr>
+                        <td>{{ s.name }}</td>
+                        <td class="{% if s.overall >= 4.5 %}score-high{% elif s.overall >= 3.5 %}score-mid{% else %}score-low{% endif %}">{{ "%.2f"|format(s.overall) }}</td>
+                        <td>{{ "%.1f"|format(s.section_1) }}</td>
+                        <td>{{ "%.1f"|format(s.section_2) }}</td>
+                        <td>{{ "%.1f"|format(s.section_3) }}</td>
+                        <td>{{ "%.1f"|format(s.section_4) }}</td>
+                        <td class="problem-areas">{% if s.problem_areas %}{{ s.problem_areas|join(', ') }}{% else %}—{% endif %}</td>
+                        <td class="notes">{% if s.observations %}{{ s.observations }}{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:#94a3b8; font-style:italic;">No survey results available yet.</p>
+            {% endif %}
+
+            <p class="closing">We are in the process of collecting feedback on mentors in the program.</p>
+        </div>
+    </div>
+</body>
+</html>

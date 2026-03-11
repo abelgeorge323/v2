@@ -1,0 +1,89 @@
+{
+  "traci thomson": {
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/17/2026"
+      }
+    ]
+  },
+  "juvae randolph": {
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/17/2026"
+      }
+    ]
+  },
+  "zimri quintero moreno": {
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/17/2026"
+      },
+      {
+        "contact": "john mann",
+        "date": "2/17/2026"
+      }
+    ]
+  },
+  "orlando doss": {
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/3/2026"
+      }
+    ]
+  },
+  "juan hernandez": {
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/3/2026"
+      }
+    ]
+  },
+  "eddie bennett": {
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/17/2026"
+      }
+    ],
+    "scheduled_meetings": [
+      {
+        "contact": "benjamin ehrenberg",
+        "date": "3/7/2026"
+      }
+    ]
+  },
+  "issac mccabe": {
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/3/2026"
+      }
+    ],
+    "scheduled_meetings": [
+      {
+        "contact": "benjamin ehrenberg",
+        "date": "3/7/2026"
+      },
+      {
+        "contact": "ayesha nasir",
+        "date": "3/5/2026"
+      }
+    ]
+  },
+  "humberto sanchez": {
+    "completed_meetings": [
+      {
+        "contact": "valarie barnett",
+        "date": "2/17/2026"
+      }
+    ]
+  },
+  "cody mulford": {
+    "completed_meetings": []
+  }
+}

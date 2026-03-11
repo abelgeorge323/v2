@@ -1,0 +1,35 @@
+{
+  "orlando doss": {
+    "sponsor_name": "Dan Hartman"
+  },
+  "isaac mccabe": {
+    "sponsor_name": "Mike Jedan",
+    "certification": "true_mit",
+    "sentiment": "positive",
+    "feedback": "Isaac McCabe met his sponsor — seal of approval, true MIT."
+  },
+  "humberto sanchez": {
+    "sponsor_name": "Melissa Hampton",
+    "certification": "approved",
+    "sentiment": "positive",
+    "feedback": "Humberto passes the check."
+  },
+  "cody mulford": {
+    "sponsor_name": "Valarie Barnett",
+    "certification": "true_mit",
+    "sentiment": "positive",
+    "feedback": "Cody is a true MIT."
+  },
+  "kevin warren": {
+    "sponsor_name": "Dustin Smith"
+  },
+  "adam dell": {
+    "sponsor_name": "Roger Dau",
+    "certification": "reviewed",
+    "sentiment": "neutral_to_positive",
+    "feedback": "Adam Dell met his sponsor — neutral to good review."
+  },
+  "isaac hope": {
+    "sponsor_name": "Sean Henderson"
+  }
+}
