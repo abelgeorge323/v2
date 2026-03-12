@@ -1266,23 +1266,15 @@ def parse_job_requisitions_csv() -> list:
         logger.error(f"Error reading job requisitions CSV: {e}")
         return []
 
-    _IGNORE_PROFILES = {
-        'general laborer', 'groundskeeper', 'housekeeping specialist',
-        'personal assistant', 'hr generalist', 'talent acquisition specialist',
-        'ux engineer', 'social media manager', 'proposal manager',
-        'proposal director', 'executive assistant', 'senior integration engineer',
-        'lead payroll analyst', 'ap escalation specialist',
-        'it, implementation, and support technician i',
+    _LEADERSHIP_PROFILES = {
+        'site manager',
+        'operations manager',
     }
 
     positions = []
     for _, row in df.iterrows():
-        family = str(row.get('Job Family Group', '')).strip()
-        if family not in ('Ops', 'Corporate'):
-            continue
-
         profile = str(row.get('Job Profile (Basic)', '')).strip()
-        if profile.lower() in _IGNORE_PROFILES:
+        if profile.lower() not in _LEADERSHIP_PROFILES:
             continue
 
         req_text = str(row.get('Job Requisition', '')).strip()
