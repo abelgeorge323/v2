@@ -2147,6 +2147,127 @@
             }
         }
 
+        /* ── NLT Dashboard Tiles & Cards ── */
+        .nlt-metrics-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        .nlt-metric-tile {
+            border-radius: 14px;
+            padding: 28px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .nlt-metric-tile:hover {
+            transform: translateY(-4px);
+        }
+        .nlt-metric-active {
+            background: linear-gradient(135deg, rgba(13,148,136,0.15), rgba(15,118,110,0.10));
+            border: 2px solid rgba(13,148,136,0.4);
+        }
+        .nlt-metric-active:hover { box-shadow: 0 8px 24px rgba(13,148,136,0.35); }
+        .nlt-metric-graduated {
+            background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.10));
+            border: 2px solid rgba(245,158,11,0.4);
+        }
+        .nlt-metric-graduated:hover { box-shadow: 0 8px 24px rgba(245,158,11,0.35); }
+        .nlt-metric-transitions {
+            background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(37,99,235,0.10));
+            border: 2px solid rgba(59,130,246,0.4);
+        }
+        .nlt-metric-transitions:hover { box-shadow: 0 8px 24px rgba(59,130,246,0.35); }
+        .nlt-metric-label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .nlt-metric-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+        .nlt-metric-sub {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            margin-top: 4px;
+        }
+        .nlt-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+        .nlt-section-back {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.8);
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+            transition: background 0.2s;
+        }
+        .nlt-section-back:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* ── Landing Page Mobile ── */
+        @media (max-width: 600px) {
+            #landingPage > div {
+                padding: 24px 16px !important;
+                gap: 24px !important;
+                min-height: 50vh !important;
+            }
+            #landingPage h2 {
+                font-size: 1.3rem !important;
+            }
+            #landingPage .landing-card,
+            #landingPage > div > div:last-child {
+                grid-template-columns: 1fr !important;
+                gap: 16px !important;
+            }
+            #landingPage > div > div:last-child > div {
+                padding: 28px 20px !important;
+            }
+        }
+
+        /* ── NLT Dashboard Mobile ── */
+        @media (max-width: 768px) {
+            .nlt-metrics-row {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .nlt-metric-tile {
+                padding: 20px 16px;
+            }
+            .nlt-metric-value {
+                font-size: 1.8rem;
+            }
+            .nlt-cards-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            #nltDashboard .candidates-container {
+                padding: 16px !important;
+            }
+            #nltDashboard h2 {
+                font-size: 1.15rem !important;
+            }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .nlt-metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+            }
+            .nlt-cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         /* Extra small phones */
         @media (max-width: 374px) {
             .header h1 {
@@ -4693,71 +4814,43 @@
             }
         }
 
+        let _nltData = { active: [], graduated: [], transitions: [] };
+
         async function loadNLTDashboardData() {
             const container = document.getElementById('nltDashboardContent');
             container.innerHTML = '<div class="loading">Loading NLT dashboard...</div>';
             try {
                 const data = await (await fetch(`${API_BASE_URL}/api/nlt-dashboard${getCacheBust()}`)).json();
-
-                const activeNLTs = data.active || [];
-                const graduatedNLTs = data.graduated || [];
-                const transitions = data.transitions || [];
-
-                let html = '';
-
-                // Metrics row
-                html += `
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; margin-bottom:30px;">
-                    <div style="background:linear-gradient(135deg,rgba(13,148,136,0.15),rgba(15,118,110,0.10)); border:2px solid rgba(13,148,136,0.4); border-radius:14px; padding:24px; text-align:center; cursor:pointer;" onclick="showNLTActiveList()">
-                        <div style="font-size:0.8rem; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Active NLTs</div>
-                        <div style="font-size:2.2rem; font-weight:700; color:#0d9488;">${activeNLTs.length}</div>
-                        <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); margin-top:4px;">Currently in training</div>
-                    </div>
-                    <div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.10)); border:2px solid rgba(245,158,11,0.4); border-radius:14px; padding:24px; text-align:center; cursor:pointer;" onclick="showNLTGraduatedList()">
-                        <div style="font-size:0.8rem; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Graduated NLTs</div>
-                        <div style="font-size:2.2rem; font-weight:700; color:#f59e0b;">${graduatedNLTs.length}</div>
-                        <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); margin-top:4px;">Successfully completed</div>
-                    </div>
-                    <div style="background:linear-gradient(135deg,rgba(59,130,246,0.15),rgba(37,99,235,0.10)); border:2px solid rgba(59,130,246,0.4); border-radius:14px; padding:24px; text-align:center; cursor:pointer;" onclick="showNLTCandidates()">
-                        <div style="font-size:0.8rem; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">MIT → NLT</div>
-                        <div style="font-size:2.2rem; font-weight:700; color:#3b82f6;">${transitions.length}</div>
-                        <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); margin-top:4px;">Transitions</div>
-                    </div>
-                </div>`;
-
-                // Active NLTs section
-                html += `<h3 style="color:#0d9488; margin:30px 0 16px; font-size:1.25rem; border-bottom:2px solid rgba(13,148,136,0.3); padding-bottom:8px;">Active NLTs</h3>`;
-                if (activeNLTs.length > 0) {
-                    html += '<div class="candidates-grid">';
-                    html += activeNLTs.map(c => renderNLTActiveCard(c)).join('');
-                    html += '</div>';
-                } else {
-                    html += '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.5);">No active NLT candidates found in the current sheet.</div>';
-                }
-
-                // MIT-to-NLT Transitions section
-                if (transitions.length > 0) {
-                    html += `<h3 style="color:#3b82f6; margin:30px 0 16px; font-size:1.25rem; border-bottom:2px solid rgba(59,130,246,0.3); padding-bottom:8px;">MIT → NLT Transitions</h3>`;
-                    html += '<div class="candidates-grid">';
-                    html += transitions.map(c => renderNLTTransitionCard(c)).join('');
-                    html += '</div>';
-                }
-
-                // Graduated NLTs section
-                html += `<h3 style="color:#f59e0b; margin:30px 0 16px; font-size:1.25rem; border-bottom:2px solid rgba(245,158,11,0.3); padding-bottom:8px;">Graduated NLTs</h3>`;
-                if (graduatedNLTs.length > 0) {
-                    html += '<div class="candidates-grid">';
-                    html += graduatedNLTs.map(c => renderNLTGraduatedCard(c)).join('');
-                    html += '</div>';
-                } else {
-                    html += '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.5);">No graduated NLT candidates found.</div>';
-                }
-
-                container.innerHTML = html;
+                _nltData.active = data.active || [];
+                _nltData.graduated = data.graduated || [];
+                _nltData.transitions = data.transitions || [];
+                renderNLTSummaryTiles();
             } catch (e) {
                 console.error('Error loading NLT dashboard:', e);
                 container.innerHTML = `<div class="error">Error loading NLT dashboard: ${e.message}</div>`;
             }
+        }
+
+        function renderNLTSummaryTiles() {
+            const container = document.getElementById('nltDashboardContent');
+            container.innerHTML = `
+            <div class="nlt-metrics-row">
+                <div class="nlt-metric-tile nlt-metric-active" onclick="showNLTActiveList()">
+                    <div class="nlt-metric-label">Active NLTs</div>
+                    <div class="nlt-metric-value" style="color:#0d9488;">${_nltData.active.length}</div>
+                    <div class="nlt-metric-sub">Currently in training</div>
+                </div>
+                <div class="nlt-metric-tile nlt-metric-graduated" onclick="showNLTGraduatedList()">
+                    <div class="nlt-metric-label">Graduated NLTs</div>
+                    <div class="nlt-metric-value" style="color:#f59e0b;">${_nltData.graduated.length}</div>
+                    <div class="nlt-metric-sub">Successfully completed</div>
+                </div>
+                <div class="nlt-metric-tile nlt-metric-transitions" onclick="showNLTTransitionsList()">
+                    <div class="nlt-metric-label">MIT → NLT</div>
+                    <div class="nlt-metric-value" style="color:#3b82f6;">${_nltData.transitions.length}</div>
+                    <div class="nlt-metric-sub">Transitions</div>
+                </div>
+            </div>`;
         }
 
         function renderNLTActiveCard(c) {
@@ -4850,17 +4943,50 @@
             </div>`;
         }
 
+        function nltBackToTiles() {
+            renderNLTSummaryTiles();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function nltSectionHeader(title, color) {
+            return `<button onclick="nltBackToTiles()" class="nlt-section-back">← Back to NLT Overview</button>
+                    <h3 style="color:${color}; margin:0 0 16px; font-size:1.25rem; border-bottom:2px solid ${color}44; padding-bottom:8px;">${title}</h3>`;
+        }
+
         function showNLTActiveList() {
             const container = document.getElementById('nltDashboardContent');
-            const cards = container.querySelectorAll('.candidates-grid');
-            const headers = container.querySelectorAll('h3');
-            headers.forEach(h => { if (h.textContent.includes('Active')) h.scrollIntoView({behavior:'smooth', block:'start'}); });
+            let html = nltSectionHeader('Active NLTs (' + _nltData.active.length + ')', '#0d9488');
+            if (_nltData.active.length > 0) {
+                html += '<div class="nlt-cards-grid">' + _nltData.active.map(c => renderNLTActiveCard(c)).join('') + '</div>';
+            } else {
+                html += '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.5);">No active NLT candidates found.</div>';
+            }
+            container.innerHTML = html;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function showNLTGraduatedList() {
             const container = document.getElementById('nltDashboardContent');
-            const headers = container.querySelectorAll('h3');
-            headers.forEach(h => { if (h.textContent.includes('Graduated')) h.scrollIntoView({behavior:'smooth', block:'start'}); });
+            let html = nltSectionHeader('Graduated NLTs (' + _nltData.graduated.length + ')', '#f59e0b');
+            if (_nltData.graduated.length > 0) {
+                html += '<div class="nlt-cards-grid">' + _nltData.graduated.map(c => renderNLTGraduatedCard(c)).join('') + '</div>';
+            } else {
+                html += '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.5);">No graduated NLT candidates found.</div>';
+            }
+            container.innerHTML = html;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function showNLTTransitionsList() {
+            const container = document.getElementById('nltDashboardContent');
+            let html = nltSectionHeader('MIT → NLT Transitions (' + _nltData.transitions.length + ')', '#3b82f6');
+            if (_nltData.transitions.length > 0) {
+                html += '<div class="nlt-cards-grid">' + _nltData.transitions.map(c => renderNLTTransitionCard(c)).join('') + '</div>';
+            } else {
+                html += '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.5);">No MIT → NLT transitions found.</div>';
+            }
+            container.innerHTML = html;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function showAllCandidates() {
