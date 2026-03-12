@@ -2013,29 +2013,23 @@ NETWORKING_CONTACTS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTAdb
 @app.route('/api/networking-contacts')
 def get_networking_contacts():
     """
-    Fetch networking contacts from Google Sheets by vertical
-    Returns structure: {vertical: [contact_names]}
+    Fetch networking contacts from Google Sheets by vertical.
+    Returns structure: {vertical: [contact_names]}. On sheet/network failure returns empty structure so the page still loads.
     """
     try:
         import requests
         
-        response = requests.get(NETWORKING_CONTACTS_URL)
+        response = requests.get(NETWORKING_CONTACTS_URL, timeout=15)
         response.raise_for_status()
         
-        # Parse CSV
         from io import StringIO
         import csv
         
         csv_data = StringIO(response.text)
         reader = csv.reader(csv_data)
-        
-        # Read header row (verticals)
         headers = next(reader)
-        
-        # Build contact structure
         contacts = {vertical: [] for vertical in headers if vertical}
         
-        # Read contact rows
         for row in reader:
             for idx, contact in enumerate(row):
                 if contact and idx < len(headers) and headers[idx]:
@@ -2046,17 +2040,23 @@ def get_networking_contacts():
         
     except Exception as e:
         log_error("Error fetching networking contacts", e)
-        return jsonify({"error": str(e)}), 500
+        # Return empty structure so networking page still loads; frontend can show a message
+        return jsonify({
+            "Technology": [], "Financial": [], "Automotive": [], "Manufacturing": [],
+            "Executive": [], "Life Science": [], "Aviation": [], "R&D": [],
+            "error": str(e)
+        }), 200
 
 @app.route('/networking-meetings')
 @app.route('/networking_meetings.html')
 @app.route('/networking-meetings.html')
 def networking_meetings_page():
     """
-    Serve the networking meetings HTML page
+    Serve the networking meetings HTML page (from app root so Heroku finds it).
     """
     try:
-        return send_from_directory('.', 'networking_meetings.html')
+        app_root = os.path.dirname(os.path.abspath(__file__))
+        return send_from_directory(app_root, 'networking_meetings.html')
     except Exception as e:
         log_error("Error serving networking meetings page", e)
         return jsonify({"error": "Page not found"}), 404

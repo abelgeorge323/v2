@@ -3526,56 +3526,55 @@ def fetch_transition_tracker_data() -> pd.DataFrame:
 
 def fetch_client_mit_requests() -> List[Dict[str, Any]]:
     """
-    Fetch client requests for MIT placements from Google Sheets
-    
-    Returns:
-        List of client request dictionaries with status breakdown
+    Fetch client requests for MIT placements from Google Sheets.
+    Sheet: gid=1506398133 — columns (row 4 header): Job Requisition (1st col), Job Title, Hiring Manager, Client, Location, Status, Notes.
     """
     try:
         logger.info("Fetching client MIT requests")
-        
-        # Read CSV (skip first 3 header rows)
         df = pd.read_csv(CLIENT_MIT_REQUESTS_URL, dtype=str, skiprows=3)
-        
-        # Clean column names
-        df.columns = df.columns.str.strip()
-        
-        logger.info(f"Columns found: {list(df.columns)}")
-        
-        # Filter out empty rows
+        df.columns = [str(c).strip() for c in df.columns]
+        # First column may be unnamed (Job Requisition IDs: JR100967, etc.)
+        first_col = df.columns[0] if len(df.columns) > 0 else ''
+        if first_col in ('', 'Unnamed: 0', 'nan'):
+            df = df.rename(columns={df.columns[0]: 'Job Requisition'})
         df = df.dropna(how='all')
-        
-        # Build requests list
+
         requests = []
         for _, row in df.iterrows():
-            job_id = safe_get(row, 'Job ID', '') or safe_get(row, '', 'TBD')  # First column might be empty header
-            job_title = safe_get(row, 'Job Title', 'TBD')
-            hiring_manager = safe_get(row, 'Hiring Manager', 'TBD')
-            requestor = safe_get(row, 'Requestor', 'TBD')
-            client = safe_get(row, 'Client', 'TBD')
-            location = safe_get(row, 'Location', 'TBD')
-            status = safe_get(row, 'Status', 'TBD')
-            notes = safe_get(row, 'Notes', '')
-            
-            # Skip if all fields are empty
-            if all(not str(v).strip() or str(v).strip().lower() in ['nan', 'tbd', ''] 
-                   for v in [job_title, client, location]):
+            job_id = str(row.iloc[0]).strip() if len(row) > 0 else ''
+            job_id = job_id or safe_get(row, 'Job Requisition', '') or safe_get(row, 'Job ID', '') or 'TBD'
+            job_title = str(safe_get(row, 'Job Title', '')).strip() or 'TBD'
+            hiring_manager = str(safe_get(row, 'Hiring Manager', '')).strip() or 'TBD'
+            client = str(safe_get(row, 'Client', '')).strip() or 'TBD'
+            location = str(safe_get(row, 'Location', '')).strip() or 'TBD'
+            status = str(safe_get(row, 'Status', '')).strip() or ''
+            notes = str(safe_get(row, 'Notes', '')).strip() or ''
+
+            if not job_title or job_title.lower() in ('nan', 'none', '') and not client and not location:
                 continue
-            
+            if job_title.lower() in ('nan', 'none'):
+                job_title = 'TBD'
+            if client.lower() in ('nan', 'none'):
+                client = 'TBD'
+            if location.lower() in ('nan', 'none'):
+                location = 'TBD'
+            if not status or status.lower() in ('nan', 'none'):
+                status = 'Pending Posting'
+
             requests.append({
-                'job_id': str(job_id).strip() if job_id else 'TBD',
-                'job_title': str(job_title).strip() if job_title else 'TBD',
-                'hiring_manager': str(hiring_manager).strip() if hiring_manager else 'TBD',
-                'requestor': str(requestor).strip() if requestor else 'TBD',
-                'client': str(client).strip() if client else 'TBD',
-                'location': str(location).strip() if location else 'TBD',
-                'status': str(status).strip() if status else 'TBD',
-                'notes': str(notes).strip() if notes else ''
+                'job_id': job_id if job_id and job_id.lower() not in ('nan', 'tbd') else 'TBD',
+                'job_title': job_title,
+                'hiring_manager': hiring_manager,
+                'requestor': hiring_manager,
+                'client': client,
+                'location': location,
+                'status': status,
+                'notes': notes
             })
-        
+
         logger.info(f"Loaded {len(requests)} client MIT requests")
         return requests
-        
+
     except Exception as e:
         log_error("Error fetching client MIT requests", e)
         return []

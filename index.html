@@ -5393,11 +5393,12 @@
                 const requests = data.requests || [];
                 const stats = data.status_counts || {};
                 
-                // Group requests by status
+                // Group requests by status (default unmapped to Pending Posting)
+                const norm = (s) => (s || '').toLowerCase();
                 const groupedByStatus = {
-                    'Posted': requests.filter(r => r.status.toLowerCase().includes('posted')),
-                    'Offers Extended': requests.filter(r => r.status.toLowerCase().includes('offer') || r.status.toLowerCase().includes('extended')),
-                    'Pending Posting': requests.filter(r => r.status.toLowerCase().includes('pending'))
+                    'Posted': requests.filter(r => norm(r.status).includes('posted')),
+                    'Offers Extended': requests.filter(r => norm(r.status).includes('offer') || norm(r.status).includes('extended')),
+                    'Pending Posting': requests.filter(r => norm(r.status).includes('pending') || !norm(r.status) || norm(r.status) === 'tbd')
                 };
                 
                 // Count unique clients and locations
