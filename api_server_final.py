@@ -58,7 +58,8 @@ from utils import (
     get_sponsor_for_name,
     get_note_for_name,
     fetch_nlt_candidates,
-    fetch_graduated_nlts
+    fetch_graduated_nlts,
+    parse_job_requisitions_csv
 )
 from executive_report import collect_report_data, build_executive_email_data, build_executive_email_plain_text
 
@@ -1198,6 +1199,41 @@ def get_nlt_dashboard():
         }), 200
     except Exception as e:
         log_error("Error in NLT dashboard endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+
+@app.route('/api/nlt-openings', methods=['GET'])
+def get_nlt_openings():
+    """Job requisition openings relevant to the NLT pipeline, parsed from local CSV."""
+    try:
+        all_positions = parse_job_requisitions_csv()
+
+        leadership = [p for p in all_positions if not p['is_training'] and not p['offer_extended']]
+
+        grouped: dict = {}
+        for p in leadership:
+            r = p.get('region', 'Other')
+            grouped.setdefault(r, []).append(p)
+        region_order = ['West', 'Midwest', 'South', 'Northeast', 'Other']
+        sorted_grouped = {r: grouped[r] for r in region_order if r in grouped}
+        for r, v in grouped.items():
+            if r not in sorted_grouped:
+                sorted_grouped[r] = v
+
+        verticals = sorted(set(p['vertical'] for p in leadership if p['vertical']))
+
+        total_openings = sum(p['openings'] for p in leadership)
+
+        return jsonify({
+            'positions': leadership,
+            'regions': sorted_grouped,
+            'verticals': verticals,
+            'total_positions': len(leadership),
+            'total_openings': total_openings,
+            'region_count': len(sorted_grouped),
+        }), 200
+    except Exception as e:
+        log_error("Error in NLT openings endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 

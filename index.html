@@ -2208,11 +2208,20 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 0.9rem;
-            margin-bottom: 16px;
             transition: background 0.2s;
         }
         .nlt-section-back:hover {
             background: rgba(255,255,255,0.15);
+        }
+        .nlt-sticky-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: linear-gradient(180deg, #0f172a 60%, transparent);
+            padding: 12px 0 16px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
         /* ── Landing Page Mobile ── */
@@ -2238,14 +2247,20 @@
         /* ── NLT Dashboard Mobile ── */
         @media (max-width: 768px) {
             .nlt-metrics-row {
-                grid-template-columns: 1fr;
-                gap: 12px;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px;
             }
             .nlt-metric-tile {
-                padding: 20px 16px;
+                padding: 16px 12px;
             }
             .nlt-metric-value {
-                font-size: 1.8rem;
+                font-size: 1.6rem;
+            }
+            .nlt-metric-label {
+                font-size: 0.7rem;
+            }
+            .nlt-metric-sub {
+                font-size: 0.65rem;
             }
             .nlt-cards-grid {
                 grid-template-columns: 1fr;
@@ -2257,10 +2272,30 @@
             #nltDashboard h2 {
                 font-size: 1.15rem !important;
             }
+            .nlt-sticky-nav {
+                padding: 8px 0 12px;
+                gap: 6px;
+            }
+            .nlt-section-back {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .nlt-metrics-row {
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px;
+            }
+            .nlt-metric-tile {
+                padding: 14px 10px;
+            }
+            .nlt-metric-value {
+                font-size: 1.4rem;
+            }
         }
         @media (min-width: 769px) and (max-width: 1024px) {
             .nlt-metrics-row {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(4, 1fr) !important;
                 gap: 12px;
             }
             .nlt-cards-grid {
@@ -2557,10 +2592,11 @@
         <!-- NLT Dashboard Page -->
         <div class="page" id="nltDashboard">
             <div class="candidates-container">
-                <div class="sticky-back-nav">
-                    <button onclick="showLandingPage()" class="back-btn">← Back to Pipelines</button>
+                <div class="nlt-sticky-nav" id="nltStickyNav">
+                    <button onclick="showLandingPage()" class="nlt-section-back">← Pipelines</button>
+                    <button onclick="nltBackToTiles()" class="nlt-section-back" id="nltBackOverviewBtn" style="display:none;">← NLT Overview</button>
                 </div>
-                <h2 style="color: #0d9488;">🚀 NLT — New Leader Training</h2>
+                <h2 style="color: #0d9488; margin-top: 0;">🚀 NLT — New Leader Training</h2>
                 <div id="nltDashboardContent">
                     <div class="loading">Loading NLT dashboard...</div>
                 </div>
@@ -4814,16 +4850,21 @@
             }
         }
 
-        let _nltData = { active: [], graduated: [], transitions: [] };
+        let _nltData = { active: [], graduated: [], transitions: [], openings: null };
 
         async function loadNLTDashboardData() {
             const container = document.getElementById('nltDashboardContent');
             container.innerHTML = '<div class="loading">Loading NLT dashboard...</div>';
             try {
-                const data = await (await fetch(`${API_BASE_URL}/api/nlt-dashboard${getCacheBust()}`)).json();
+                const [dashRes, openRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/api/nlt-dashboard${getCacheBust()}`),
+                    fetch(`${API_BASE_URL}/api/nlt-openings${getCacheBust()}`)
+                ]);
+                const data = await dashRes.json();
                 _nltData.active = data.active || [];
                 _nltData.graduated = data.graduated || [];
                 _nltData.transitions = data.transitions || [];
+                try { _nltData.openings = await openRes.json(); } catch(e) { _nltData.openings = null; }
                 renderNLTSummaryTiles();
             } catch (e) {
                 console.error('Error loading NLT dashboard:', e);
@@ -4831,24 +4872,36 @@
             }
         }
 
+        function _nltShowOverviewBtn(show) {
+            const btn = document.getElementById('nltBackOverviewBtn');
+            if (btn) btn.style.display = show ? 'inline-block' : 'none';
+        }
+
         function renderNLTSummaryTiles() {
+            _nltShowOverviewBtn(false);
             const container = document.getElementById('nltDashboardContent');
+            const openCount = _nltData.openings ? _nltData.openings.total_positions : '—';
             container.innerHTML = `
-            <div class="nlt-metrics-row">
-                <div class="nlt-metric-tile nlt-metric-active" onclick="showNLTActiveList()">
-                    <div class="nlt-metric-label">Active NLTs</div>
-                    <div class="nlt-metric-value" style="color:#0d9488;">${_nltData.active.length}</div>
-                    <div class="nlt-metric-sub">Currently in training</div>
+            <div class="nlt-metrics-row" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="nlt-metric-tile" onclick="showNLTOpenings()" style="background:linear-gradient(135deg,rgba(139,92,246,0.18),rgba(109,40,217,0.10)); border:2px solid rgba(139,92,246,0.5); cursor:pointer; transition:transform 0.2s,box-shadow 0.2s;" onmouseenter="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(139,92,246,0.35)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
+                    <div class="nlt-metric-label">Job Openings</div>
+                    <div class="nlt-metric-value" style="color:#a78bfa;">${openCount}</div>
+                    <div class="nlt-metric-sub">Leadership roles available</div>
                 </div>
-                <div class="nlt-metric-tile nlt-metric-graduated" onclick="showNLTGraduatedList()">
-                    <div class="nlt-metric-label">Graduated NLTs</div>
-                    <div class="nlt-metric-value" style="color:#f59e0b;">${_nltData.graduated.length}</div>
-                    <div class="nlt-metric-sub">Successfully completed</div>
+                <div class="nlt-metric-tile nlt-metric-active" onclick="showNLTActiveList()">
+                    <div class="nlt-metric-label">Current NLTs</div>
+                    <div class="nlt-metric-value" style="color:#0d9488;">${_nltData.active.length}</div>
+                    <div class="nlt-metric-sub">In training</div>
                 </div>
                 <div class="nlt-metric-tile nlt-metric-transitions" onclick="showNLTTransitionsList()">
                     <div class="nlt-metric-label">MIT → NLT</div>
                     <div class="nlt-metric-value" style="color:#3b82f6;">${_nltData.transitions.length}</div>
                     <div class="nlt-metric-sub">Transitions</div>
+                </div>
+                <div class="nlt-metric-tile nlt-metric-graduated" onclick="showNLTGraduatedList()">
+                    <div class="nlt-metric-label">Graduated</div>
+                    <div class="nlt-metric-value" style="color:#f59e0b;">${_nltData.graduated.length}</div>
+                    <div class="nlt-metric-sub">Completed</div>
                 </div>
             </div>`;
         }
@@ -4948,14 +5001,14 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function nltSectionHeader(title, color) {
-            return `<button onclick="nltBackToTiles()" class="nlt-section-back">← Back to NLT Overview</button>
-                    <h3 style="color:${color}; margin:0 0 16px; font-size:1.25rem; border-bottom:2px solid ${color}44; padding-bottom:8px;">${title}</h3>`;
+        function _nltEnterSection(title, color) {
+            _nltShowOverviewBtn(true);
+            return `<h3 style="color:${color}; margin:0 0 16px; font-size:1.25rem; border-bottom:2px solid ${color}44; padding-bottom:8px;">${title}</h3>`;
         }
 
         function showNLTActiveList() {
             const container = document.getElementById('nltDashboardContent');
-            let html = nltSectionHeader('Active NLTs (' + _nltData.active.length + ')', '#0d9488');
+            let html = _nltEnterSection('Current NLTs (' + _nltData.active.length + ')', '#0d9488');
             if (_nltData.active.length > 0) {
                 html += '<div class="nlt-cards-grid">' + _nltData.active.map(c => renderNLTActiveCard(c)).join('') + '</div>';
             } else {
@@ -4967,7 +5020,7 @@
 
         function showNLTGraduatedList() {
             const container = document.getElementById('nltDashboardContent');
-            let html = nltSectionHeader('Graduated NLTs (' + _nltData.graduated.length + ')', '#f59e0b');
+            let html = _nltEnterSection('Graduated NLTs (' + _nltData.graduated.length + ')', '#f59e0b');
             if (_nltData.graduated.length > 0) {
                 html += '<div class="nlt-cards-grid">' + _nltData.graduated.map(c => renderNLTGraduatedCard(c)).join('') + '</div>';
             } else {
@@ -4979,7 +5032,7 @@
 
         function showNLTTransitionsList() {
             const container = document.getElementById('nltDashboardContent');
-            let html = nltSectionHeader('MIT → NLT Transitions (' + _nltData.transitions.length + ')', '#3b82f6');
+            let html = _nltEnterSection('MIT → NLT Transitions (' + _nltData.transitions.length + ')', '#3b82f6');
             if (_nltData.transitions.length > 0) {
                 html += '<div class="nlt-cards-grid">' + _nltData.transitions.map(c => renderNLTTransitionCard(c)).join('') + '</div>';
             } else {
@@ -4987,6 +5040,156 @@
             }
             container.innerHTML = html;
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ── NLT Job Openings View ── */
+        const _nltRegionColors = {
+            'West':      { bg: 'rgba(59,130,246,0.15)', text: '#3b82f6', border: 'rgba(59,130,246,0.5)', accent: '#3b82f6' },
+            'Midwest':   { bg: 'rgba(16,185,129,0.15)', text: '#10b981', border: 'rgba(16,185,129,0.5)', accent: '#10b981' },
+            'South':     { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b', border: 'rgba(245,158,11,0.5)', accent: '#f59e0b' },
+            'Northeast': { bg: 'rgba(139,92,246,0.15)',  text: '#a78bfa', border: 'rgba(139,92,246,0.5)', accent: '#a78bfa' },
+            'Other':     { bg: 'rgba(148,163,184,0.15)', text: '#94a3b8', border: 'rgba(148,163,184,0.5)', accent: '#94a3b8' },
+        };
+
+        function showNLTOpenings() {
+            if (!_nltData.openings) return;
+            const d = _nltData.openings;
+            const positions = d.positions || [];
+            const container = document.getElementById('nltDashboardContent');
+
+            const regionOrder = ['West', 'Midwest', 'South', 'Northeast', 'Other'];
+            const grouped = {};
+            positions.forEach(p => { const r = p.region || 'Other'; (grouped[r] = grouped[r] || []).push(p); });
+
+            const verticals = [...new Set(positions.map(p => p.vertical).filter(Boolean))].sort();
+            const topVertical = (() => {
+                const vc = {}; positions.forEach(p => { const v = p.vertical || 'N/A'; vc[v] = (vc[v]||0)+1; });
+                const s = Object.entries(vc).sort((a,b)=>b[1]-a[1]); return s.length ? s[0][0] : 'N/A';
+            })();
+
+            let html = _nltEnterSection('Job Openings — Leadership Roles', '#a78bfa');
+
+            html += `<div style="margin-bottom:24px;padding:20px;background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04));border-radius:12px;border:1px solid rgba(255,255,255,0.15);">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:16px;text-align:center;">
+                    <div><div style="font-size:28px;font-weight:700;color:#a78bfa;">${d.total_positions}</div><div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;">Open Roles</div></div>
+                    <div><div style="font-size:28px;font-weight:700;color:#fff;">${d.total_openings}</div><div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;">Total Openings</div></div>
+                    <div><div style="font-size:28px;font-weight:700;color:#fff;">${d.region_count}</div><div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;">Regions</div></div>
+                    <div><div style="font-size:28px;font-weight:700;color:#fff;">${verticals.length}</div><div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;">Verticals</div></div>
+                    <div><div style="font-size:18px;font-weight:600;color:#3b82f6;">${topVertical}</div><div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;">Top Vertical</div></div>
+                </div>
+            </div>`;
+
+            html += `<div style="margin-bottom:18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <span style="color:rgba(255,255,255,0.7);font-size:12px;font-weight:600;margin-right:6px;">Filter:</span>`;
+            regionOrder.forEach(region => {
+                const rc = (grouped[region]||[]).length;
+                if (!rc) return;
+                const c = _nltRegionColors[region] || _nltRegionColors['Other'];
+                html += `<button onclick="filterNLTOpenings('${region}')" style="background:${c.bg};color:${c.text};border:2px solid ${c.border};padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">${region} (${rc})</button>`;
+            });
+            html += `<button onclick="filterNLTOpenings('all')" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);border:2px solid rgba(255,255,255,0.25);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;">All</button>`;
+            if (verticals.length > 1) {
+                html += `<select onchange="filterNLTOpeningsByVertical(this.value)" style="background:rgba(255,255,255,0.08);color:#e2e8f0;border:1px solid rgba(255,255,255,0.25);padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;margin-left:6px;"><option value="all">All Verticals</option>`;
+                verticals.forEach(v => { html += `<option value="${v}">${v}</option>`; });
+                html += `</select>`;
+            }
+            html += `</div>`;
+
+            html += `<div id="nltOpeningsRegions">`;
+            regionOrder.forEach(region => {
+                if (!grouped[region]) return;
+                const c = _nltRegionColors[region] || _nltRegionColors['Other'];
+                html += renderNLTRegionBlock(region, grouped[region], c);
+            });
+            for (const region of Object.keys(grouped)) {
+                if (!regionOrder.includes(region)) {
+                    const c = _nltRegionColors['Other'];
+                    html += renderNLTRegionBlock(region, grouped[region], c);
+                }
+            }
+            html += `</div>`;
+
+            container.innerHTML = html;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderNLTRegionBlock(region, positions, colors) {
+            const id = 'nltRegion_' + region.replace(/\s/g,'');
+            return `
+            <div class="nlt-region-block" data-region="${region}" style="margin-bottom:12px;">
+                <div onclick="document.getElementById('${id}').style.display = document.getElementById('${id}').style.display==='none'?'block':'none'; this.querySelector('.chevron').textContent = document.getElementById('${id}').style.display==='none'?'▶':'▼'"
+                     style="background:${colors.bg};border:2px solid ${colors.border};border-radius:10px;padding:14px 20px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all .2s;"
+                     onmouseenter="this.style.transform='translateY(-2px)'" onmouseleave="this.style.transform=''">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:1.1rem;font-weight:700;color:${colors.text};">${region}</span>
+                        <span style="background:${colors.text};color:#0f172a;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;">${positions.length}</span>
+                    </div>
+                    <span class="chevron" style="color:${colors.text};font-size:0.85rem;">▼</span>
+                </div>
+                <div id="${id}" style="display:block; padding-top:10px;">
+                    <div class="nlt-cards-grid">
+                        ${positions.map(p => renderNLTOpeningCard(p, colors)).join('')}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderNLTOpeningCard(p, colors) {
+            const agingColor = p.days_open > 55 ? '#ef4444' : p.days_open > 30 ? '#f59e0b' : '#10b981';
+            return `
+            <div style="background:linear-gradient(135deg,rgba(26,32,44,0.95),rgba(45,55,72,0.95));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 2px 8px rgba(0,0,0,0.25);transition:all .2s;"
+                 onmouseenter="this.style.transform='translateY(-2px)';this.style.borderColor='${colors.border}'" onmouseleave="this.style.transform='';this.style.borderColor='rgba(255,255,255,0.1)'">
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
+                    <h4 style="margin:0;color:#e2e8f0;font-size:0.95rem;font-weight:700;flex:1;">${p.title}</h4>
+                    ${p.openings > 1 ? `<span style="background:rgba(139,92,246,0.2);color:#a78bfa;border:1px solid rgba(139,92,246,0.4);padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;white-space:nowrap;margin-left:8px;">${p.openings} spots</span>` : ''}
+                </div>
+                ${p.vertical ? `<div style="color:${colors.text};font-size:0.78rem;font-weight:600;margin-bottom:8px;">${p.vertical}</div>` : ''}
+                <div style="background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;border-left:3px solid ${colors.accent};">
+                    <div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:0.8rem;">
+                        <span style="color:rgba(255,255,255,0.45);">Location:</span>
+                        <span style="color:#e2e8f0;">${p.location || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.45);">Recruiter:</span>
+                        <span style="color:#e2e8f0;">${p.recruiter || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.45);">Manager:</span>
+                        <span style="color:#e2e8f0;">${p.supervisor || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.45);">Days Open:</span>
+                        <span style="color:${agingColor};font-weight:600;">${p.days_open}d <span style="font-weight:400;opacity:.7;">(${p.aging})</span></span>
+                        <span style="color:rgba(255,255,255,0.45);">Candidates:</span>
+                        <span style="color:#e2e8f0;">${p.active_candidates} active / ${p.candidates_applied} applied</span>
+                    </div>
+                </div>
+                <div style="margin-top:8px;font-size:0.7rem;color:rgba(255,255,255,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.req_id}</div>
+            </div>`;
+        }
+
+        function filterNLTOpenings(region) {
+            const blocks = document.querySelectorAll('.nlt-region-block');
+            blocks.forEach(b => {
+                b.style.display = (region === 'all' || b.dataset.region === region) ? 'block' : 'none';
+            });
+        }
+
+        function filterNLTOpeningsByVertical(vertical) {
+            if (!_nltData.openings) return;
+            const positions = _nltData.openings.positions || [];
+            const filtered = vertical === 'all' ? positions : positions.filter(p => p.vertical === vertical);
+            const regionOrder = ['West', 'Midwest', 'South', 'Northeast', 'Other'];
+            const grouped = {};
+            filtered.forEach(p => { const r = p.region || 'Other'; (grouped[r] = grouped[r] || []).push(p); });
+            const regionsEl = document.getElementById('nltOpeningsRegions');
+            if (!regionsEl) return;
+            let html = '';
+            regionOrder.forEach(region => {
+                if (!grouped[region]) return;
+                const c = _nltRegionColors[region] || _nltRegionColors['Other'];
+                html += renderNLTRegionBlock(region, grouped[region], c);
+            });
+            for (const region of Object.keys(grouped)) {
+                if (!regionOrder.includes(region)) {
+                    html += renderNLTRegionBlock(region, grouped[region], _nltRegionColors['Other']);
+                }
+            }
+            regionsEl.innerHTML = html || '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.5);">No openings for this vertical.</div>';
         }
 
         function showAllCandidates() {

@@ -1164,6 +1164,198 @@ def fetch_open_positions_data() -> List[Dict[str, Any]]:
         # Return empty list on error
         return []
 
+_US_STATE_NAMES = {
+    'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR',
+    'california': 'CA', 'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE',
+    'florida': 'FL', 'georgia': 'GA', 'hawaii': 'HI', 'idaho': 'ID',
+    'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA', 'kansas': 'KS',
+    'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+    'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS',
+    'missouri': 'MO', 'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV',
+    'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+    'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH', 'oklahoma': 'OK',
+    'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI',
+    'south carolina': 'SC', 'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX',
+    'utah': 'UT', 'vermont': 'VT', 'virginia': 'VA', 'washington': 'WA',
+    'west virginia': 'WV', 'wisconsin': 'WI', 'wyoming': 'WY',
+}
+
+_ALL_STATE_ABBRS = set(_US_STATE_NAMES.values())
+
+import re as _re
+
+def _extract_state_from_location(loc: str) -> str:
+    """Best-effort extraction of US state abbreviation from Workday location string."""
+    if not loc or not isinstance(loc, str):
+        return ''
+    loc = loc.strip()
+
+    # "Remote - Illinois" / "Remote - New Hampshire"
+    m = _re.search(r'Remote\s*-\s*(.+)', loc, _re.IGNORECASE)
+    if m:
+        state_name = m.group(1).strip().lower()
+        if state_name in _US_STATE_NAMES:
+            return _US_STATE_NAMES[state_name]
+
+    # ", ST" pattern  e.g. "Mt. Pleasant, WI" or "St. Louis, MO"
+    m = _re.search(r',\s*([A-Z]{2})\b', loc)
+    if m and m.group(1) in _ALL_STATE_ABBRS:
+        return m.group(1)
+
+    # "- STATE" at end of description  e.g. "CBRE - ELI LILLY - LEBANON IN"
+    m = _re.search(r'\b([A-Z]{2})\s*$', loc)
+    if m and m.group(1) in _ALL_STATE_ABBRS:
+        return m.group(1)
+
+    # State code embedded in the location code prefix (e.g. JONE95ATLGA → GA, REMOTEIL → IL)
+    code_part = loc.split()[0] if ' ' in loc else loc
+    if len(code_part) >= 2:
+        suffix = code_part[-2:].upper()
+        if suffix in _ALL_STATE_ABBRS:
+            return suffix
+
+    # Fallback: known city names in the location text
+    loc_lower = loc.lower()
+    _CITY_STATE = {
+        'detroit': 'MI', 'milford': 'MI', 'royal oak': 'MI', 'monroe': 'MI',
+        'cambridge': 'MA', 'boston': 'MA',
+        'san francisco': 'CA', 'sunnyvale': 'CA', 'fremont': 'CA', 'palo alto': 'CA',
+        'menlo': 'CA', 'alameda': 'CA', 'la verne': 'CA', 'tusca': 'CA', 'mcclellan': 'CA',
+        'bloomfield': 'CT',
+        'st louis': 'MO', 'st. louis': 'MO',
+        'redmond': 'WA', 'beaverton': 'OR', 'tualatin': 'OR', 'portland': 'OR',
+        'the dalles': 'OR',
+        'dallas': 'TX', 'irving': 'TX', 'san antonio': 'TX', 'austin': 'TX', 'abilene': 'TX',
+        'atlanta': 'GA', 'fayetteville': 'GA',
+        'zebulon': 'NC', 'durham': 'NC', 'wilmington': 'NC', 'apex': 'NC', 'concord': 'NC', 'asheville': 'NC',
+        'indianapolis': 'IN', 'lebanon': 'IN', 'raymond': 'OH',
+        'cincinnati': 'OH', 'evendale': 'OH', 'tipp': 'OH',
+        'lone tree': 'CO', 'denver': 'CO',
+        'wichita': 'KS', 'wichi': 'KS',
+        'shippensburg': 'PA', 'new stanton': 'PA', 'rahway': 'NJ',
+        'portsmouth': 'NH', 'lehi': 'UT', 'salt lake': 'UT',
+        'davenport': 'FL', 'huntley': 'IL', 'chicago': 'IL',
+        'kauai': 'HI', 'aspen': 'CO',
+        'mt. pleasant': 'WI', 'mt pleasant': 'WI',
+        'amazon - ind': 'IN', 'amazon - mdw': 'IL', 'amazon - sba': 'AZ',
+        'amazon - gyr': 'AZ', 'amazon - aza': 'AZ',
+        'honda': 'OH',
+        'east mod district': 'WA', 'msft - bn1': 'WA',
+    }
+    for city, st in _CITY_STATE.items():
+        if city in loc_lower:
+            return st
+
+    return ''
+
+
+def parse_job_requisitions_csv() -> list:
+    """
+    Parse the local Open Job Requisitions CSV and return NLT-relevant
+    leadership openings with region / vertical / offer-status metadata.
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(base_dir, 'Open Job Requisitions_3.9.2026.csv')
+    if not os.path.exists(csv_path):
+        logger.warning(f"Job requisitions CSV not found at {csv_path}")
+        return []
+
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception as e:
+        logger.error(f"Error reading job requisitions CSV: {e}")
+        return []
+
+    _IGNORE_PROFILES = {
+        'general laborer', 'groundskeeper', 'housekeeping specialist',
+        'personal assistant', 'hr generalist', 'talent acquisition specialist',
+        'ux engineer', 'social media manager', 'proposal manager',
+        'proposal director', 'executive assistant', 'senior integration engineer',
+        'lead payroll analyst', 'ap escalation specialist',
+        'it, implementation, and support technician i',
+    }
+
+    positions = []
+    for _, row in df.iterrows():
+        family = str(row.get('Job Family Group', '')).strip()
+        if family not in ('Ops', 'Corporate'):
+            continue
+
+        profile = str(row.get('Job Profile (Basic)', '')).strip()
+        if profile.lower() in _IGNORE_PROFILES:
+            continue
+
+        req_text = str(row.get('Job Requisition', '')).strip()
+        all_profiles = str(row.get('All Job Profiles', '')).strip()
+
+        # Offer status – YES means position is being filled → not truly open
+        offer = str(row.get('Groundskeeper', '')).strip().lower() == 'yes'
+
+        # Number of openings
+        try:
+            openings = int(float(row.get('Number of Openings Available', 1) or 1))
+        except (ValueError, TypeError):
+            openings = 1
+        if openings <= 0 and not offer:
+            continue
+
+        # Is this a training role?
+        is_training = ('training' in profile.lower()
+                       or 'mit' in req_text.lower()
+                       or 'evergreen' in req_text.lower())
+
+        # Vertical from "All Job Profiles" (e.g. "Site Manager, Distribution")
+        vertical = ''
+        if ',' in all_profiles:
+            vertical = all_profiles.split(',', 1)[1].strip()
+
+        # Location & region
+        location_raw = str(row.get('Job Requisition Primary Location', '')).strip()
+        state = _extract_state_from_location(location_raw)
+        region = get_region_from_state(state)
+
+        # Friendly location text
+        loc_desc = location_raw.split(' ', 1)[1] if ' ' in location_raw else location_raw
+
+        try:
+            days_open = int(float(row.get('Days Job Requisition Open by Recruiting Start Date', 0) or 0))
+        except (ValueError, TypeError):
+            days_open = 0
+
+        try:
+            applied = int(float(row.get('All candidates Applied', 0) or 0))
+        except (ValueError, TypeError):
+            applied = 0
+
+        try:
+            active_cands = int(float(row.get('All active candidates', 0) or 0))
+        except (ValueError, TypeError):
+            active_cands = 0
+
+        positions.append({
+            'req_id': req_text,
+            'title': profile,
+            'all_profiles': all_profiles,
+            'vertical': vertical,
+            'location': loc_desc,
+            'state': state,
+            'region': region,
+            'openings': openings,
+            'offer_extended': offer,
+            'is_training': is_training,
+            'recruiter': str(row.get('Primary Recruiters', '')).strip().split('(')[0].strip(),
+            'supervisor': str(row.get('Supervisory Organization', '')).strip().split('(')[0].strip(),
+            'aging': str(row.get('Aging Range', '')).strip(),
+            'days_open': days_open,
+            'candidates_applied': applied,
+            'active_candidates': active_cands,
+        })
+
+    logger.info(f"Parsed {len(positions)} positions from job requisitions CSV "
+                f"({sum(1 for p in positions if not p['offer_extended'] and not p['is_training'])} truly open leadership roles)")
+    return positions
+
+
 def _read_csv_normalized(url: str, dtype: Optional[Dict[str, Any]] = None, skiprows: Optional[int] = None) -> pd.DataFrame:
     """
     Helper: read CSV from URL and normalize headers (strip spaces, collapse, replace NBSP).
