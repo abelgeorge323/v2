@@ -1832,6 +1832,119 @@ def process_candidate_data(row: pd.Series) -> Dict[str, Any]:
     return candidate_data
 
 # =============================================================================
+# NLT (NEW LEADER TRAINING) DATA FUNCTIONS
+# =============================================================================
+
+def fetch_nlt_candidates() -> List[Dict[str, Any]]:
+    """
+    Fetch active NLT/SNLT candidates from the main Google Sheet (gid=0).
+    Same sheet as MIT but filtered to NLT_PROGRAMS and not yet complete.
+    """
+    try:
+        df = _read_csv_normalized(GOOGLE_SHEETS_URL, dtype=str)
+        df = standardize_columns(df)
+
+        if 'Company Start Date' in df.columns and 'Company Start Date Original' not in df.columns:
+            df['Company Start Date Original'] = df['Company Start Date'].copy()
+
+        if 'Training Program' not in df.columns:
+            logger.warning("Training Program column missing – cannot fetch NLT candidates")
+            return []
+
+        df = df[df['Training Program'].isin(NLT_PROGRAMS)]
+
+        completion_col = 'Completion Status' if 'Completion Status' in df.columns else None
+        if completion_col:
+            df = df[~df[completion_col].astype(str).str.strip().str.lower().eq('complete')]
+
+        df = df[df['MIT Name'].astype(str).str.strip().ne('')]
+
+        results: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            name_val = str(safe_get(row, 'MIT Name', '')).strip()
+            if not name_val:
+                continue
+            week_value = calculate_week_from_start_date(safe_get(row, 'Company Start Date'))
+            results.append({
+                'name': name_val,
+                'training_site': str(safe_get(row, 'Training Site', safe_get(row, 'Ops Account- Location', 'TBD'))),
+                'location': str(safe_get(row, 'Location', 'TBD')),
+                'mentor_name': str(safe_get(row, 'Mentor Name', 'TBD')),
+                'week': week_value,
+                'status': str(safe_get(row, 'Status', 'TBD')),
+                'training_program': str(safe_get(row, 'Training Program', 'NLT')),
+                'title': str(safe_get(row, 'Title', 'TBD')),
+                'vertical': str(safe_get(row, 'Vertical', 'TBD')),
+                'salary': parse_salary(safe_get(row, 'Salary', 0)),
+                'company_start_date': str(safe_get(row, 'Company Start Date Original', 'TBD')),
+                'training_start_date': str(safe_get(row, 'Training Start Date', 'TBD')),
+                'expected_graduation': str(safe_get(row, 'Expected Graduation Week', 'TBD')),
+                'completion_status': str(safe_get(row, 'Completion Status', '')).strip(),
+                'assessment_score': str(safe_get(row, 'Assessment Score', '')).strip(),
+                'confidence_score': str(safe_get(row, 'Confidence Score', '')).strip(),
+                'skill_ranking': str(safe_get(row, 'Skill Ranking', '')).strip(),
+            })
+        logger.info(f"Fetched {len(results)} active NLT/SNLT candidates from main sheet")
+        return results
+    except Exception as e:
+        logger.error(f"Error fetching NLT candidates: {e}")
+        return []
+
+
+def fetch_graduated_nlts() -> List[Dict[str, Any]]:
+    """
+    Fetch graduated NLT/SNLT candidates from the fallback sheet (gid=1149285782).
+    Filters to NLT_PROGRAMS with Completion Status = 'Complete'.
+    """
+    try:
+        df = _read_csv_normalized(FALLBACK_CANDIDATE_SHEET_URL, dtype=str)
+
+        if len(df.columns) > 0:
+            df = df.drop(df.columns[0], axis=1)
+
+        df = standardize_columns(df)
+
+        if 'Training Program' not in df.columns:
+            logger.warning("Training Program column missing in fallback sheet – cannot fetch graduated NLTs")
+            return []
+
+        df = df[df['Training Program'].isin(NLT_PROGRAMS)]
+
+        completion_col = 'Completion Status' if 'Completion Status' in df.columns else None
+        if completion_col:
+            df = df[df[completion_col].astype(str).str.strip().str.lower().eq('complete')]
+        else:
+            logger.warning("Completion Status column missing – returning all NLT rows from fallback")
+
+        df = df[df['MIT Name'].astype(str).str.strip().ne('')]
+
+        results: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            name_val = str(safe_get(row, 'MIT Name', '')).strip()
+            if not name_val:
+                continue
+            results.append({
+                'name': name_val,
+                'title': str(safe_get(row, 'Title', 'TBD')),
+                'training_site': str(safe_get(row, 'Training Site', safe_get(row, 'Ops Account- Location', 'TBD'))),
+                'location': str(safe_get(row, 'Location', 'TBD')),
+                'vertical': str(safe_get(row, 'Vertical', 'TBD')),
+                'training_program': str(safe_get(row, 'Training Program', 'NLT')),
+                'mentor_name': str(safe_get(row, 'Mentor Name', 'TBD')),
+                'company_start_date': str(safe_get(row, 'Company Start Date Original', safe_get(row, 'Company Start Date', 'TBD'))),
+                'completion_status': 'Complete',
+                'assessment_score': str(safe_get(row, 'Assessment Score', '')).strip(),
+                'skill_ranking': str(safe_get(row, 'Skill Ranking', '')).strip(),
+                'expected_graduation': str(safe_get(row, 'Expected Graduation Week', 'TBD')),
+            })
+        logger.info(f"Fetched {len(results)} graduated NLT/SNLT candidates from fallback sheet")
+        return results
+    except Exception as e:
+        logger.error(f"Error fetching graduated NLTs: {e}")
+        return []
+
+
+# =============================================================================
 # LOGGING UTILITIES
 # =============================================================================
 

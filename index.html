@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>MIT Candidate Training Dashboard</title>
+    <title>Candidate Training Dashboard</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -2377,24 +2377,74 @@
 <body>
     <div class="container">
         <!-- Header -->
-        <header class="header">
-            <h1>🎓 MIT Candidate Training Dashboard</h1>
-            <p>Real-time candidate tracking and performance analytics</p>
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px; flex-wrap: wrap;">
+        <header class="header" id="mainHeader">
+            <h1 id="headerTitle">🎓 Candidate Training Dashboard</h1>
+            <p id="headerSubtitle">Real-time candidate tracking and performance analytics</p>
+            <div id="headerButtons" style="display: none; gap: 10px; justify-content: center; margin-top: 10px; flex-wrap: wrap;">
+                <button onclick="showLandingPage()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">← Pipelines</button>
                 <button onclick="forceRefresh()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">🔄 Force Refresh</button>
                 <a href="/executive-print" target="_blank" style="background: #3b82f6; border: 1px solid #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; text-decoration: none; display: inline-block; transition: all 0.2s ease;">📊 Executive Summary</a>
                 <button onclick="showOverview()" style="background: #10b981; border: 1px solid #10b981; color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">📋 Overview</button>
             </div>
         </header>
 
-        <!-- Dashboard Page -->
-        <main class="page active" id="dashboard">
+        <!-- Landing Page: Pipeline Selection -->
+        <main class="page active" id="landingPage">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 40px; padding: 40px 20px;">
+                <div style="text-align: center; max-width: 600px;">
+                    <h2 style="color: #e2e8f0; font-size: 1.8rem; font-weight: 700; margin-bottom: 10px;">Select a Training Pipeline</h2>
+                    <p style="color: rgba(255,255,255,0.6); font-size: 1rem;">Choose a pathway to view candidate tracking and analytics.</p>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; width: 100%; max-width: 700px;">
+                    <!-- MIT Pipeline Card -->
+                    <div onclick="enterMITDashboard()" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); border-radius: 16px; padding: 40px 30px; cursor: pointer; border: 2px solid #3b82f6; transition: all 0.3s ease; text-align: center;"
+                         onmouseenter="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 16px 40px rgba(37,99,235,0.45)';"
+                         onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <div style="font-size: 3rem; margin-bottom: 16px;">🎓</div>
+                        <h3 style="color: #fff; font-size: 1.5rem; font-weight: 700; margin: 0 0 8px;">MIT Pipeline</h3>
+                        <p style="color: rgba(255,255,255,0.8); font-size: 0.95rem; margin: 0 0 20px;">Manager in Training &amp; Senior MIT candidates</p>
+                        <div id="landingMitCount" style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 20px; display: inline-block;">
+                            <span style="color: #93c5fd; font-size: 0.85rem;">Active Candidates: </span>
+                            <span style="color: #fff; font-weight: 700; font-size: 1.1rem;">—</span>
+                        </div>
+                    </div>
+                    <!-- NLT Pipeline Card -->
+                    <div onclick="enterNLTDashboard()" style="background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%); border-radius: 16px; padding: 40px 30px; cursor: pointer; border: 2px solid #0d9488; transition: all 0.3s ease; text-align: center;"
+                         onmouseenter="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 16px 40px rgba(13,148,136,0.45)';"
+                         onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                        <div style="font-size: 3rem; margin-bottom: 16px;">🚀</div>
+                        <h3 style="color: #fff; font-size: 1.5rem; font-weight: 700; margin: 0 0 8px;">NLT Pipeline</h3>
+                        <p style="color: rgba(255,255,255,0.8); font-size: 0.95rem; margin: 0 0 20px;">New Leader Training &amp; Senior NLT candidates</p>
+                        <div id="landingNltCount" style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 20px; display: inline-block;">
+                            <span style="color: #5eead4; font-size: 0.85rem;">Active Candidates: </span>
+                            <span style="color: #fff; font-weight: 700; font-size: 1.1rem;">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- MIT Dashboard Page -->
+        <main class="page" id="dashboard">
             <div class="dashboard">
                 <div class="metrics-grid" id="metricsGrid">
                     <div class="loading">Loading metrics...</div>
                 </div>
             </div>
         </main>
+
+        <!-- NLT Dashboard Page -->
+        <div class="page" id="nltDashboard">
+            <div class="candidates-container">
+                <div class="sticky-back-nav">
+                    <button onclick="showLandingPage()" class="back-btn">← Back to Pipelines</button>
+                </div>
+                <h2 style="color: #0d9488;">🚀 NLT — New Leader Training</h2>
+                <div id="nltDashboardContent">
+                    <div class="loading">Loading NLT dashboard...</div>
+                </div>
+            </div>
+        </div>
 
         <!-- Candidate List Page -->
         <div class="page" id="candidateList">
@@ -2569,8 +2619,8 @@
         }
 
         // Global state
-        let currentPage = 'dashboard';
-        let previousPage = 'dashboard'; // Track the previous page for back navigation
+        let currentPage = 'landing';
+        let previousPage = 'landing';
         let candidates = [];
         let positions = [];
         
@@ -2784,16 +2834,6 @@
                     };
                 }
 
-                // Fetch NLT transition count
-                try {
-                    const nltResponse = await fetch(`${API_BASE_URL}/api/nlt-candidates${getCacheBust()}`);
-                    const nltData = await nltResponse.json();
-                    data.nlt_count = nltData.total || 0;
-                } catch (err) {
-                    console.warn('Could not fetch NLT candidates:', err);
-                    data.nlt_count = 0;
-                }
-                
                 renderMetrics(data);
                 
             } catch (error) {
@@ -2842,14 +2882,6 @@
                     <div class="metric-label" style="color: #fff; font-weight: 700;">🎓 MIT Alumni</div>
                     <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${data.alumni_metrics?.total_alumni || 0}</div>
                     <div class="metric-change" style="color: rgba(255,255,255,0.9);">Successfully placed</div>
-                </div>
-                <div class="metric-card nlt-tile" onclick="showNLTCandidates()" 
-                     style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); cursor: pointer; border: 2px solid #0d9488; transition: all 0.3s ease;"
-                     onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(13, 148, 136, 0.4)';"
-                     onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';">
-                    <div class="metric-label" style="color: #fff; font-weight: 700;">🔄 NLT Transitions</div>
-                    <div class="metric-value" style="color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${data.nlt_count || 0}</div>
-                    <div class="metric-change" style="color: rgba(255,255,255,0.9);">New Leader Training</div>
                 </div>
                 <div class="metric-card pipeline" onclick="showPipelineView()" 
                      style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); cursor: pointer; border: 2px solid #8b5cf6; transition: all 0.3s ease;"
@@ -4599,17 +4631,243 @@
         }
 
         // Navigation functions
+        function showLandingPage() {
+            hideAllPages();
+            document.getElementById('landingPage').classList.add('active');
+            previousPage = currentPage;
+            currentPage = 'landing';
+            document.getElementById('headerTitle').textContent = '🎓 Candidate Training Dashboard';
+            document.getElementById('headerSubtitle').textContent = 'Real-time candidate tracking and performance analytics';
+            document.getElementById('headerButtons').style.display = 'none';
+            loadLandingCounts();
+        }
+
+        function enterMITDashboard() {
+            hideAllPages();
+            document.getElementById('dashboard').classList.add('active');
+            previousPage = 'landing';
+            currentPage = 'dashboard';
+            document.getElementById('headerTitle').textContent = '🎓 MIT Pipeline';
+            document.getElementById('headerSubtitle').textContent = 'Manager in Training — Performance tracking & placement';
+            document.getElementById('headerButtons').style.display = 'flex';
+            loadDashboardData();
+        }
+
+        function enterNLTDashboard() {
+            hideAllPages();
+            document.getElementById('nltDashboard').classList.add('active');
+            previousPage = 'landing';
+            currentPage = 'nlt_dashboard';
+            document.getElementById('headerTitle').textContent = '🚀 NLT Pipeline';
+            document.getElementById('headerSubtitle').textContent = 'New Leader Training — Tracking & graduation';
+            document.getElementById('headerButtons').style.display = 'none';
+            loadNLTDashboardData();
+        }
+
         function showDashboard() {
             hideAllPages();
             document.getElementById('dashboard').classList.add('active');
             previousPage = currentPage;
             currentPage = 'dashboard';
+            document.getElementById('headerTitle').textContent = '🎓 MIT Pipeline';
+            document.getElementById('headerSubtitle').textContent = 'Manager in Training — Performance tracking & placement';
+            document.getElementById('headerButtons').style.display = 'flex';
+        }
+
+        async function loadLandingCounts() {
+            try {
+                const [dashRes, nltRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/api/dashboard-data${getCacheBust()}`),
+                    fetch(`${API_BASE_URL}/api/nlt-dashboard${getCacheBust()}`)
+                ]);
+                const dashData = await dashRes.json();
+                const nltData = await nltRes.json();
+
+                const mitEl = document.getElementById('landingMitCount');
+                if (mitEl) mitEl.innerHTML = `<span style="color:#93c5fd;font-size:0.85rem;">Active Candidates: </span><span style="color:#fff;font-weight:700;font-size:1.1rem;">${dashData.total_candidates || 0}</span>`;
+
+                const nltEl = document.getElementById('landingNltCount');
+                if (nltEl) nltEl.innerHTML = `<span style="color:#5eead4;font-size:0.85rem;">Active Candidates: </span><span style="color:#fff;font-weight:700;font-size:1.1rem;">${nltData.active_count || 0}</span>`;
+            } catch (e) {
+                console.warn('Could not load landing counts:', e);
+            }
+        }
+
+        async function loadNLTDashboardData() {
+            const container = document.getElementById('nltDashboardContent');
+            container.innerHTML = '<div class="loading">Loading NLT dashboard...</div>';
+            try {
+                const data = await (await fetch(`${API_BASE_URL}/api/nlt-dashboard${getCacheBust()}`)).json();
+
+                const activeNLTs = data.active || [];
+                const graduatedNLTs = data.graduated || [];
+                const transitions = data.transitions || [];
+
+                let html = '';
+
+                // Metrics row
+                html += `
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; margin-bottom:30px;">
+                    <div style="background:linear-gradient(135deg,rgba(13,148,136,0.15),rgba(15,118,110,0.10)); border:2px solid rgba(13,148,136,0.4); border-radius:14px; padding:24px; text-align:center; cursor:pointer;" onclick="showNLTActiveList()">
+                        <div style="font-size:0.8rem; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Active NLTs</div>
+                        <div style="font-size:2.2rem; font-weight:700; color:#0d9488;">${activeNLTs.length}</div>
+                        <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); margin-top:4px;">Currently in training</div>
+                    </div>
+                    <div style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.10)); border:2px solid rgba(245,158,11,0.4); border-radius:14px; padding:24px; text-align:center; cursor:pointer;" onclick="showNLTGraduatedList()">
+                        <div style="font-size:0.8rem; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Graduated NLTs</div>
+                        <div style="font-size:2.2rem; font-weight:700; color:#f59e0b;">${graduatedNLTs.length}</div>
+                        <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); margin-top:4px;">Successfully completed</div>
+                    </div>
+                    <div style="background:linear-gradient(135deg,rgba(59,130,246,0.15),rgba(37,99,235,0.10)); border:2px solid rgba(59,130,246,0.4); border-radius:14px; padding:24px; text-align:center; cursor:pointer;" onclick="showNLTCandidates()">
+                        <div style="font-size:0.8rem; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">MIT → NLT</div>
+                        <div style="font-size:2.2rem; font-weight:700; color:#3b82f6;">${transitions.length}</div>
+                        <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); margin-top:4px;">Transitions</div>
+                    </div>
+                </div>`;
+
+                // Active NLTs section
+                html += `<h3 style="color:#0d9488; margin:30px 0 16px; font-size:1.25rem; border-bottom:2px solid rgba(13,148,136,0.3); padding-bottom:8px;">Active NLTs</h3>`;
+                if (activeNLTs.length > 0) {
+                    html += '<div class="candidates-grid">';
+                    html += activeNLTs.map(c => renderNLTActiveCard(c)).join('');
+                    html += '</div>';
+                } else {
+                    html += '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.5);">No active NLT candidates found in the current sheet.</div>';
+                }
+
+                // MIT-to-NLT Transitions section
+                if (transitions.length > 0) {
+                    html += `<h3 style="color:#3b82f6; margin:30px 0 16px; font-size:1.25rem; border-bottom:2px solid rgba(59,130,246,0.3); padding-bottom:8px;">MIT → NLT Transitions</h3>`;
+                    html += '<div class="candidates-grid">';
+                    html += transitions.map(c => renderNLTTransitionCard(c)).join('');
+                    html += '</div>';
+                }
+
+                // Graduated NLTs section
+                html += `<h3 style="color:#f59e0b; margin:30px 0 16px; font-size:1.25rem; border-bottom:2px solid rgba(245,158,11,0.3); padding-bottom:8px;">Graduated NLTs</h3>`;
+                if (graduatedNLTs.length > 0) {
+                    html += '<div class="candidates-grid">';
+                    html += graduatedNLTs.map(c => renderNLTGraduatedCard(c)).join('');
+                    html += '</div>';
+                } else {
+                    html += '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.5);">No graduated NLT candidates found.</div>';
+                }
+
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error loading NLT dashboard:', e);
+                container.innerHTML = `<div class="error">Error loading NLT dashboard: ${e.message}</div>`;
+            }
+        }
+
+        function renderNLTActiveCard(c) {
+            const programBadge = c.training_program === 'SNLT'
+                ? '<span style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;">SNLT</span>'
+                : '<span style="background:rgba(13,148,136,0.15);color:#0d9488;border:1px solid rgba(13,148,136,0.3);padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;">NLT</span>';
+            return `
+            <div style="background:linear-gradient(135deg,rgba(26,32,44,0.95),rgba(45,55,72,0.95)); padding:20px; border-radius:12px; border:2px solid rgba(13,148,136,0.35); box-shadow:0 4px 12px rgba(0,0,0,0.3); transition:all 0.2s ease;"
+                 onmouseenter="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(13,148,136,0.35)';"
+                 onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                    <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#e2e8f0;">${c.name}</h3>
+                    ${programBadge}
+                </div>
+                <div style="background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; border-left:3px solid #0d9488;">
+                    <div style="display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:0.85rem;">
+                        <span style="color:rgba(255,255,255,0.5);">Title:</span>
+                        <span style="color:#e2e8f0;">${c.title || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">Site:</span>
+                        <span style="color:#e2e8f0;">${c.training_site || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">Location:</span>
+                        <span style="color:#e2e8f0;">${c.location || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">Vertical:</span>
+                        <span style="color:#e2e8f0;">${c.vertical || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">Mentor:</span>
+                        <span style="color:#0d9488; font-weight:600;">${c.mentor_name || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">Week:</span>
+                        <span style="color:#0d9488; font-weight:600;">${c.week || 'N/A'}</span>
+                        ${c.completion_status ? `<span style="color:rgba(255,255,255,0.5);">Status:</span><span style="color:#e2e8f0;">${c.completion_status}</span>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderNLTTransitionCard(c) {
+            const imgHtml = c.profile_image
+                ? `<img src="${c.profile_image}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #3b82f6;" onerror="this.style.display='none'">`
+                : '';
+            return `
+            <div style="background:linear-gradient(135deg,rgba(26,32,44,0.95),rgba(45,55,72,0.95)); padding:20px; border-radius:12px; border:2px solid rgba(59,130,246,0.35); box-shadow:0 4px 12px rgba(0,0,0,0.3); transition:all 0.2s ease;"
+                 onmouseenter="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(59,130,246,0.35)';"
+                 onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                    ${imgHtml}
+                    <div>
+                        <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#3b82f6;">
+                            ${c.linkedin_url ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">${c.name}</a>` : c.name}
+                        </h3>
+                        <div style="color:rgba(255,255,255,0.5); font-size:0.8rem;">${c.training_site || ''}</div>
+                    </div>
+                </div>
+                <div style="background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; border-left:3px solid #3b82f6;">
+                    <div style="display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:0.85rem;">
+                        <span style="color:rgba(255,255,255,0.5);">Mentor:</span>
+                        <span style="color:#3b82f6; font-weight:600;">${c.mentor_name || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">MIT Week:</span>
+                        <span style="color:#3b82f6; font-weight:600;">${c.week || 'N/A'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">Transition:</span>
+                        <span style="color:#3b82f6; font-weight:600;">${c.transition_date || 'TBD'}</span>
+                        ${c.latest_mentor_score ? `<span style="color:rgba(255,255,255,0.5);">Score:</span><span style="color:#3b82f6; font-weight:600;">${c.latest_mentor_score.toFixed(2)}/5</span>` : ''}
+                    </div>
+                </div>
+                ${c.bio ? `<div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; color:rgba(255,255,255,0.7); font-size:0.8rem; line-height:1.4; margin-top:10px;">${c.bio}</div>` : ''}
+            </div>`;
+        }
+
+        function renderNLTGraduatedCard(c) {
+            return `
+            <div style="background:linear-gradient(135deg,rgba(26,32,44,0.95),rgba(45,55,72,0.95)); padding:20px; border-radius:12px; border:2px solid rgba(245,158,11,0.35); box-shadow:0 4px 12px rgba(0,0,0,0.3); transition:all 0.2s ease;"
+                 onmouseenter="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(245,158,11,0.35)';"
+                 onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)';">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                    <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#f59e0b;">${c.name}</h3>
+                    <span style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;">✓ Complete</span>
+                </div>
+                <div style="background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; border-left:3px solid #f59e0b;">
+                    <div style="display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:0.85rem;">
+                        <span style="color:rgba(255,255,255,0.5);">Title:</span>
+                        <span style="color:#e2e8f0;">${c.title || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">Site:</span>
+                        <span style="color:#e2e8f0;">${c.training_site || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">Vertical:</span>
+                        <span style="color:#e2e8f0;">${c.vertical || 'TBD'}</span>
+                        <span style="color:rgba(255,255,255,0.5);">Program:</span>
+                        <span style="color:#e2e8f0;">${c.training_program || 'NLT'}</span>
+                        ${c.assessment_score ? `<span style="color:rgba(255,255,255,0.5);">Assessment:</span><span style="color:#f59e0b; font-weight:600;">${c.assessment_score}</span>` : ''}
+                        ${c.skill_ranking ? `<span style="color:rgba(255,255,255,0.5);">Skill Rank:</span><span style="color:#f59e0b; font-weight:600;">${c.skill_ranking}</span>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function showNLTActiveList() {
+            const container = document.getElementById('nltDashboardContent');
+            const cards = container.querySelectorAll('.candidates-grid');
+            const headers = container.querySelectorAll('h3');
+            headers.forEach(h => { if (h.textContent.includes('Active')) h.scrollIntoView({behavior:'smooth', block:'start'}); });
+        }
+
+        function showNLTGraduatedList() {
+            const container = document.getElementById('nltDashboardContent');
+            const headers = container.querySelectorAll('h3');
+            headers.forEach(h => { if (h.textContent.includes('Graduated')) h.scrollIntoView({behavior:'smooth', block:'start'}); });
         }
 
         function showAllCandidates() {
             hideAllPages();
             document.getElementById('candidateList').classList.add('active');
-            ensureStickyBackButton('candidates'); // ✅ Add week filter for candidates
+            updateCandidateListBackButton('showDashboard()', '← Back to Dashboard');
+            ensureStickyBackButton('candidates');
             // Immediately clear old content and show loading
             document.getElementById('candidatesList').innerHTML = '<div class="loading">Loading candidates...</div>';
             document.querySelector('.candidates-container h2').textContent = '👥 Active MITs (All Candidates)';
@@ -5440,7 +5698,8 @@
                 document.getElementById('candidateList').classList.add('active');
                 const container = document.getElementById('candidatesList');
                 container.innerHTML = '<div class="loading">Loading NLT candidates...</div>';
-                document.querySelector('.candidates-container h2').textContent = '🔄 NLT — New Leader Training';
+                document.querySelector('#candidateList .candidates-container h2').textContent = '🔄 NLT — New Leader Training';
+                updateCandidateListBackButton('enterNLTDashboard()', '← Back to NLT Dashboard');
                 previousPage = currentPage;
                 currentPage = 'nlt_candidates';
 
@@ -5451,6 +5710,14 @@
                 document.getElementById('candidatesList').innerHTML =
                     `<div class="error">Error loading NLT candidates: ${error.message}</div>`;
             }
+        }
+
+        function updateCandidateListBackButton(onclick, label) {
+            const page = document.getElementById('candidateList');
+            page.querySelectorAll('.back-btn').forEach(btn => {
+                btn.setAttribute('onclick', onclick);
+                btn.textContent = label;
+            });
         }
 
         function renderNLTCandidates(nltList) {
@@ -6681,13 +6948,11 @@
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 MIT Dashboard loaded');
+            console.log('🚀 Candidate Training Dashboard loaded');
             
-            // Load cached profiles from localStorage
             loadCacheFromStorage();
             
-            // Load dashboard data
-            loadDashboardData();
+            showLandingPage();
         });
         
         // =====================================================================

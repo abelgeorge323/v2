@@ -54,6 +54,9 @@ TRANSITION_TRACKER_CSV = 'Transitions Tracker.csv'
 # Target training programs to include in the dashboard
 TARGET_PROGRAMS = ['MIT', 'SMIT']
 
+# NLT / Senior NLT programs (New Leader Training)
+NLT_PROGRAMS = ['NLT', 'SNLT']
+
 # =============================================================================
 # BUSINESS LESSON CONFIGURATION
 # =============================================================================

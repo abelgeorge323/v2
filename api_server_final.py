@@ -56,7 +56,9 @@ from utils import (
     headshot_slug,
     get_bio_for_name,
     get_sponsor_for_name,
-    get_note_for_name
+    get_note_for_name,
+    fetch_nlt_candidates,
+    fetch_graduated_nlts
 )
 from executive_report import collect_report_data, build_executive_email_data, build_executive_email_plain_text
 
@@ -1147,6 +1149,55 @@ def get_nlt_candidates():
         return response, 200
     except Exception as e:
         log_error("Error in NLT candidates endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+
+@app.route('/api/nlt-active', methods=['GET'])
+def get_nlt_active():
+    """Active NLT/SNLT candidates from the Google Sheet (not yet complete)."""
+    try:
+        candidates = fetch_nlt_candidates()
+        return jsonify({'candidates': candidates, 'total': len(candidates)}), 200
+    except Exception as e:
+        log_error("Error in NLT active endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+
+@app.route('/api/nlt-graduated', methods=['GET'])
+def get_nlt_graduated():
+    """Graduated NLT/SNLT candidates (Completion Status = Complete)."""
+    try:
+        candidates = fetch_graduated_nlts()
+        return jsonify({'candidates': candidates, 'total': len(candidates)}), 200
+    except Exception as e:
+        log_error("Error in NLT graduated endpoint", e)
+        return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
+
+
+@app.route('/api/nlt-dashboard', methods=['GET'])
+def get_nlt_dashboard():
+    """Aggregate NLT dashboard data: active, graduated, and MIT-to-NLT transitions."""
+    try:
+        active = fetch_nlt_candidates()
+        graduated = fetch_graduated_nlts()
+
+        nlt_path = os.path.join(os.path.dirname(__file__), 'data', 'nlt_transitions.json')
+        transitions = []
+        if os.path.exists(nlt_path):
+            import json as _json
+            with open(nlt_path, 'r', encoding='utf-8') as f:
+                transitions = _json.load(f).get('candidates', [])
+
+        return jsonify({
+            'active': active,
+            'active_count': len(active),
+            'graduated': graduated,
+            'graduated_count': len(graduated),
+            'transitions': transitions,
+            'transition_count': len(transitions),
+        }), 200
+    except Exception as e:
+        log_error("Error in NLT dashboard endpoint", e)
         return jsonify({'error': ERROR_MESSAGES['server_error']}), 500
 
 
